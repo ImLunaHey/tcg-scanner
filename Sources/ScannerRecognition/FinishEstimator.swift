@@ -33,7 +33,13 @@ public enum FinishEstimator {
         }
         }
         var markers = locate(evidence.lines)
-        if markers.count != 1 { markers = locate(try CardOCR.englishSetCode(data, rotation: evidence.orientation)) }
+        if markers.isEmpty { markers = locate(try CardOCR.englishSetCode(data, rotation: evidence.orientation)) }
+        var enlargedReading = false
+        if markers.isEmpty {
+            try Task.checkCancellation()
+            markers = locate(try CardOCR.englishSetCode(data, rotation: evidence.orientation, magnify: true))
+            enlargedReading = markers.count == 1
+        }
         guard markers.count == 1, let marker = markers.first else {
             return FinishEstimate(state: .uncertain, candidateID: card.id, evidence: ["The English set-code box could not be located unambiguously."], limitations: limitations)
         }
@@ -52,6 +58,7 @@ public enum FinishEstimator {
         result.medianLuminance = median
         result.darkBackgroundAreaFraction = background.darkArea
         result.lightBackgroundAreaFraction = background.lightArea
+        if enlargedReading { result.evidence.append("Set-code box located by re-reading enlarged pixels locally.") }
         return result
     }
 

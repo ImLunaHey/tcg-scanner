@@ -15,10 +15,11 @@ func inspectSavedFinishEvidenceWithoutChangingReviews() throws {
             let result = try FinishEstimator.analyze(data, evidence: evidence)
             let known: [Int: CardFinish] = record.batchNumber == 9 ? [4: .reverseHolo, 18: .normal] :
                 record.batchNumber == 13 ? [2: .normal, 4: .normal, 6: .normal, 8: .normal, 10: .holo, 18: .holo] :
-                record.batchNumber == 14 ? Dictionary(uniqueKeysWithValues: (1...15).map { ($0 * 2, CardFinish.normal) }) : [:]
+                record.batchNumber == 14 ? Dictionary(uniqueKeysWithValues: (1...15).map { ($0 * 2, CardFinish.normal) }) :
+                record.batchNumber == 15 ? Dictionary(uniqueKeysWithValues: (1...14).map { ($0 * 2, CardFinish.normal) }) : [:]
             if let expected = known[identity.request.sequence] {
                 // Preserve the calibrated detections and resolve all normal B-014 examples.
-                if record.batchNumber == 14 || record.batchNumber == 9 || identity.request.sequence != 6 {
+                if record.batchNumber == 14 || record.batchNumber == 15 || record.batchNumber == 9 || identity.request.sequence != 6 {
                     #expect(result.suggestedFinish == expected)
                 } else {
                     #expect(result.suggestedFinish == nil || result.suggestedFinish == expected)

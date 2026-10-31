@@ -5,7 +5,7 @@ public struct FinishEstimate: Codable, Sendable, Equatable {
     public var state: State
     public var suggestedFinish: CardFinish?
     public var candidateID: String?
-    public var method = "modern-set-code-polarity-v2"
+    public var method = "modern-set-code-polarity-v3"
     public var evidence: [String]
     public var limitations: [String]
     public var region: ImageCrop?

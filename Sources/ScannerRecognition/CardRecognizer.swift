@@ -100,15 +100,31 @@ enum CardOCR {
             return Reading(rotation: rotation, lines: lines)
         }
     }
-    static func englishSetCode(_ data: Data, rotation: Int) throws -> [RecognizedLine] {
+    static func englishSetCode(_ data: Data, rotation: Int, magnify: Bool = false) throws -> [RecognizedLine] {
         let orientations: [CGImagePropertyOrientation] = [.up, .right, .down, .left]
         guard orientations.indices.contains(rotation) else { return [] }
+        var input = try image(data)
+        if magnify {
+            // Small printed codes can lose a character at capture resolution.
+            // Re-read enlarged pixels; never invent letters to fit a card/set.
+            let scale = min(2, 2400 / Double(max(input.width, input.height)))
+            guard scale > 1.1 else { return [] }
+            let width = Int(Double(input.width) * scale), height = Int(Double(input.height) * scale)
+            guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+                throw ScannerError("recognition", "Cannot enlarge set-code evidence.")
+            }
+            context.interpolationQuality = .high
+            context.draw(input, in: CGRect(x: 0, y: 0, width: width, height: height))
+            guard let enlarged = context.makeImage() else { throw ScannerError("recognition", "Cannot read enlarged set-code evidence.") }
+            input = enlarged
+        }
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate; request.recognitionLanguages = ["en-US"]
         request.usesLanguageCorrection = false; request.minimumTextHeight = 0
         let region = CGRect(x: 0.03, y: 0.015, width: 0.25, height: 0.075)
         request.regionOfInterest = region
-        try VNImageRequestHandler(cgImage: image(data), orientation: orientations[rotation]).perform([request])
+        try VNImageRequestHandler(cgImage: input, orientation: orientations[rotation]).perform([request])
         let pattern = try NSRegularExpression(pattern: #"(?i)([A-Z0-9]{3}\s*EN)\s*$"#)
         return try (request.results ?? []).compactMap { observation in
             guard let text = observation.topCandidates(1).first, text.confidence >= 0.5,
