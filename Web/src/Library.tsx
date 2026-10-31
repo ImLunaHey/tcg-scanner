@@ -40,7 +40,10 @@ function imagePath(
   thumbnail = false,
   editID?: string,
 ) {
-  return `images/${id}:${sequence}${thumbnail ? "/thumbnail" : ""}${editID ? `?editID=${editID}` : ""}`;
+  const params = new URLSearchParams();
+  if (thumbnail) params.set("format", "jpeg");
+  if (editID) params.set("editID", editID);
+  return `images/${id}:${sequence}${thumbnail ? "/thumbnail" : ""}${params.size ? `?${params}` : ""}`;
 }
 export function Thumbnail({
   id,

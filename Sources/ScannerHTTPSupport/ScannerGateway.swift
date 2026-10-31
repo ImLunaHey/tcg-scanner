@@ -53,7 +53,7 @@ public struct ScannerGateway: HTTPResponder {
             }
             }
         } catch { response = errorResponse(error) }
-        response.headers[.cacheControl] = "no-store"
+        if response.headers[.cacheControl] == nil { response.headers[.cacheControl] = "no-store" }
         response.headers[HTTPField.Name("X-Content-Type-Options")!] = "nosniff"
         response.headers[HTTPField.Name("Referrer-Policy")!] = "no-referrer"
         response.headers[HTTPField.Name("Content-Security-Policy")!] = isWebAsset ? WebAssets.contentPolicy : "default-src 'none'; frame-ancestors 'none'"

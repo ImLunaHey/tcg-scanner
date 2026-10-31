@@ -18,7 +18,7 @@ extension ScannerCoordinator {
         let image = try selectedImage(record, sequence: sequence, editID: editID)
         return ImageMetadata(jobID: jobID, image: image)
     }
-    public func thumbnail(jobID: UUID, sequence: Int, editID: UUID? = nil) async throws -> ImageThumbnail {
+    public func thumbnail(jobID: UUID, sequence: Int, editID: UUID? = nil, format: ThumbnailFormat = .png) async throws -> ImageThumbnail {
         guard thumbnailWorkers < 2 else { throw ScannerError("resourceLimit", "At most two thumbnails may be generated concurrently.") }
         thumbnailWorkers += 1
         defer { thumbnailWorkers -= 1 }
@@ -32,7 +32,7 @@ extension ScannerCoordinator {
         let fingerprint = try await Task.detached(priority: .utility) {
             try OriginalReader.fingerprint(root: root, record: record, image: image)
         }.value
-        let key = "\(jobID):\(sequence):\(editID?.uuidString ?? "original"):\(image.sha256)"
+        let key = "\(jobID):\(sequence):\(editID?.uuidString ?? "original"):\(image.sha256):\(format.rawValue)"
         if let cached = thumbnailCache.value(key: key, fingerprint: fingerprint) { return cached }
         let thumbnail = try await Task.detached(priority: .utility) {
             let chunk = try OriginalReader.read(root: root, record: record, image: image, offset: 0, length: image.bytes)
@@ -46,16 +46,16 @@ extension ScannerCoordinator {
                 throw ScannerError("storage", "Could not verify or decode thumbnail source.")
             }
             let result = NSMutableData()
-            guard let destination = CGImageDestinationCreateWithData(result, "public.png" as CFString, 1, nil) else {
+            guard let destination = CGImageDestinationCreateWithData(result, (format == .jpeg ? "public.jpeg" : "public.png") as CFString, 1, nil) else {
                 throw ScannerError("storage", "Cannot encode thumbnail.")
             }
-            CGImageDestinationAddImage(destination, preview, nil)
+            CGImageDestinationAddImage(destination, preview, format == .jpeg ? [kCGImageDestinationLossyCompressionQuality: 0.82] as CFDictionary : nil)
             guard CGImageDestinationFinalize(destination), result.length <= 2 * 1024 * 1024 else {
                 throw ScannerError("storage", "Thumbnail encoding failed or exceeded size limit.")
             }
             let bytes = result as Data
             return ImageThumbnail(data: bytes, sha256: SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined(),
-                                  width: preview.width, height: preview.height)
+                                  width: preview.width, height: preview.height, mediaType: format == .jpeg ? "image/jpeg" : "image/png")
         }.value
         thumbnailCache.insert(thumbnail, key: key, fingerprint: fingerprint)
         return thumbnail

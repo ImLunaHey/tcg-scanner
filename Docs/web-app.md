@@ -201,3 +201,35 @@ Chromium desktop/phone and WebKit tablet workflows. Saved-batch HTTPS checks
 verified 11 pairs, 22 previews, full-resolution 100% zoom, system themes, a
 checksum-matching prepared download and unchanged job history. No scanner job
 was started for these checks. Generated logs/screenshots remain ignored.
+
+### Actual browser reload caching
+
+The first preview-cache change above covered SPA navigation only. It did **not**
+fix page reloads: the gateway's blanket `no-store` policy and the client's fetch
+mode prevented the browser HTTP cache from retaining images. That distinction was
+missed in the initial performance report and was corrected after user feedback.
+
+Image responses now use `Cache-Control: private, max-age=3600, immutable`,
+`Vary: Authorization` and content-derived ETags. JSON, authentication errors and
+control responses remain `no-store`. Authentication runs before conditional
+requests can return 304. The frontend permits cache reuse for immutable image
+URLs; originals use a stable job/sequence and edits have unique IDs. Session
+changes use a different Authorization value and cannot reuse another session's
+cached representation. Browser cache data can remain on the device, as with
+other downloaded images; private cache is not a shared network cache.
+
+Gallery requests use `/thumbnail?format=jpeg` (512-pixel maximum, quality 0.82).
+The existing thumbnail API still defaults to PNG for other clients. The additive
+thumbnail `mediaType` field identifies encoded bytes. Original and prepared files,
+full-resolution previews and exports remain lossless PNG/TIFF as recorded.
+
+Saved B-009 validation on the live HTTPS endpoint used **actual reloads**, with
+request interception disabled (Playwright routing disables HTTP caching).
+Chromium reused all 22 previews in 151 ms; a persistent WebKit context reused them
+in 172–187 ms. Both transferred zero preview bytes on reload. Chromium also reused
+the 1.55 MB full image without a request body transfer; WebKit revalidated it with
+approximately 300 bytes of headers and no image body download. JPEG previews total
+about 1.8 MB instead of roughly 8 MB. These are this Mac's measurements, not a
+physical-phone or remote-link benchmark. WebKit does not cache the authenticated
+images on the insecure HTTP fixture, so its cache assertion uses the production
+HTTPS test instead. These checks created no scan jobs.

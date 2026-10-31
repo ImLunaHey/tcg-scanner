@@ -39,13 +39,16 @@ extension DiagnosticRouter {
             catch { throw RPCFailure(code: -32602, message: "Invalid image edit parameters.") }
             result = try .wrapping(await coordinator.editImage(edit))
         case "v1.images.get", "v1.images.read", "v1.images.thumbnail":
-            try only(params, keys: request.method != "v1.images.read" ? ["jobID", "sequence", "editID"] : ["jobID", "sequence", "offset", "length", "editID"])
+            try only(params, keys: request.method == "v1.images.thumbnail" ? ["jobID", "sequence", "editID", "format"] : request.method != "v1.images.read" ? ["jobID", "sequence", "editID"] : ["jobID", "sequence", "offset", "length", "editID"])
             let id = try uuid(params, "jobID")
             let editID = try params["editID"].map { _ in try uuid(params, "editID") }
             let sequence = try integer(params, "sequence", default: 0, range: 1...100)
             guard sequence > 0 else { throw RPCFailure(code: -32602, message: "sequence is required.") }
             if request.method == "v1.images.get" { result = try .wrapping(await coordinator.imageMetadata(jobID: id, sequence: sequence, editID: editID)) }
-            else if request.method == "v1.images.thumbnail" { result = try .wrapping(await coordinator.thumbnail(jobID: id, sequence: sequence, editID: editID)) }
+            else if request.method == "v1.images.thumbnail" {
+                guard let format = ThumbnailFormat(rawValue: try optionalIdentifier(params, "format") ?? "png") else { throw RPCFailure(code: -32602, message: "Thumbnail format must be png or jpeg.") }
+                result = try .wrapping(await coordinator.thumbnail(jobID: id, sequence: sequence, editID: editID, format: format))
+            }
             else {
                 result = try .wrapping(await coordinator.readImage(jobID: id, sequence: sequence,
                     offset: integer(params, "offset", default: 0, range: 0...512 * 1024 * 1024),

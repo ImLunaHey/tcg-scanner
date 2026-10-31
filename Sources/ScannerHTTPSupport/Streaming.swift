@@ -61,16 +61,22 @@ extension ScannerGateway {
         }
         return ["jobID": .string(try uuid(String(identifier[0]))), "sequence": .number(Double(sequence))]
     }
-    func image(parts: [String], request: Request, principal: String, editID: String? = nil) async throws -> Response {
+    func image(parts: [String], request: Request, principal: String, editID: String? = nil, thumbnailFormat: String? = nil) async throws -> Response {
         guard (2...3).contains(parts.count) else { throw GatewayError(404, "notFound", "Unknown image route.") }
         var params = try imageParameters(parts[1])
         if let editID { params["editID"] = .string(try uuid(editID)) }
         if parts.count == 3 {
             if parts[2] == "metadata" { return try jsonResponse(await service.call("images.get", params)) }
             if parts[2] == "thumbnail" {
+                guard let format = ThumbnailFormat(rawValue: thumbnailFormat ?? "png") else { throw GatewayError(400, "invalidParams", "Thumbnail format must be png or jpeg.") }
+                params["format"] = .string(format.rawValue)
                 let result = try await service.call("images.thumbnail", params).decode(ImageThumbnail.self)
                 guard let data = Data(base64Encoded: result.base64), SHA256.hash(data: data).hex == result.sha256 else { throw GatewayError(502, "integrity", "Invalid thumbnail response.") }
-                return Response(status: .ok, headers: [.contentType: "image/png"], body: .init(byteBuffer: ByteBuffer(bytes: data)))
+                let mediaType = result.mediaType ?? "image/png"
+                guard ["image/png", "image/jpeg"].contains(mediaType) else { throw GatewayError(502, "integrity", "Invalid preview media type.") }
+                let headers = imageCacheHeaders(type: mediaType, sha256: result.sha256)
+                if request.headers[.ifNoneMatch] == headers[.eTag] { return Response(status: .notModified, headers: headers) }
+                return Response(status: .ok, headers: headers, body: .init(byteBuffer: ByteBuffer(bytes: data)))
             }
             throw GatewayError(404, "notFound", "Unknown image route.")
         }
@@ -81,6 +87,10 @@ extension ScannerGateway {
         let sequence = metadata.image.sequence
         let chunkParams = params
         let format = metadata.image.uniformType == "public.png" ? "png" : "tiff"
+        var headers = imageCacheHeaders(type: "image/\(format)", sha256: metadata.image.sha256)
+        headers[HTTPField.Name("X-Image-SHA256")!] = metadata.image.sha256
+        headers[.contentDisposition] = "attachment; filename=\"\(jobID)-\(sequence).\(format)\""
+        if request.headers[.ifNoneMatch] == headers[.eTag] { return Response(status: .notModified, headers: headers) }
         let body = ResponseBody(contentLength: metadata.image.bytes) { writer in
             var chunk = first
             var offset = 0
@@ -106,10 +116,12 @@ extension ScannerGateway {
             }
             try await writer.finish(nil)
         }
-        return Response(status: .ok, headers: [.contentType: "image/\(format)", .eTag: "\"\(metadata.image.sha256)\"",
-            HTTPField.Name("X-Image-SHA256")!: metadata.image.sha256,
-            .contentDisposition: "attachment; filename=\"\(jobID)-\(sequence).\(format)\""], body: body)
+        return Response(status: .ok, headers: headers, body: body)
     }
+    private func imageCacheHeaders(type: String, sha256: String) -> HTTPFields {
+        [.contentType: type, .eTag: "\"\(sha256)\"", .cacheControl: "private, max-age=3600, immutable", .vary: "Authorization"]
+    }
+
     private func imageChunk(_ params: [String: JSONValue], offset: Int) async throws -> ImageChunk {
         try await service.call("images.read", params.merging(["offset": .number(Double(offset)), "length": .number(262_144)]) { _, value in value }).decode(ImageChunk.self)
     }

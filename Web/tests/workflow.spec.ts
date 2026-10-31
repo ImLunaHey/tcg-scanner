@@ -338,5 +338,36 @@ test("card batch groups consecutive captures and shows identity once", async ({
       ),
     )
     .toBe("rgb(247, 248, 245)");
+  // A real reload discards React state and the in-memory image queue/cache.
+  // Do not install Playwright routes here: routing disables the browser HTTP cache.
+  await page.reload();
+  await expect(card.locator(".thumbnail img")).toHaveCount(2);
+  const previews = await page.evaluate(() =>
+    performance
+      .getEntriesByType("resource")
+      .filter((entry) => entry.name.includes("/thumbnail?"))
+      .map((entry) => ({
+        transferred: (entry as PerformanceResourceTiming).transferSize,
+        bytes: (entry as PerformanceResourceTiming).encodedBodySize,
+      })),
+  );
+  expect(previews).toHaveLength(2);
+  // WebKit does not cache these authenticated requests on the HTTP fixture.
+  // Its production HTTPS cache is checked separately using a persistent context.
+  if (test.info().project.name !== "tablet-webkit")
+    expect(previews.every((entry) => entry.transferred === 0)).toBe(true);
+  await card
+    .getByRole("button", { name: "Enlarge side 2 of C-001", exact: true })
+    .click();
+  await expect(page.getByRole("dialog").getByRole("img")).toBeVisible();
+  const fullImage = await page.evaluate(() =>
+    performance
+      .getEntriesByType("resource")
+      .filter((entry) => /\/images\/[^/]+:[0-9]+\?editID=/.test(entry.name))
+      .map((entry) => (entry as PerformanceResourceTiming).transferSize),
+  );
+  if (test.info().project.name !== "tablet-webkit")
+    expect(fullImage).toEqual([0]);
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Sign out" }).click();
 });

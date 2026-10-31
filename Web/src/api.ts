@@ -48,7 +48,7 @@ export class Api {
     const response = await fetch(`/api/v1/${path}`, {
       ...options,
       credentials: "omit",
-      cache: "no-store",
+      cache: options.cache ?? "no-store",
       headers: {
         Authorization: `Bearer ${this.token}`,
         ...(options.body ? { "Content-Type": "application/json" } : {}),
@@ -85,7 +85,7 @@ export class Api {
     ).json();
   }
   async blob(path: string, signal?: AbortSignal) {
-    return (await this.response(path, { signal })).blob();
+    return (await this.response(path, { signal, cache: "force-cache" })).blob();
   }
 }
 export function saveBlob(blob: Blob, name: string) {

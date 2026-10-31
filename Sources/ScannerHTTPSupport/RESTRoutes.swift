@@ -34,8 +34,8 @@ extension ScannerGateway {
             return try jsonResponse(await service.call(rpc, params), status: method == .post ? 202 : 200)
         }
         if parts.first == "images", method == .get {
-            try path.only(["editID"])
-            return try await image(parts: parts, request: request, principal: principal, editID: path.query["editID"])
+            try path.only(parts.count == 3 && parts[2] == "thumbnail" ? ["editID", "format"] : ["editID"])
+            return try await image(parts: parts, request: request, principal: principal, editID: path.query["editID"], thumbnailFormat: path.query["format"])
         }
         if parts.count == 3, parts[0] == "images", parts[2] == "edits", method == .post {
             try path.only([]); try only(body, ["id", "crop", "quarterTurns"])

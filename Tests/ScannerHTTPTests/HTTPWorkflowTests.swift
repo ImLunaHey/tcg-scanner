@@ -114,15 +114,32 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
             let path = "/api/v1/images/\(requestID):\(image.sequence)"
             let original = try await client.execute(uri: path, method: .get, headers: headers)
             #expect(original.status.code == 200 && original.headers[.contentType] == "image/png")
+            #expect(original.headers[.cacheControl] == "private, max-age=3600, immutable")
+            #expect(original.headers[.vary] == "Authorization")
+            var conditional = headers; conditional[.ifNoneMatch] = original.headers[.eTag]
+            #expect(try await client.execute(uri: path, method: .get, headers: conditional).status.code == 304)
             let bytes = Data(original.body.readableBytesView)
             #expect(SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined() == image.sha256)
             #expect(bytes == (try Data(contentsOf: URL(fileURLWithPath: job.outputDirectory).appendingPathComponent(image.relativePath))))
             let thumbnail = try await client.execute(uri: path + "/thumbnail", method: .get, headers: headers)
-            #expect(thumbnail.status.code == 200)
+            #expect(thumbnail.status.code == 200 && thumbnail.headers[.contentType] == "image/png")
+            let jpeg = try await client.execute(uri: path + "/thumbnail?format=jpeg", method: .get, headers: headers)
+            #expect(jpeg.status.code == 200 && jpeg.headers[.contentType] == "image/jpeg")
+            #expect(jpeg.headers[.cacheControl] == "private, max-age=3600, immutable")
+            #expect(jpeg.headers[.vary] == "Authorization")
+            #expect(Data(jpeg.body.readableBytesView).starts(with: [255, 216, 255]))
+            conditional[.ifNoneMatch] = jpeg.headers[.eTag]
+            #expect(try await client.execute(uri: path + "/thumbnail?format=jpeg", method: .get, headers: conditional).status.code == 304)
+            conditional[.authorization] = nil
+            let anonymousImage = try await client.execute(uri: path + "/thumbnail?format=jpeg", method: .get, headers: conditional)
+            #expect(anonymousImage.status.code == 401 && anonymousImage.headers[.cacheControl] == "no-store")
+            #expect(anonymousImage.headers[.eTag] == nil)
+            #expect(try await client.execute(uri: path + "/thumbnail?format=invalid", method: .get, headers: headers).status.code == 400)
             let source = try #require(CGImageSourceCreateWithData(Data(thumbnail.body.readableBytesView) as CFData, nil))
             let preview = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
             #expect(preview.width == 512 && preview.height == 384)
-            #expect(try await client.execute(uri: path + "/metadata", method: .get, headers: headers).status.code == 200)
+            let metadataResponse = try await client.execute(uri: path + "/metadata", method: .get, headers: headers)
+            #expect(metadataResponse.status.code == 200 && metadataResponse.headers[.cacheControl] == "no-store")
         }
         let editID = UUID()
         let editPath = "/api/v1/images/\(requestID):1"
