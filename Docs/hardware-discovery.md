@@ -40,10 +40,74 @@ At 2026-10-31T14:48:40Z the same Swift probe completed successfully and found
 The full local report is in ignored
 `Diagnostics/imagecapture-discovery-after-install.json`.
 **ImageCaptureCore discovery is now hardware-verified** in this logged-in user's
-command-line process. Session access, functional units, capabilities, settings,
-scanning and LaunchAgent operation remain unverified. No session was opened,
-settings changed or paper fed. Next: open a diagnostic session and enumerate the
-functional units and exposed settings, without requesting a scan.
+command-line process. This discovery-only run did not open a session or scan.
+Session inspection results follow below; scanning and LaunchAgent operation
+remain unverified.
+
+## Session and settings inspection
+
+At 2026-10-31T14:50:58Z, the Swift capability probe successfully opened an
+exclusive session, received device-ready notification, inspected the only
+advertised unit (`3`, `ICScannerFunctionalUnitDocumentFeeder`) and confirmed
+session closure. No errors, scan requests or setting writes occurred.
+Full raw output: ignored `Diagnostics/capabilities.json`.
+
+Hardware-tested: discovery, session opening, readiness callback, property reads
+and session closure. The following values are **exposed by the driver but not
+tested by scanning**:
+
+- ADF present; feeder reports a document loaded. Sensor accuracy is not verified.
+- Duplex support is true; duplex is currently disabled.
+- Supported/preferred resolutions: 150, 200, 240, 300, 400, 500, 600 DPI.
+  Current resolution: 300 DPI. Native resolution: 600 × 600 DPI.
+- Current pixel mode: RGB (`2`); supported bit depths: 1 and 8 bits per channel,
+  current 8. There is no public supported-pixel-modes list on this functional unit.
+- Current document type: A4 (`1`), approximately 8.268 × 11.693 inches.
+  Supported document-type IDs: 1, 2, 3, 4, 5, 10, 13, 39, 53.
+- Measurement units: inches (`0`), centimetres (`1`), pixels (`5`); current inches.
+- Threshold accepted; current/default 128, threshold use disabled.
+- Unit state: ready (`1`). Overview scanning: reported unsupported.
+- Page-order reversal: false. Odd/even page orientations: EXIF `1`.
+
+Eight vendor settings were returned, all enumerations. Current values equal the
+reported defaults in this session:
+
+- `cropping`: `2`, Auto (Speed emphasis). Options 0–4: black background,
+  white background, auto speed, auto accuracy, overscan.
+- `multifeed_detection`: `1`, On (Overlapping). Options 0–3: off,
+  overlapping, length, overlapping and length. **Not changed.**
+- `prepick`: `1`, On. Values 0, 1, 2, but only Off/On labels were returned.
+- `dropout_color`: `4`, None. Options 0–4: white, red, green, blue, none.
+  Driver tooltip says this setting is ignored in colour mode.
+- `sharpness` (Text clarity): `0`, None. Options 0–8: none, smoothing,
+  three emphasis levels, four descreen levels.
+- `tone_adjustment`: `1`, Normal. Options 0–4: none, normal, soft, sharp, bright.
+- `blank_page_skip`: `3`, On (Default). Options 0–5: off, then five
+  sensitivity levels from low to high. **Not changed.**
+- `scan_button_monitor`: `1`, On. Values 0, 1, 2, but only Off/On labels returned.
+
+### Findings to resolve before scanning
+
+Blank-page skipping can omit an image and break pairing based on alternating
+front/back callbacks. The first scanning implementation must explicitly preserve
+both sides and verify ordering; it must not silently inherit this setting.
+
+Physical size and scan area were returned as zeros; scaling was zero with empty
+supported/preferred lists. These are raw observations, not usable scan dimensions
+or proof that the scanner supports zero-sized media. Configuration needs validation
+before a scan. A4 document size was nonzero despite these fields.
+
+The extra unlabelled value `2` in Prepick and Scan button monitor must remain
+uninterpreted. Preserve the raw values and labels rather than inventing labels.
+
+No separate brightness, contrast, gamma, deskew, automatic orientation, paper
+thickness, maintenance-counter or firmware controls were exposed in these vendor
+features. Tone presets must not be treated as verified equivalents. Their broader
+availability is unknown. No software processing is implemented yet. Continuous
+feeding, error recovery, actual image output and card safety remain untested.
+
+The milestone still needs the production Swift package/backend and diagnostic
+CLI; these probes establish the real hardware/API path before that implementation.
 
 ## Official support information
 
