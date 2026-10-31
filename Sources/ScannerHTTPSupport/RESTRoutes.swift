@@ -38,7 +38,7 @@ extension ScannerGateway {
             return try await image(parts: parts, request: request, principal: principal, editID: path.query["editID"], thumbnailFormat: path.query["format"])
         }
         if parts.count == 3, parts[0] == "images", parts[2] == "edits", method == .post {
-            try path.only([]); try only(body, ["id", "crop", "quarterTurns"])
+            try path.only([]); try only(body, ["id", "crop", "quarterTurns", "deskewDegrees"])
             var params = try imageParameters(parts[1])
             params.merge(body) { _, value in value }
             return try jsonResponse(await service.call("images.edit", params), status: 201)

@@ -63,7 +63,7 @@ export type EditedImage = {
   };
   image: OriginalImage;
   createdAt: string;
-  cardPreparation?: { orientationVerified: boolean; warnings: string[] };
+  cardPreparation?: { orientationVerified: boolean; warnings: string[]; sourceCrop?: { x: number; y: number; width: number; height: number } };
 };
 export type JobPage = { jobs: Job[]; nextOffset?: number };
 export type Setting = {

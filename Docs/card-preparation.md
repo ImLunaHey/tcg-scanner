@@ -27,9 +27,12 @@ It does not synthesize edges, remove the background, sharpen or grade the card.
 
 Apple Vision's text quadrilateral directions vote for clockwise quarter-turn
 rotation. At least four readable lines with strong agreement are required before
-the orientation is marked verified. Symmetric Pokémon-back logos do not reliably
-distinguish upright from upside down; uncertain backs retain their portrait
-orientation and are flagged for inspection. Landscape uncertain images are turned
+the orientation is marked verified. The v3 method additionally recognizes standard
+international blue Pokémon backs using a bounded fuzzy OCR logo check, blue border,
+yellow end logos and central red/white Poké Ball layout. The red half establishes
+the top; repeated logos alone do not. All layout checks must agree on exactly one
+rotation. Unknown/ambiguous backs retain their portrait orientation and are flagged
+for inspection. This does not authenticate the card or assess its condition. Landscape uncertain images are turned
 to portrait but still require review. No certainty is implied by a prepared copy.
 
 If the card meets an image boundary, the copy warns that the original may have
@@ -37,8 +40,11 @@ clipped an edge. Cropping cannot recover pixels the scanner never captured. Chec
 all corners and edges before using the image in a listing. The first B-007 images
 are flush with one scan boundary, so a complete margin cannot be added there.
 
-This is a bounding crop and quarter-turn correction, not perspective correction
-or arbitrary-angle deskew. White-background photos, sleeves, top loaders,
+The v3 method fits a minimum-area enclosing box to the complete outer foreground
+within ±12°, rotates the full original canvas, then crops with a protective margin
+and applies the upright quarter-turn correction. It skips negligible corrections
+and warns if the best angle reaches the supported range limit. This is rigid
+small-angle deskew, not perspective correction or reconstruction of missing edges. White-background photos, sleeves, top loaders,
 overlapping cards or ambiguous boundaries may require manual cropping. Inputs are
 limited to one image, 32 MiB and 40 megapixels. Failed preparation retains the
 original and records a warning; it does not turn a successful capture into lost
@@ -57,7 +63,13 @@ data. A cancelled processing job also retains captured originals.
   `scanner images prepare-card JOB_UUID SEQUENCE --request-id UUID --json`.
 
 `processedImages[].cardPreparation` contains the normalized crop, clockwise
-quarter turns, orientation verification flag, method and warnings. Existing edits
+quarter turns, orientation verification flag, method and warnings. V3 adds optional
+`deskewDegrees`, `orientationBasis` (`text`, `pokemon-back-pattern`, or `unknown`)
+and `sourceCrop` (the original-image bounding crop for manual editing). `crop` in
+the recorded edit applies after deskew; old records with no deskew field retain
+their previous meaning. Manual editors operate on the original using `sourceCrop`,
+not coordinates from the rotated canvas. Automatic processing runs in Swift with
+[Core Image transforms](https://developer.apple.com/documentation/coreimage/ciimage/transformed(by:)); no images leave this Mac for orientation analysis. Existing edits
 without this optional property remain ordinary manual copies. Identification
 prefers the latest prepared card and records `sourceEditID` and its SHA-256.
 Library tiles show a unique candidate's name, set and collector number as

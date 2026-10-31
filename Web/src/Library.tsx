@@ -809,13 +809,14 @@ function ImageEditor({
     )
     .at(-1);
   const [rotation, setRotation] = useState(initial?.request.quarterTurns || 0);
+  const sourceCrop = initial?.cardPreparation?.sourceCrop ?? initial?.request.crop;
   const [crop, setCrop] = useState(
-    initial
+    sourceCrop
       ? {
-          x: initial.request.crop.x * 100,
-          y: initial.request.crop.y * 100,
-          width: initial.request.crop.width * 100,
-          height: initial.request.crop.height * 100,
+          x: sourceCrop.x * 100,
+          y: sourceCrop.y * 100,
+          width: sourceCrop.width * 100,
+          height: sourceCrop.height * 100,
         }
       : { x: 0, y: 0, width: 100, height: 100 },
   );

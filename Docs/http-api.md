@@ -106,7 +106,7 @@ requests are rejected. All HTTP profile IDs are UUIDs; resolve names through the
 | `GET /api/v1/images/{jobUUID}:{sequence}` | Original image bytes, download disposition, content type, ETag and X-Image-SHA256 |
 | `GET /api/v1/images/{jobUUID}:{sequence}/metadata` | ImageMetadata |
 | `GET /api/v1/images/{jobUUID}:{sequence}/thumbnail` | Service-generated PNG, maximum 512 pixels on longest side |
-| `POST /api/v1/images/{jobUUID}:{sequence}/edits` | `id` UUID, `quarterTurns` 0–3, and normalized `crop` (`x`, `y`, `width`, `height`); creates a separate PNG via ScannerService, preserving the original. |
+| `POST /api/v1/images/{jobUUID}:{sequence}/edits` | `id` UUID, `quarterTurns` 0–3, and normalized `crop` (`x`, `y`, `width`, `height`). Optional `deskewDegrees` (clockwise, −12…12) expands/rotates the original canvas before that crop; quarter turns apply afterward. Creates a separate PNG via ScannerService, preserving the original. |
 | `POST /api/v1/images/{jobUUID}:{sequence}/prepare-card` | Stable `id` UUID; creates a cropped/oriented PNG copy. Returns 422 when no unambiguous card is found. See [preparation contracts](card-preparation.md). |
 | `GET /api/v1/events` | Server-Sent Events; see below |
 | `GET /api/v1/diagnostics` | Diagnostics; optional deviceID query |

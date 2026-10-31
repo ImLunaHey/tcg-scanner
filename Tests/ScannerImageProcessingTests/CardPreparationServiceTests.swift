@@ -23,7 +23,8 @@ private actor AutomaticRecognition: CardRecognizing {
 private actor CardPaper: ScannerBackend {
     let blank: Bool
     let count: Int
-    init(blank: Bool = false, count: Int = 1) { self.blank = blank; self.count = count }
+    let tilt: Double
+    init(blank: Bool = false, count: Int = 1, tilt: Double = 0) { self.blank = blank; self.count = count; self.tilt = tilt }
     func devices() -> [Device] { [Device(id: "mock", name: "Mock card source")] }
     func inspect(deviceID: String) -> Inspection { Inspection(device: devices()[0]) }
     func capture(deviceID: String, request: ScanRequest, store: ScanStorage) async throws -> CaptureOutcome {
@@ -31,6 +32,7 @@ private actor CardPaper: ScannerBackend {
         let context = try #require(CGContext(data: nil, width: 400, height: 600, bitsPerComponent: 8, bytesPerRow: 1600,
             space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         context.setFillColor(red: 0, green: 0, blue: 0, alpha: 1); context.fill(CGRect(x: 0, y: 0, width: 400, height: 600))
+        context.translateBy(x: 200, y: 300); context.rotate(by: tilt * .pi / 180); context.translateBy(x: -200, y: -300)
         if !blank { context.setFillColor(red: 0.8, green: 0.7, blue: 0.5, alpha: 1); context.fill(CGRect(x: 100, y: 250, width: 180, height: 250)) }
         let file = store.incomingDirectory.appendingPathComponent("mock.png")
         let destination = try #require(CGImageDestinationCreateWithURL(file as CFURL, "public.png" as CFString, 1, nil))
@@ -138,5 +140,20 @@ private func waitForCard(_ coordinator: ScannerCoordinator, id: UUID) async thro
     #expect(result.state == .cancelled && result.images.count == 1 && result.processedImages?.count == 1)
     #expect(result.cardIdentifications?.first?.state == .failed)
     #expect(result.cardIdentifications?.first?.error?.kind == "interrupted")
+    await coordinator.shutdownScans()
+}
+
+@Test func automaticDeskewPersistsAndRendersItsTransform() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let coordinator = try ScannerCoordinator(backend: CardPaper(tilt: 5), storageRoot: root, cardRecognizer: AutomaticRecognition())
+    let job = try await coordinator.startScan(ScanRequest(prepareCards: true))
+    let record = try await waitForCard(coordinator, id: job.id)
+    let copy = try #require(record.processedImages?.first)
+    #expect(abs((copy.request.deskewDegrees ?? 0) - 5) < 0.2)
+    #expect(copy.cardPreparation?.deskewDegrees == copy.request.deskewDegrees)
+    #expect((180...187).contains(copy.image.width) && (250...257).contains(copy.image.height))
+    #expect(record.images[0].width == 400 && record.images[0].height == 600)
+    #expect(record.cardIdentifications?.first?.sourceSHA256 == copy.image.sha256)
     await coordinator.shutdownScans()
 }

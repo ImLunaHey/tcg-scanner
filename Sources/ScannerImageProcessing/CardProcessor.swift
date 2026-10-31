@@ -27,19 +27,28 @@ public enum CardProcessor {
             throw ScannerError("image", "Cannot inspect card boundaries.")
         }
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-        let crop = try foregroundCrop(rgba: rgba, width: width, height: height)
-        let request = ImageEditRequest(jobID: UUID(), sequence: 1, crop: crop)
+        let boundary = try foregroundBoundary(rgba: rgba, width: width, height: height)
+        let geometry = CardDeskew.analyze(points: boundary.points, width: width, height: height)
+        let crop = geometry.crop
+        let request = ImageEditRequest(jobID: UUID(), sequence: 1, crop: crop, deskewDegrees: geometry.degrees)
         let cropped = try ImageProcessor.render(data, request: request)
         let orientation = try uprightRotation(cropped.data)
-        var warnings = orientation.verified ? [] : ["Orientation is uncertain (including symmetric card backs). Inspect the prepared image and rotate manually if needed."]
-        if crop.x == 0 || crop.y == 0 || crop.x + crop.width >= 0.999999 || crop.y + crop.height >= 0.999999 {
+        var warnings = orientation.verified ? [] : ["Orientation is uncertain (unrecognized or ambiguous card back). Inspect the prepared image and rotate manually if needed."]
+        if boundary.touchesEdge {
             warnings.append("Card is close to a scan boundary. Check that the original captured the entire edge; cropping cannot restore missing pixels.")
         }
-        return CardPreparation(crop: crop, quarterTurns: orientation.turns, orientationVerified: orientation.verified, warnings: warnings)
+        return CardPreparation(crop: crop, quarterTurns: orientation.turns, orientationVerified: orientation.verified, warnings: warnings + geometry.warnings, deskewDegrees: geometry.degrees, orientationBasis: orientation.basis,
+            sourceCrop: CardDeskew.bounds(points: boundary.points, width: width, height: height, degrees: 0))
     }
 
     struct Component { var count: Int; var minX: Int; var maxX: Int; var minY: Int; var maxY: Int }
     static func foregroundCrop(rgba: [UInt8], width: Int, height: Int) throws -> ImageCrop {
+        let boundary = try foregroundBoundary(rgba: rgba, width: width, height: height)
+        return CardDeskew.bounds(points: boundary.points, width: width, height: height, degrees: 0)
+    }
+
+    private static func foregroundBoundary(rgba: [UInt8], width: Int, height: Int) throws -> (points: [CGPoint], touchesEdge: Bool) {
+        var bestPixels: [Int] = []
         var mask = [UInt8](repeating: 0, count: width * height)
         for pixel in mask.indices {
             let i = pixel * 4
@@ -63,6 +72,7 @@ public enum CardProcessor {
                 } }
             }
             if c.count > width * height / 500 { components.append(c) }
+            if c.count > bestPixels.count { bestPixels = queue }
         }
         guard let card = components.max(by: { $0.count < $1.count }) else { throw ScannerError("cardNotFound", "No clear card boundary found against a black background. Original retained.") }
         let w = Double(card.maxX - card.minX + 1), h = Double(card.maxY - card.minY + 1)
@@ -75,14 +85,17 @@ public enum CardProcessor {
                 throw ScannerError("cardNotFound", "More than one substantial object found. Crop manually to avoid losing a card.")
             }
         }
-        // One analysis pixel protects the detected edge without the previous 2% black frame.
-        let margin = 1.0
-        let x = max(0, Double(card.minX) - margin), y = max(0, Double(card.minY) - margin)
-        let right = min(Double(width), Double(card.maxX + 1) + margin), bottom = min(Double(height), Double(card.maxY + 1) + margin)
-        return ImageCrop(x: x / Double(width), y: y / Double(height), width: (right - x) / Double(width), height: (bottom - y) / Double(height))
+        // Two endpoints per occupied row bound the entire connected component.
+        var rows: [Int: (Int, Int)] = [:]
+        for pixel in bestPixels {
+            let x = pixel % width, y = pixel / width
+            let previous = rows[y] ?? (x, x); rows[y] = (min(previous.0, x), max(previous.1, x))
+        }
+        let points = rows.flatMap { y, range in [CGPoint(x: range.0, y: y), CGPoint(x: range.1 + 1, y: y), CGPoint(x: range.0, y: y + 1), CGPoint(x: range.1 + 1, y: y + 1)] }
+        return (points, card.minX == 0 || card.minY == 0 || card.maxX == width - 1 || card.maxY == height - 1)
     }
 
-    private static func uprightRotation(_ data: Data) throws -> (turns: Int, verified: Bool) {
+    private static func uprightRotation(_ data: Data) throws -> (turns: Int, verified: Bool, basis: String) {
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate; request.recognitionLanguages = ["en-US"]; request.usesLanguageCorrection = false
         try VNImageRequestHandler(data: data).perform([request])
@@ -98,12 +111,15 @@ public enum CardProcessor {
         }
         let best = (0..<4).max { votes[$0] < votes[$1] }!
         let total = votes.reduce(0, +)
-        if lines[best] >= 4 && votes[best] >= 20 && votes[best] >= total * 0.8 { return (best, true) }
-        // Symmetric Pokémon-back logos do not establish which end is the top.
+        if lines[best] >= 4 && votes[best] >= 20 && votes[best] >= total * 0.8 { return (best, true, "text") }
+        let words = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
+        if let turns = try PokemonBackOrientation.rotation(data, words: words) {
+            return (turns, true, "pokemon-back-pattern")
+        }
         let source = CGImageSourceCreateWithData(data as CFData, nil)
         let properties = source.flatMap { CGImageSourceCopyPropertiesAtIndex($0, 0, nil) as? [CFString: Any] }
         let width = properties?[kCGImagePropertyPixelWidth] as? Int ?? 0
         let height = properties?[kCGImagePropertyPixelHeight] as? Int ?? 0
-        return (width > height ? 1 : 0, false)
+        return (width > height ? 1 : 0, false, "unknown")
     }
 }

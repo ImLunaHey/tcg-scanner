@@ -149,6 +149,15 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
         #expect(edited.status.code == 201)
         let edit = try decode(edited, as: ProcessedImage.self)
         #expect(edit.image.width == 600 && edit.image.height == 800)
+        let straightened = try await client.execute(uri: editPath + "/edits", method: .post, headers: headers,
+            body: buffer(.object(["id": .string(UUID().uuidString), "quarterTurns": .number(0), "deskewDegrees": .number(5),
+                "crop": .object(["x": .number(0), "y": .number(0), "width": .number(1), "height": .number(1)])])))
+        #expect(straightened.status.code == 201)
+        #expect(try decode(straightened, as: ProcessedImage.self).request.deskewDegrees == 5)
+        let unsafeAngle = try await client.execute(uri: editPath + "/edits", method: .post, headers: headers,
+            body: buffer(.object(["id": .string(UUID().uuidString), "quarterTurns": .number(0), "deskewDegrees": .number(13),
+                "crop": .object(["x": .number(0), "y": .number(0), "width": .number(1), "height": .number(1)])])))
+        #expect(unsafeAngle.status.code == 400)
         let downloadedEdit = try await client.execute(uri: editPath + "?editID=\(editID)", method: .get, headers: headers)
         #expect(SHA256.hash(data: Data(downloadedEdit.body.readableBytesView)).map { String(format: "%02x", $0) }.joined() == edit.image.sha256)
         #expect(try await client.execute(uri: editPath + "/thumbnail?editID=\(editID)", method: .get, headers: headers).status.code == 200)

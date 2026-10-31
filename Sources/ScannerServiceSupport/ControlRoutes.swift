@@ -32,7 +32,7 @@ extension DiagnosticRouter {
             catch { throw RPCFailure(code: -32602, message: "Invalid profile update fields.") }
             result = try .wrapping(await coordinator.updateProfile(id, patch: patch))
         case "v1.images.edit":
-            try only(params, keys: ["id", "jobID", "sequence", "crop", "quarterTurns"])
+            try only(params, keys: ["id", "jobID", "sequence", "crop", "quarterTurns", "deskewDegrees"])
             guard case .object(let crop) = params["crop"], Set(crop.keys) == ["x", "y", "width", "height"] else { throw RPCFailure(code: -32602, message: "Expected a normalized crop rectangle.") }
             let edit: ImageEditRequest
             do { edit = try JSONValue.object(params).decode(ImageEditRequest.self); try edit.validate() }

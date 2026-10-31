@@ -104,7 +104,7 @@ struct ImageEditor: View {
         }.padding(24).frame(width: 650, height: 680).interactiveDismissDisabled(saving)
         .onAppear {
             if let prepared = model.detail?.processedImages?.last(where: { $0.request.sequence == image.sequence && $0.cardPreparation != nil }) {
-                crop = prepared.request.crop; turns = prepared.request.quarterTurns
+                crop = prepared.cardPreparation?.sourceCrop ?? prepared.request.crop; turns = prepared.request.quarterTurns
             }
         }
     }
