@@ -48,6 +48,13 @@ public struct ScannerClient: Sendable {
         return try await call("v1.settings.set", params: .object(params))
     }
     public func edit(_ request: ImageEditRequest) async throws -> ProcessedImage { try await call("v1.images.edit", params: .wrapping(request)) }
+    public func identify(_ request: IdentificationRequest) async throws -> CardIdentification { try await call("v1.images.identify", params: .wrapping(request)) }
+    public func review(jobID: UUID, sequence: Int, identificationID: UUID, cardID: String?, finish: CardFinish, condition: CardCondition) async throws -> CardIdentification {
+        var params: [String: JSONValue] = ["jobID": .string(jobID.uuidString), "sequence": .number(Double(sequence)),
+            "identificationID": .string(identificationID.uuidString), "finish": .string(finish.rawValue), "condition": .string(condition.rawValue)]
+        if let cardID { params["cardID"] = .string(cardID) }
+        return try await call("v1.images.review", params: .object(params))
+    }
     public func thumbnail(jobID: UUID, sequence: Int, editID: UUID? = nil) async throws -> Data {
         let result: ImageThumbnail = try await call("v1.images.thumbnail", params: .object(imageParams(jobID, sequence, editID)))
         guard let data = Data(base64Encoded: result.base64), hash(data) == result.sha256 else { throw ScannerError("integrity", "Thumbnail checksum mismatch.") }

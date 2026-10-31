@@ -17,6 +17,17 @@ extension ScannerGateway {
             if method == .delete { try await access.revoke(principal); return try jsonResponse(.object(["revoked": .bool(true)])) }
         }
         if parts == ["events"], method == .get { return try await events(request, path: path, principal: principal) }
+        if parts.count == 3, parts[0] == "images", parts[2] == "identification" {
+            try path.only([])
+            var params = try imageParameters(parts[1])
+            let rpc: String
+            if method == .get { try only(body, []); rpc = "images.identification" }
+            else if method == .post { try only(body, ["id", "language"]); rpc = "images.identify" }
+            else if method == .patch { try only(body, ["identificationID", "cardID", "finish", "condition"]); rpc = "images.review" }
+            else { throw GatewayError(405, "methodNotAllowed", "Use GET, POST or PATCH for identification.") }
+            params.merge(body) { _, value in value }
+            return try jsonResponse(await service.call(rpc, params), status: method == .post ? 202 : 200)
+        }
         if parts.first == "images", method == .get {
             try path.only(["editID"])
             return try await image(parts: parts, request: request, principal: principal, editID: path.query["editID"])

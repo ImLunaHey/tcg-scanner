@@ -46,12 +46,13 @@ struct ScannerTool: Sendable {
     var fields: [String: ToolField]
     var changesState = false
     var destructive = false
+    var openWorld = false
     var defaults: [String: JSONValue] = [:]
     var tool: Tool {
         Tool(name: name, description: description,
              inputSchema: .object(["type": "object", "properties": .object(fields.mapValues(\.schema)),
                                    "required": .array(fields.filter { $0.value.required }.keys.sorted().map(Value.string)), "additionalProperties": false]),
-             annotations: .init(readOnlyHint: !changesState, destructiveHint: destructive, idempotentHint: true, openWorldHint: false),
+             annotations: .init(readOnlyHint: !changesState, destructiveHint: destructive, idempotentHint: true, openWorldHint: openWorld),
              outputSchema: .object(["type": "object", "required": ["schemaVersion", "ok"], "properties": [
                 "schemaVersion": ["type": "integer", "const": 1], "ok": ["type": "boolean"],
                 "data": ["type": "object"], "error": ["type": "object"]], "additionalProperties": false]))
@@ -79,6 +80,9 @@ enum ToolCatalog {
         let image: [String: ToolField] = ["jobID": .text(required: true, uuid: true), "sequence": .integer(1...100, required: true)]
         let settings: [String: ToolField] = ["dpi": .integer(150...600, required: true), "duplex": .boolean(required: true), "format": .format(required: true)]
         return [
+            ScannerTool(name: "scanner_identify_card", method: "images.identify", description: "Start local English OCR and TCGdex catalogue matching for an existing original. Never scans hardware or uploads images. Reuse id for retries; poll scanner_get_card_identification. Suggestions require review; finish and condition are not automatically assessed.", fields: image.merging(["id": .text(required: true, uuid: true)]) { a, _ in a }, changesState: true, openWorld: true),
+            ScannerTool(name: "scanner_get_card_identification", method: "images.identification", description: "Read identification progress, OCR evidence, candidate sets and manual review metadata.", fields: image),
+            ScannerTool(name: "scanner_review_card", method: "images.review", description: "Record a user's reviewed candidate ID, finish and condition. Do not infer condition from OCR. Omit cardID to reject suggestions. identificationID prevents reviewing a replaced result.", fields: image.merging(["identificationID": .text(required: true, uuid: true), "cardID": .text(maximumLength: 100), "finish": ToolField(type: "string", choices: CardFinish.allCases.map(\.rawValue)), "condition": ToolField(type: "string", choices: CardCondition.allCases.map(\.rawValue))]) { a, _ in a }, changesState: true),
             ScannerTool(name: "scanner_list_devices", method: "devices", description: "Discover connected scanners without feeding paper.", fields: [:]),
             ScannerTool(name: "scanner_get_device", method: "device.get", description: "Read scanner readiness, ADF loaded state when available, and configured defaults. No scanning.", fields: device),
             ScannerTool(name: "scanner_get_capabilities", method: "capabilities", description: "Inspect driver-exposed capabilities and explicit unknowns. Requires an idle scanner; never scans.", fields: device),

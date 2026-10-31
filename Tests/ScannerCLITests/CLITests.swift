@@ -1,6 +1,17 @@
 import Testing
+import Foundation
 import ScannerAPI
 @testable import ScannerCLI
+
+@Test func identificationCLIRequiresExplicitReviewAndStableIDs() throws {
+    let job = UUID().uuidString; let id = UUID().uuidString
+    let start = try Scanner.parseAsRoot(["images", "identify", job, "1", "--request-id", id, "--json"]) as! Images.Identify
+    #expect(start.requestID == id && start.options.json)
+    #expect(try Scanner.parseAsRoot(["images", "identification", job, "1"]) is Images.Identification)
+    #expect(try Scanner.parseAsRoot(["images", "review", job, "1", "--identification-id", id, "--reject"]) is Images.Review)
+    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["images", "review", job, "1", "--identification-id", id]) }
+    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["images", "review", job, "1", "--identification-id", id, "--reject", "--card-id", "swsh3-136"]) }
+}
 
 @Test func parsesDiagnosticCommandsAndOptions() throws {
     let devices = try Scanner.parseAsRoot(["devices", "--json", "--verbose", "--socket", "/tmp/private/sock"]) as! Devices

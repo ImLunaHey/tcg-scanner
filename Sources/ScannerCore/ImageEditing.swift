@@ -14,7 +14,7 @@ extension ScannerCoordinator {
         var record = try await scanStatus(request.jobID)
         if let existing = record.processedImages?.first(where: { $0.id == request.id }) {
             guard existing.request == request else { throw ScannerError("conflict", "Edit ID already has different inputs.") }
-            try EditFiles.writeManifest(record, root: storageRoot)
+            try BatchFiles.writeManifest(record, root: storageRoot)
             return existing
         }
         guard record.state.terminal, scans[record.id] == nil else { throw ScannerError("busy", "Wait for the scan to finish before editing.") }
@@ -24,25 +24,27 @@ extension ScannerCoordinator {
         let root = storageRoot
         let snapshot = record
         let edit = try await Task.detached(priority: .utility) {
-            if let existing = try EditFiles.recover(request, original: original, root: root, record: snapshot) { return existing }
+            if let existing = try BatchFiles.recover(request, original: original, root: root, record: snapshot) { return existing }
             let source = try OriginalReader.read(root: root, record: snapshot, image: original, offset: 0, length: original.bytes)
             guard source.chunkSHA256 == original.sha256, let bytes = Data(base64Encoded: source.base64) else { throw ScannerError("storage", "Original checksum verification failed.") }
             let output = try ImageProcessor.render(bytes, request: request)
             let image = OriginalImage(sequence: request.sequence, relativePath: "edit-\(request.id.uuidString.lowercased()).png", bytes: output.data.count,
                 sha256: SHA256.hash(data: output.data).map { String(format: "%02x", $0) }.joined(), width: output.width, height: output.height, imageCount: 1, uniformType: "public.png")
             let edit = ProcessedImage(request: request, sourceSHA256: original.sha256, image: image)
-            try EditFiles.writeImage(output.data, edit: edit, root: root, record: snapshot)
+            try BatchFiles.writeImage(output.data, edit: edit, root: root, record: snapshot)
             return edit
         }.value
+        // Recognition can finish during rendering; merge into the latest ledger snapshot.
+        record = try await scanStatus(request.jobID)
         record.processedImages = (record.processedImages ?? []) + [edit]
         // The actor serializes manifest/ledger publication. Originals are never overwritten.
         try database.save(record)
-        try EditFiles.writeManifest(record, root: root)
+        try BatchFiles.writeManifest(record, root: root)
         return edit
     }
 }
 
-private enum EditFiles {
+enum BatchFiles {
     /// Complete sidecars allow a retry after a crash between file publication and ledger commit.
     static func recover(_ request: ImageEditRequest, original: OriginalImage, root: URL, record: ScanRecord) throws -> ProcessedImage? {
         let batch = try directory(root: root, record: record); defer { Darwin.close(batch) }

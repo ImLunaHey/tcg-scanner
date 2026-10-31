@@ -11,7 +11,8 @@ public actor CardRecognizer: CardRecognizing {
     private let catalogue = TCGdexClient()
     public init() {}
     public func recognize(_ data: Data) async throws -> RecognitionEvidence {
-        let orientations = try await Task.detached(priority: .utility) { try CardOCR.read(data) }.value
+        let ocr = Task.detached(priority: .utility) { try CardOCR.read(data) }
+        let orientations = try await withTaskCancellationHandler { try await ocr.value } onCancel: { ocr.cancel() }
         try Task.checkCancellation()
         // Avoid a network lookup for blank pages, card backs or other images with no readable text.
         guard orientations.contains(where: { !$0.lines.isEmpty }) else {
@@ -64,10 +65,10 @@ enum CardOCR {
             request.recognitionLanguages = ["en-US"]
             request.usesLanguageCorrection = false // Preserve collector numbers and Pokémon spelling.
             try VNImageRequestHandler(cgImage: image, orientation: orientation).perform([request])
-            let lines = (request.results ?? []).prefix(120).compactMap { observation -> RecognizedLine? in
+            let lines = (request.results ?? []).prefix(48).compactMap { observation -> RecognizedLine? in
                 guard let text = observation.topCandidates(1).first, text.confidence >= 0.35 else { return nil }
                 let box = observation.boundingBox
-                return RecognizedLine(text: String(text.string.prefix(256)), confidence: text.confidence,
+                return RecognizedLine(text: String(text.string.prefix(160)), confidence: text.confidence,
                     x: box.minX, y: box.minY, width: box.width, height: box.height)
             }
             return Reading(rotation: rotation, lines: lines)

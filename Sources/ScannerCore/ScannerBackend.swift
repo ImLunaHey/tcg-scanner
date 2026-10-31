@@ -1,6 +1,7 @@
 import Foundation
 import ScannerAPI
 import ScannerPersistence
+import ScannerRecognition
 
 public protocol ScannerBackend: Sendable {
     func devices() async throws -> [Device]
@@ -28,14 +29,17 @@ public actor ScannerCoordinator {
     var eventWaiters = 0
     var thumbnailWorkers = 0
     var editingJobs: Set<UUID> = []
+    var identificationTasks: [UUID: Task<Void, Never>] = [:]
+    let cardRecognizer: any CardRecognizing
     let database: ScannerDatabase
     var scanTask: Task<Void, Never>?
     var activeScanID: UUID?
     let storageRoot: URL
     let validateStorage: @Sendable () throws -> Void
-    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil, validateStorage: @escaping @Sendable () throws -> Void = {}) throws {
+    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil, validateStorage: @escaping @Sendable () throws -> Void = {}, cardRecognizer: any CardRecognizing = CardRecognizer()) throws {
         self.backend = backend; self.storageRoot = storageRoot; self.validateStorage = validateStorage
         self.database = try database ?? ScannerDatabase()
+        self.cardRecognizer = cardRecognizer
     }
     public func devices() async throws -> [Device] {
         let devices = try await backend.devices()

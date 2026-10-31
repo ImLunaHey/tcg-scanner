@@ -35,7 +35,10 @@ actor TCGdexClient {
         let cards = try JSONDecoder().decode([CatalogueCard].self, from: data)
         guard cards.count <= 100_000 else { throw ScannerError("catalogue", "TCGdex catalogue exceeds the supported limit.") }
         // TCG Pocket cards are digital cards, not physical inventory.
-        let physical = cards.filter { !($0.image?.contains("/tcgp/") ?? false) }
+        let physical = cards.filter {
+            !$0.id.isEmpty && $0.id.utf8.count <= 100 && $0.name.utf8.count <= 128 && $0.localId.utf8.count <= 32
+                && !($0.image?.contains("/tcgp/") ?? false)
+        }
         cache = (Date(), physical)
         return physical
     }
@@ -43,7 +46,12 @@ actor TCGdexClient {
         guard !id.isEmpty, id.utf8.count <= 100, id.utf8.allSatisfy({ (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) || $0 == 45 || $0 == 46 }) else {
             throw ScannerError("catalogue", "Invalid catalogue card identifier.")
         }
-        return try JSONDecoder().decode(CatalogueDetail.self, from: await get(path: "cards/" + id, limit: 256 * 1024))
+        let detail = try JSONDecoder().decode(CatalogueDetail.self, from: await get(path: "cards/" + id, limit: 256 * 1024))
+        guard detail.id == id, detail.localId.utf8.count <= 32, detail.name.utf8.count <= 128,
+              detail.set.id.utf8.count <= 100, detail.set.name.utf8.count <= 256 else {
+            throw ScannerError("catalogue", "Invalid or oversized card metadata.")
+        }
+        return detail
     }
     private func get(path: String, limit: Int) async throws -> Data {
         let url = URL(string: "https://api.tcgdex.net/v2/en/" + path)!

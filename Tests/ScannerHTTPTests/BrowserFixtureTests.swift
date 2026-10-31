@@ -48,7 +48,7 @@ private actor BrowserMock: ScannerBackend {
     let env = ProcessInfo.processInfo.environment
     let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent("w-" + String(UUID().uuidString.prefix(12)))
     defer { try? FileManager.default.removeItem(at: root) }
-    let backend = BrowserMock(); let coordinator = try ScannerCoordinator(backend: backend, storageRoot: root)
+    let backend = BrowserMock(); let coordinator = try ScannerCoordinator(backend: backend, storageRoot: root, cardRecognizer: HTTPRecognitionMock())
     let socket = root.appendingPathComponent("c.sock").path
     let server = UnixServer(path: socket, handler: DiagnosticRouter(coordinator: coordinator, backendName: "browser-mock").respond)
     try server.start(); defer { server.stopAccepting() }

@@ -72,7 +72,7 @@ private func poll(_ peer: StdioPeer, id: String, terminal: Bool) async throws ->
     _ = try await peer.initialize()
     let tools = try await peer.request("tools/list")
     guard case .object(let object) = tools, case .array(let list) = object["tools"] else { throw ScannerError("test", "Missing tools") }
-    #expect(list.count == 22)
+    #expect(list.count == 25)
     _ = try payload(await peer.tool("scanner_list_devices"))
     _ = try payload(await peer.tool("scanner_get_capabilities"))
     _ = try payload(await peer.tool("scanner_get_settings"))
@@ -130,6 +130,8 @@ private func poll(_ peer: StdioPeer, id: String, terminal: Bool) async throws ->
     let tools = await server.tools()
     #expect(tools.allSatisfy { $0.annotations.readOnlyHint == true })
     #expect(!tools.contains { $0.name == "scanner_start_scan" })
+    #expect(!tools.contains { $0.name == "scanner_identify_card" || $0.name == "scanner_review_card" })
+    #expect(tools.contains { $0.name == "scanner_get_card_identification" })
     let denied = try await server.call(.init(name: "scanner_start_scan", arguments: ["requestID": .string(UUID().uuidString)]))
     #expect(denied.isError == true)
     let unavailable = try await server.call(.init(name: "scanner_list_devices"))
@@ -143,4 +145,7 @@ private func poll(_ peer: StdioPeer, id: String, terminal: Bool) async throws ->
     let start = try #require(ToolCatalog.all.first { $0.name == "scanner_start_scan" })
     #expect(start.tool.annotations.readOnlyHint == false && start.tool.annotations.destructiveHint == true)
     #expect(throws: ScannerError.self) { try start.parameters([:]) }
+    let identify = try #require(ToolCatalog.all.first { $0.name == "scanner_identify_card" })
+    #expect(identify.tool.annotations.openWorldHint == true && identify.tool.annotations.destructiveHint == false)
+    #expect(throws: ScannerError.self) { try identify.parameters(["jobID": .string(UUID().uuidString), "sequence": .int(1)]) }
 }

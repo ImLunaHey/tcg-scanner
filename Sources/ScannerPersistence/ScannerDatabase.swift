@@ -58,6 +58,9 @@ public final class ScannerDatabase: Sendable {
                 try db.execute(sql: "INSERT INTO batchNumbers(jobID) VALUES (?)", arguments: [id])
             }
         }
+        migrator.registerMigration("v4-identification-recovery") { db in
+            try db.execute(sql: "CREATE TABLE pendingIdentifications (jobID TEXT PRIMARY KEY REFERENCES jobs(id))")
+        }
         try migrator.migrate(queue)
     }
     public func reserveBatchNumber(for id: UUID) throws -> Int {
@@ -83,6 +86,11 @@ public final class ScannerDatabase: Sendable {
         }
     }
     private static func writeMetadata(_ record: ScanRecord, db: Database) throws {
+        if record.cardIdentifications?.contains(where: { $0.state == .processing }) == true {
+            try db.execute(sql: "INSERT OR IGNORE INTO pendingIdentifications VALUES (?)", arguments: [record.id.uuidString])
+        } else {
+            try db.execute(sql: "DELETE FROM pendingIdentifications WHERE jobID = ?", arguments: [record.id.uuidString])
+        }
         try db.execute(sql: "INSERT OR REPLACE INTO batches VALUES (?, ?)", arguments: [record.id.uuidString, try Wire.encoder().encode(record)])
         for image in record.images {
             try db.execute(sql: "INSERT OR REPLACE INTO images VALUES (?, ?, ?)", arguments: [record.id.uuidString, image.sequence, try Wire.encoder().encode(image)])
@@ -109,6 +117,12 @@ public final class ScannerDatabase: Sendable {
     public func unfinished() throws -> [ScanRecord] {
         try queue.read { db in
             try Data.fetchAll(db, sql: "SELECT record FROM jobs WHERE state NOT IN ('completed','failed','cancelled') ORDER BY created, id")
+                .map { try Wire.decoder().decode(ScanRecord.self, from: $0) }
+        }
+    }
+    func interruptedIdentifications() throws -> [ScanRecord] {
+        try queue.read { db in
+            try Data.fetchAll(db, sql: "SELECT jobs.record FROM jobs JOIN pendingIdentifications ON jobs.id = pendingIdentifications.jobID")
                 .map { try Wire.decoder().decode(ScanRecord.self, from: $0) }
         }
     }

@@ -89,7 +89,10 @@ extension ScannerCoordinator {
     }
     public func shutdownScans() async {
         stopping = true
+        let identificationWorkers = Array(identificationTasks.values)
+        for worker in identificationWorkers { worker.cancel() }
         await cancelOutstanding()
+        for worker in identificationWorkers { await worker.value }
     }
     public func prepareForSleep() async {
         paused = true

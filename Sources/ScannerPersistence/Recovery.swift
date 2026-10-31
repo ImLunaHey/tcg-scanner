@@ -6,12 +6,13 @@ extension ScannerDatabase {
     /// Never resumes physical feeding. A manifest may be ahead of SQLite after a crash.
     @discardableResult public func recoverInterruptedJobs(storageRoot: URL) throws -> Int {
         let root = storageRoot.standardizedFileURL.resolvingSymlinksInPath().path
-        let records = try unfinished()
+        let scanning = try unfinished()
+        let records = try scanning + interruptedIdentifications().filter { candidate in !scanning.contains(where: { $0.id == candidate.id }) }
         for var record in records {
             let directory = URL(fileURLWithPath: record.outputDirectory).standardizedFileURL
             let safe = directory.path.hasPrefix(root + "/") && directory.resolvingSymlinksInPath().path == directory.path
             let manifest = directory.appendingPathComponent("manifest.json")
-            if safe, manifest.resolvingSymlinksInPath().path == manifest.path,
+            if !record.state.terminal, safe, manifest.resolvingSymlinksInPath().path == manifest.path,
                let attrs = try? FileManager.default.attributesOfItem(atPath: manifest.path),
                attrs[.type] as? FileAttributeType == .typeRegular,
                let size = attrs[.size] as? NSNumber, size.intValue <= 4 * 1024 * 1024,
@@ -24,6 +25,13 @@ extension ScannerDatabase {
                 record.state = .failed; record.completedAt = Date(); record.sessionClosed = false
                 record.errors.append(ScannerError("interrupted", "Service stopped before this job finished. Physical feeding was not resumed; inspect retained files before submitting a new job."))
                 record.warnings.append("Unindexed or partial files may remain in the batch directory or its staging directories. Recovery never deletes or overwrites image files.")
+            }
+            for index in record.cardIdentifications?.indices ?? 0..<0 {
+                if record.cardIdentifications?[index].state == .processing {
+                    record.cardIdentifications?[index].state = .failed
+                    record.cardIdentifications?[index].completedAt = Date()
+                    record.cardIdentifications?[index].error = ScannerError("interrupted", "Identification was interrupted. Retry explicitly; the scan and original are unchanged.")
+                }
             }
             if safe && manifest.resolvingSymlinksInPath().path == manifest.path {
                 do { try Wire.encoder().encode(record).write(to: manifest, options: .atomic) }

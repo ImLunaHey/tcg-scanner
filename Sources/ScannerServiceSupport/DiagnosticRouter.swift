@@ -20,6 +20,7 @@ public struct DiagnosticRouter: Sendable {
             return RPCResponse(id: request.id, error: RPCFailure(code: -32600, message: "Expected JSON-RPC 2.0 and a string or numeric ID."))
         }
         do {
+            if let response = try await identificationResponse(request) { return response }
             if let response = try await controlResponse(request) { return response }
             if let response = try await serviceResponse(request) { return response }
             if request.method.hasPrefix("v1.scan.") || request.method == "v1.jobs.create" {
