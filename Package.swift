@@ -19,6 +19,10 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-http-types.git", from: "1.8.0")
     ],
     targets: [
+        .target(name: "ScannerImageProcessing", dependencies: ["ScannerAPI"]),
+        .target(name: "ScannerClient", dependencies: ["ScannerAPI", "ScannerTransport"]),
+        .testTarget(name: "ScannerImageProcessingTests", dependencies: ["ScannerImageProcessing", "ScannerCore", "ScannerAPI"]),
+        .testTarget(name: "ScannerClientTests", dependencies: ["ScannerClient", "ScannerCore", "ScannerServiceSupport", "ScannerTransport", "ScannerAPI"]),
         .executableTarget(name: "ScannerHTTP", dependencies: [.product(name: "HummingbirdCore", package: "hummingbird"), "ScannerHTTPSupport", "ScannerAPI", "ScannerTransport", .product(name: "ArgumentParser", package: "swift-argument-parser"), .product(name: "Hummingbird", package: "hummingbird")]),
         .target(name: "ScannerHTTPSupport", dependencies: ["ScannerAPI", "ScannerTransport", .product(name: "HTTPTypes", package: "swift-http-types"), .product(name: "Hummingbird", package: "hummingbird")]),
         .testTarget(name: "ScannerHTTPTests", dependencies: [.product(name: "HTTPTypes", package: "swift-http-types"), "ScannerHTTPSupport", "ScannerAPI", "ScannerCore", "ScannerTransport", "ScannerServiceSupport", .product(name: "HummingbirdTesting", package: "hummingbird")]),
@@ -27,7 +31,7 @@ let package = Package(
         .executableTarget(name: "ScannerMCP", dependencies: ["ScannerMCPSupport", "ScannerTransport", .product(name: "ArgumentParser", package: "swift-argument-parser")]),
         .target(name: "ScannerMCPSupport", dependencies: ["ScannerAPI", "ScannerTransport", .product(name: "MCP", package: "swift-sdk")]),
         .target(name: "ScannerAPI"),
-        .target(name: "ScannerCore", dependencies: ["ScannerAPI", "ScannerPersistence"]),
+        .target(name: "ScannerCore", dependencies: ["ScannerAPI", "ScannerPersistence", "ScannerImageProcessing"]),
         .target(name: "ScannerPersistence", dependencies: ["ScannerAPI", .product(name: "GRDB", package: "GRDB.swift")]),
         .target(name: "ScannerTransport", dependencies: ["ScannerAPI"]),
         .target(name: "ScannerServiceSupport", dependencies: ["ScannerCore", "ScannerAPI"]),

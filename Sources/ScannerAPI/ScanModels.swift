@@ -60,6 +60,7 @@ public struct ScanRecord: Codable, Sendable {
     public var progress: ScanProgress { ScanProgress(imagesSaved: images.count) }
     public var outputDirectory: String
     public var images: [OriginalImage] = []
+    public var processedImages: [ProcessedImage]?
     public var errors: [ScannerError] = []
     public var warnings = ["Images retain driver callback order. Physical front/back identity is not inferred.",
                            "Original means the driver's delivered file, not raw sensor data. No application image processing is applied."]

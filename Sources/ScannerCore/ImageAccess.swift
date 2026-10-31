@@ -5,17 +5,25 @@ import ImageIO
 import ScannerAPI
 
 extension ScannerCoordinator {
-    public func imageMetadata(jobID: UUID, sequence: Int) async throws -> ImageMetadata {
+    private func selectedImage(_ record: ScanRecord, sequence: Int, editID: UUID?) throws -> OriginalImage {
+        if let editID {
+            guard let edit = record.processedImages?.first(where: { $0.id == editID && $0.request.sequence == sequence }) else { throw ScannerError("imageNotFound", "Processed image not found.") }
+            return edit.image
+        }
+        guard let image = record.images.first(where: { $0.sequence == sequence }) else { throw ScannerError("imageNotFound", "Original not found.") }
+        return image
+    }
+    public func imageMetadata(jobID: UUID, sequence: Int, editID: UUID? = nil) async throws -> ImageMetadata {
         let record = try await scanStatus(jobID)
-        guard let image = record.images.first(where: { $0.sequence == sequence }) else { throw ScannerError("imageNotFound", "No saved original with this sequence.") }
+        let image = try selectedImage(record, sequence: sequence, editID: editID)
         return ImageMetadata(jobID: jobID, image: image)
     }
-    public func thumbnail(jobID: UUID, sequence: Int) async throws -> ImageThumbnail {
+    public func thumbnail(jobID: UUID, sequence: Int, editID: UUID? = nil) async throws -> ImageThumbnail {
         guard thumbnailWorkers < 2 else { throw ScannerError("resourceLimit", "At most two thumbnails may be generated concurrently.") }
         thumbnailWorkers += 1
         defer { thumbnailWorkers -= 1 }
         let record = try await scanStatus(jobID)
-        guard let image = record.images.first(where: { $0.sequence == sequence }) else { throw ScannerError("imageNotFound", "Unknown saved image.") }
+        let image = try selectedImage(record, sequence: sequence, editID: editID)
         guard image.bytes <= 32 * 1024 * 1024, image.width > 0, image.height > 0,
               image.width <= 20000, image.height <= 20000, image.width * image.height <= 100_000_000 else {
             throw ScannerError("resourceLimit", "Thumbnail source exceeds 32 MiB or 100 megapixels; download the original instead.")
@@ -45,12 +53,12 @@ extension ScannerCoordinator {
                                   width: preview.width, height: preview.height)
         }.value
     }
-    public func readImage(jobID: UUID, sequence: Int, offset: Int, length: Int) async throws -> ImageChunk {
+    public func readImage(jobID: UUID, sequence: Int, offset: Int, length: Int, editID: UUID? = nil) async throws -> ImageChunk {
         guard (0...512 * 1024 * 1024).contains(offset), (1...262_144).contains(length) else {
             throw ScannerError("invalidParams", "Image reads require offset 0–512 MiB and length 1–262144.")
         }
         let record = try await scanStatus(jobID)
-        guard let image = record.images.first(where: { $0.sequence == sequence }) else { throw ScannerError("imageNotFound", "Unknown saved image.") }
+        let image = try selectedImage(record, sequence: sequence, editID: editID)
         let root = storageRoot
         return try await Task.detached(priority: .utility) {
             try OriginalReader.read(root: root, record: record, image: image, offset: offset, length: length)
@@ -60,11 +68,14 @@ extension ScannerCoordinator {
 
 /// Opens each component relative to a pinned directory descriptor, rejecting symlinks.
 /// The caller supplies only job ID and image sequence, never a filesystem path.
-private enum OriginalReader {
+enum OriginalReader {
     static func read(root: URL, record: ScanRecord, image: OriginalImage, offset: Int, length: Int) throws -> ImageChunk {
         let root = root.standardizedFileURL.resolvingSymlinksInPath()
         let directory = URL(fileURLWithPath: record.outputDirectory).standardizedFileURL
-        let expected = String(format: "originals/page-%06d.%@", image.sequence, record.request.format.rawValue)
+        var expected = String(format: "originals/page-%06d.%@", image.sequence, record.request.format.rawValue)
+        if let edit = record.processedImages?.first(where: { $0.image.relativePath == image.relativePath && $0.image.sha256 == image.sha256 }) {
+            expected = "processed/\(edit.id.uuidString.lowercased()).png"
+        }
         guard directory.path.hasPrefix(root.path + "/"), image.relativePath == expected, offset <= image.bytes else {
             throw ScannerError("accessDenied", "Image is outside configured storage or has invalid metadata/offset.")
         }

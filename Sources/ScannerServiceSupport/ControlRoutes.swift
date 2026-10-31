@@ -3,7 +3,7 @@ import ScannerAPI
 
 extension DiagnosticRouter {
     func controlResponse(_ request: RPCRequest) async throws -> RPCResponse? {
-        let methods: Set<String> = ["v1.device.get", "v1.settings.set", "v1.profiles.create", "v1.profiles.update", "v1.images.get", "v1.images.read", "v1.images.thumbnail"]
+        let methods: Set<String> = ["v1.device.get", "v1.settings.set", "v1.profiles.create", "v1.profiles.update", "v1.images.get", "v1.images.read", "v1.images.thumbnail", "v1.images.edit"]
         guard methods.contains(request.method) else { return nil }
         guard case .object(let params) = request.params ?? .object([:]) else { throw RPCFailure(code: -32602, message: "Expected object parameters.") }
         let result: JSONValue
@@ -31,17 +31,25 @@ extension DiagnosticRouter {
             do { patch = try JSONValue.object(params.filter { $0.key != "id" }).decode(ProfilePatch.self) }
             catch { throw RPCFailure(code: -32602, message: "Invalid profile update fields.") }
             result = try .wrapping(await coordinator.updateProfile(id, patch: patch))
+        case "v1.images.edit":
+            try only(params, keys: ["id", "jobID", "sequence", "crop", "quarterTurns"])
+            guard case .object(let crop) = params["crop"], Set(crop.keys) == ["x", "y", "width", "height"] else { throw RPCFailure(code: -32602, message: "Expected a normalized crop rectangle.") }
+            let edit: ImageEditRequest
+            do { edit = try JSONValue.object(params).decode(ImageEditRequest.self); try edit.validate() }
+            catch { throw RPCFailure(code: -32602, message: "Invalid image edit parameters.") }
+            result = try .wrapping(await coordinator.editImage(edit))
         case "v1.images.get", "v1.images.read", "v1.images.thumbnail":
-            try only(params, keys: request.method != "v1.images.read" ? ["jobID", "sequence"] : ["jobID", "sequence", "offset", "length"])
+            try only(params, keys: request.method != "v1.images.read" ? ["jobID", "sequence", "editID"] : ["jobID", "sequence", "offset", "length", "editID"])
             let id = try uuid(params, "jobID")
+            let editID = try params["editID"].map { _ in try uuid(params, "editID") }
             let sequence = try integer(params, "sequence", default: 0, range: 1...100)
             guard sequence > 0 else { throw RPCFailure(code: -32602, message: "sequence is required.") }
-            if request.method == "v1.images.get" { result = try .wrapping(await coordinator.imageMetadata(jobID: id, sequence: sequence)) }
-            else if request.method == "v1.images.thumbnail" { result = try .wrapping(await coordinator.thumbnail(jobID: id, sequence: sequence)) }
+            if request.method == "v1.images.get" { result = try .wrapping(await coordinator.imageMetadata(jobID: id, sequence: sequence, editID: editID)) }
+            else if request.method == "v1.images.thumbnail" { result = try .wrapping(await coordinator.thumbnail(jobID: id, sequence: sequence, editID: editID)) }
             else {
                 result = try .wrapping(await coordinator.readImage(jobID: id, sequence: sequence,
                     offset: integer(params, "offset", default: 0, range: 0...512 * 1024 * 1024),
-                    length: integer(params, "length", default: 65_536, range: 1...262_144)))
+                    length: integer(params, "length", default: 65_536, range: 1...262_144), editID: editID))
             }
         default: return nil
         }
