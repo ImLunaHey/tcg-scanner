@@ -260,3 +260,11 @@ prepared PNG checksums. A production HTTPS browser check verified all fifteen
 phone layout. New scans use v2 automatically. The earlier saved batches were used
 for read-only fixture validation and were not rewritten. Private before/after
 records and verification are in ignored `Diagnostics/finish-estimator-v2/`.
+
+### Visible condition review aid
+
+A separate local [blue-back border check](condition-checks.md) now flags candidate
+whitening and elongated marks for image/physical review. It runs automatically
+with card processing and can be refreshed on saved sources. Automatic condition
+grading remains disabled; a clean result is not a Near Mint assessment. See the
+linked scope and B-015 validation limits before interpreting these observations.

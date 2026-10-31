@@ -232,3 +232,10 @@ evidence and limitations). This authenticated operation analyzes the original
 identification's saved source locally and never feeds hardware or changes reviewed
 finish/condition fields. New identifications compute the estimate automatically.
 See [finish estimate scope and validation](local-visual-assessment.md).
+
+Visible condition checks: `POST /api/v1/images/{jobUUID}:{sequence}/condition-check`
+accepts `identificationID` and returns the current `CardIdentification` with
+`conditionCheck`. The authenticated operation analyzes the saved source locally,
+including no-match backs, and preserves manual finish/condition reviews. Returned
+regions are candidate marks, not verified damage or a grade. See
+[scope, schema and validation](condition-checks.md).
