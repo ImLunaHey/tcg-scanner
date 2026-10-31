@@ -33,6 +33,11 @@ extension ScannerGateway {
             params.merge(body) { _, value in value }
             return try jsonResponse(await service.call(rpc, params), status: method == .post ? 202 : 200)
         }
+        if parts.count == 3, parts[0] == "images", parts[2] == "finish-estimate", method == .post {
+            try path.only([]); try only(body, ["identificationID"])
+            var params = try imageParameters(parts[1]); params.merge(body) { _, value in value }
+            return try jsonResponse(await service.call("images.estimateFinish", params))
+        }
         if parts.first == "images", method == .get {
             try path.only(parts.count == 3 && parts[2] == "thumbnail" ? ["editID", "format"] : ["editID"])
             return try await image(parts: parts, request: request, principal: principal, editID: path.query["editID"], thumbnailFormat: path.query["format"])

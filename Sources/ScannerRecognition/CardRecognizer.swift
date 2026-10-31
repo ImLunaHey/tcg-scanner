@@ -22,7 +22,7 @@ public actor CardRecognizer: CardRecognizing {
         let ranked = orientations.map { ($0, CardMatcher.rank(lines: $0.lines, catalogue: cards)) }
         var best = ranked.max { ($0.1.first?.score ?? 0) < ($1.1.first?.score ?? 0) }!
         var candidates = try await candidates(for: best.1)
-        var warnings = ["Suggestions require manual confirmation. Foil, reverse holo, edition and condition are not identified."]
+        var warnings = ["Suggestions require manual confirmation. Finish estimates are not verified finishes; edition and condition are not assessed."]
         if candidates.isEmpty, !best.1.isEmpty {
             // A rarity symbol can merge with a set total in whole-card OCR.
             // Re-read the footer pixels; never trim digits to fit the catalogue.
@@ -100,6 +100,29 @@ enum CardOCR {
             return Reading(rotation: rotation, lines: lines)
         }
     }
+    static func englishSetCode(_ data: Data, rotation: Int) throws -> [RecognizedLine] {
+        let orientations: [CGImagePropertyOrientation] = [.up, .right, .down, .left]
+        guard orientations.indices.contains(rotation) else { return [] }
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate; request.recognitionLanguages = ["en-US"]
+        request.usesLanguageCorrection = false; request.minimumTextHeight = 0
+        let region = CGRect(x: 0.03, y: 0.015, width: 0.25, height: 0.075)
+        request.regionOfInterest = region
+        try VNImageRequestHandler(cgImage: image(data), orientation: orientations[rotation]).perform([request])
+        let pattern = try NSRegularExpression(pattern: #"(?i)([A-Z0-9]{3}\s*EN)\s*$"#)
+        return try (request.results ?? []).compactMap { observation in
+            guard let text = observation.topCandidates(1).first, text.confidence >= 0.5,
+                  let match = pattern.firstMatch(in: text.string, range: NSRange(text.string.startIndex..., in: text.string)),
+                  let range = Range(match.range(at: 1), in: text.string),
+                  let rectangle = try text.boundingBox(for: range) else { return nil }
+            // Character-range boxes separate the regulation mark from a merged code.
+            let box = rectangle.boundingBox
+            return RecognizedLine(text: String(text.string[range]), confidence: text.confidence,
+                x: region.minX + box.minX * region.width, y: region.minY + box.minY * region.height,
+                width: box.width * region.width, height: box.height * region.height)
+        }
+    }
+
     static func refineFooter(_ data: Data, reading: Reading) throws -> Reading {
         try Task.checkCancellation()
         let orientations: [CGImagePropertyOrientation] = [.up, .right, .down, .left]

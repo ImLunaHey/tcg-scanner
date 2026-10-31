@@ -71,9 +71,19 @@ private func completed(_ coordinator: ScannerCoordinator, job: UUID) async throw
     #expect(result.state == .reviewRequired && result.selectedCardID == nil)
     #expect(result.finish == .unverified && result.condition == .unassessed)
     #expect(await stub.calls == 1)
+    #expect(result.finishEstimate?.state == .uncertain)
     await #expect(throws: ScannerError.self) { try await service.reviewCard(jobID: record.id, sequence: 1, identificationID: request.id, cardID: "invented", finish: .holo, condition: .nearMint) }
     let reviewed = try await service.reviewCard(jobID: record.id, sequence: 1, identificationID: request.id, cardID: "swsh3-136", finish: .reverseHolo, condition: .lightlyPlayed)
     #expect(reviewed.state == .confirmed && reviewed.condition == .lightlyPlayed)
+    let savedReview = try #require(await service.cardIdentification(jobID: record.id, sequence: 1))
+    let estimated = try await service.estimateFinish(jobID: record.id, sequence: 1, identificationID: request.id)
+    #expect(estimated.finish == .reverseHolo && estimated.condition == .lightlyPlayed)
+    #expect(estimated.reviewedAt == savedReview.reviewedAt && estimated.selectedCardID == reviewed.selectedCardID)
+    #expect(estimated.sourceSHA256 == reviewed.sourceSHA256 && estimated.finishEstimate != nil)
+    let repeated = try await service.estimateFinish(jobID: record.id, sequence: 1, identificationID: request.id)
+    #expect(repeated.finishEstimate == estimated.finishEstimate)
+    await #expect(throws: ScannerError.self) { try await service.estimateFinish(jobID: record.id, sequence: 1, identificationID: UUID()) }
+
     let restarted = try ScannerCoordinator(backend: NoHardware(), storageRoot: root, database: database, cardRecognizer: stub)
     #expect(try await restarted.cardIdentification(jobID: record.id, sequence: 1)?.selectedCardID == "swsh3-136")
     let manifest = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: record.outputDirectory).appendingPathComponent("manifest.json")))

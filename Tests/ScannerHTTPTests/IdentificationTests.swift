@@ -56,6 +56,14 @@ struct HTTPRecognitionMock: CardRecognizing {
         let reviewed = try await client.execute(uri: path, method: .patch, headers: httpHeaders(), body: review)
         #expect(reviewed.status.code == 200)
         #expect(try decode(reviewed, as: CardIdentification.self).state == .confirmed)
+        let finishPath = "/api/v1/images/\(job.id):1/finish-estimate"
+        let finishBody = try buffer(.object(["identificationID": .string(id.uuidString)]))
+        #expect(try await client.execute(uri: finishPath, method: .post, headers: [HTTPField.Name("Host")!: "127.0.0.1:8170"], body: finishBody).status.code == 401)
+        let estimated = try decode(await client.execute(uri: finishPath, method: .post, headers: httpHeaders(), body: finishBody), as: CardIdentification.self)
+        #expect(estimated.finishEstimate != nil && estimated.finish == .reverseHolo && estimated.condition == .nearMint)
+        #expect(estimated.reviewedAt == (try decode(reviewed, as: CardIdentification.self)).reviewedAt)
+        #expect(try await client.execute(uri: finishPath, method: .post, headers: httpHeaders(), body: buffer(.object(["identificationID": .string(id.uuidString), "path": .string("/etc/passwd")]))).status.code == 400)
+
         #expect(try await client.execute(uri: path, method: .patch, headers: httpHeaders(), body: buffer(.object(["identificationID": .string(id.uuidString), "finish": .string("invented")]))).status.code == 400)
         #expect(try await client.execute(uri: path + "?path=/etc/passwd", method: .get, headers: httpHeaders()).status.code == 400)
         let manifest = try decode(await client.execute(uri: "/api/v1/batches/\(job.id)/manifest", method: .get, headers: httpHeaders()), as: ScanRecord.self)
