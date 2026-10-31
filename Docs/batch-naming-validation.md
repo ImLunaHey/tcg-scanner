@@ -57,7 +57,15 @@ record are private files under:
 - The live native dashboard shows permanent batch labels; authenticated HTTP
   manifest retrieval returns `batchNumber: 6`, `/Volumes/scans/B-006`, and the new
   capture names. Existing HTTP configuration and authentication were preserved.
-- Final image retrieval and removal of old folders are pending renewed macOS
-  network-volume permission for the updated service executable. The system log
-  explicitly reported a changed code requirement and displayed the permission
-  request. Original source folders are retained until retrieval succeeds.
+- The user approved the renewed macOS network-volume permission for the updated
+  service executable. The live service then returned all **11 original images**
+  and **2 retained edits** with matching SHA-256 hashes; PNG thumbnails worked for
+  all 13 images. Authenticated HTTP also returned both B-006 PNG originals with
+  matching hashes.
+- After those checks, all six obsolete UUID folders were removed. Each of their
+  32 files was checked against the migration inventory immediately before removal;
+  image and delivery bytes were also checked at the destination. Original manifests
+  remain in the private backup. Unknown files would have stopped cleanup.
+- `live-verification.json`, `http-verification.json` and
+  `source-cleanup-complete.json` in the backup directory record the completed
+  checks. Canonical batches now exist only under `B-001` through `B-006`.
