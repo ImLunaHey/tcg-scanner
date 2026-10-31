@@ -10,6 +10,7 @@ public final class ImageCaptureBackend: NSObject, ScannerBackend, @preconcurrenc
     private var started = false
     private var enumerated = false
     private var activeSession: ImageCaptureSession?
+    private var activeScan: ImageCaptureScanSession?
     private let log: @Sendable (String) -> Void
 
     public init(log: @escaping @Sendable (String) -> Void = { _ in }) { self.log = log }
@@ -36,7 +37,7 @@ public final class ImageCaptureBackend: NSObject, ScannerBackend, @preconcurrenc
 
     public func inspect(deviceID: String) async throws -> Inspection {
         guard !needsRestart else { throw ScannerError("cleanup", "Session closure was not confirmed; restart ScannerService before retrying.") }
-        guard activeSession == nil else { throw ScannerError("busy", "A scanner session is already active.") }
+        guard activeSession == nil && activeScan == nil else { throw ScannerError("busy", "A scanner session is already active.") }
         guard let scanner = scanners.first(where: { Self.describe($0).id == deviceID }) else {
             throw ScannerError("deviceNotFound", "Scanner disconnected before inspection.")
         }
@@ -46,6 +47,18 @@ public final class ImageCaptureBackend: NSObject, ScannerBackend, @preconcurrenc
         let report = await session.inspect()
         if report.errors.contains(where: { $0.kind == "cleanup" || $0.kind == "closeSession" }) { needsRestart = true }
         return report
+    }
+
+    public func capture(deviceID: String, request: ScanRequest, store: ScanStorage) async throws -> CaptureOutcome {
+        guard !needsRestart else { throw ScannerError("cleanup", "Restart ScannerService after the previous unconfirmed session cleanup.") }
+        guard activeSession == nil && activeScan == nil else { throw ScannerError("busy", "A scanner session is active.") }
+        guard let scanner = scanners.first(where: { Self.describe($0).id == deviceID }) else { throw ScannerError("deviceNotFound", "Scanner disconnected.") }
+        let session = ImageCaptureScanSession(scanner: scanner, store: store, log: log)
+        activeScan = session
+        defer { activeScan = nil }
+        let outcome = await session.capture(request)
+        if outcome.errors.contains(where: { $0.kind == "cleanup" || $0.kind == "closeSession" }) || !outcome.sessionClosed { needsRestart = true }
+        return outcome
     }
 
     private var scanners: [ICScannerDevice] { (browser.devices ?? []).compactMap { $0 as? ICScannerDevice } }
