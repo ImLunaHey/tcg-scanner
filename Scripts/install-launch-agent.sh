@@ -21,7 +21,7 @@ if [[ -e "$scanner_agent" ]]; then
     exit 1
 fi
 cd "$repo_dir"
-swift build -c release
+swift build -c release --disable-index-store
 mkdir -p "$scanner_bin" "$HOME/Library/LaunchAgents"
 for scanner_executable in scanner scanner-service scanner-mcp; do
     install -m 700 ".build/release/$scanner_executable" "$scanner_bin/$scanner_executable.new"
