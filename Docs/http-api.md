@@ -223,3 +223,12 @@ Tailscale Serve proxies it privately to the gateway at `127.0.0.1:8170`, with
 that exact HTTPS value configured as `--public-origin`. Authentication remains
 required and forwarded headers do not grant access. See [deployment and rollback
 notes](web-app.md). The installation defaults above still apply to new setups.
+
+
+Finish estimates: `POST /api/v1/images/{jobUUID}:{sequence}/finish-estimate` accepts
+`identificationID` and returns the current `CardIdentification` with an optional
+`finishEstimate` (`state`, optional `suggestedFinish`, `candidateID`, method,
+evidence and limitations). This authenticated operation analyzes the original
+identification's saved source locally and never feeds hardware or changes reviewed
+finish/condition fields. New identifications compute the estimate automatically.
+See [finish estimate scope and validation](local-visual-assessment.md).

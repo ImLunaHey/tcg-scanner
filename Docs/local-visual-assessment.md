@@ -1,4 +1,4 @@
-# Local finish and condition assessment — evaluation gate
+# Local finish estimates and condition assessment
 
 The user requires all card-image analysis to stay on this Mac. Catalogue GETs and
 model-weight downloads are permitted; card images and OCR text are not uploaded.
@@ -52,8 +52,10 @@ proof of grade, and no predicted finish or condition was written into scan recor
 
 ## Current outcome and next gate
 
-Automatic finish/condition assessment is **not enabled**: the physical finish
-checks failed. Manual assessments remain authoritative. TCGdex's finish variants
+The generic vision-model experiment was **not enabled**: those physical finish
+checks failed. A separate, constrained printed-marker estimator is now available
+as described below. Automatic condition grading remains disabled. Manual
+assessments remain authoritative. TCGdex's finish variants
 are available printings, not the detected finish of a scanned copy. A unique
 catalogue finish may support a clearly labelled inference, but must not silently
 confirm the physical card or override a user's review.
@@ -101,3 +103,125 @@ for the proposed in-process Swift implementation. Their availability does not
 validate this classifier. [TCGplayer's defect definitions](https://help.tcgplayer.com/hc/en-us/articles/26141121045143-Understanding-Card-Condition-Imperfections-A-Comprehensive-Guide)
 provide concrete review categories including edgewear, scratches and indentation;
 physical inspection is still needed for a final selling condition.
+
+
+## Modern printed-marker estimator — 2026-10-31
+
+`modern-set-code-polarity-v1` is an experimental, deterministic Swift estimator.
+It reads the printed set-code box locally and combines its contrast with the
+identified printing's `availableFinishes`. No model or image upload is used.
+Catalogue versions narrow the inference; they are not a measurement of foil.
+
+The scope is ordinary modern English `svNN` / `meNN` numbered expansions,
+including supported decimal subset IDs, with a single candidate, a readable
+collector number within the official set total, and a listed reverse-holo variant.
+Promos, basic Energy, older layouts, full-art/secret numbers beyond the official
+set total, ambiguous identities and unlisted variants are excluded.
+
+- A light code box with dark letters suggests reverse holo.
+- A dark code box suggests the regular printing. If the catalogue lists only one
+  regular finish (normal or holo), that becomes the tentative estimate.
+- If both normal and holo regular versions are listed, the estimator abstains.
+  It does not distinguish those by rarity, colourful artwork or an assumed batch
+  finish. Missing, tiny, low-contrast or ambiguous markers also produce no guess.
+
+Vision character-range boxes help separate merged regulation marks from the code.
+The analyzer uses bounded image dimensions, a small code region, contrast/ink
+checks and a gap between light/dark thresholds. It records the region, orientation,
+median luminance, polarity, candidate ID, method, reasons and limitations. These
+are evidence diagnostics, not calibrated confidence scores. The family/layout rule
+is a hypothesis checked on this small local sample; it is not a guarantee for all
+print runs or special products. Counterfeits and incomplete catalogue variants
+are outside this estimator's validation.
+
+### Physical labels and limitations of validation
+
+In addition to the B-009 labels above, the user physically confirmed:
+
+| B-013 pair | Card | Finish |
+| --- | --- | --- |
+| C-001 | Gwynn | Non-holo |
+| C-002 | Gladion's Final Battle | Non-holo |
+| C-003 | Rust Syndicate Grunt | Non-holo |
+| C-004 | Team Rocket's Giovanni | Non-holo |
+| C-005 | Vileplume | Holo (illustration) |
+| C-009 | Indeedee | Holo (illustration) |
+
+The other B-013 Pokémon were described only as holo or reverse holo and are not
+exact validation labels. Initial predictions were saved before the clarification;
+localization/padding and thresholds were then refined using this sample. These
+are development/calibration checks, **not held-out accuracy measurements**.
+The final checks allow abstention but reject a wrong emitted estimate. Seven of
+eight exact labelled examples receive agreeing estimates; Rust Syndicate Grunt's
+code remains unreadable to this routine and is left uncertain. Repeated scans of
+Larvesta/Lechonk do not count as independent physical-card examples.
+
+### Service and review behavior
+
+New single-candidate identifications automatically include an optional
+`CardIdentification.finishEstimate`. The existing `finish`, `condition`,
+`assessmentSource`, identity selection and review timestamps are never automatically
+changed. API consumers must not treat `suggestedFinish` as confirmed inventory data.
+Original files and identification source hashes/edit IDs remain authoritative.
+
+Existing identifications can be evaluated without rejection, OCR replacement or
+hardware access:
+
+- JSON-RPC: `v1.images.estimateFinish` with `jobID`, `sequence`, `identificationID`.
+- HTTP: `POST /api/v1/images/{jobID}:{sequence}/finish-estimate` with
+  `{ "identificationID": "UUID" }` (authenticated).
+- CLI: `scanner images estimate-finish JOB_ID SEQUENCE --identification-id UUID --json`.
+- MCP: `scanner_estimate_finish` with the same three parameters.
+
+Repeated requests recompute the same source evidence. Stale identification IDs,
+changed source hashes, active image work and unsupported request fields are rejected.
+Refreshing preserves human review fields, including a review completed while the
+analysis was in progress. Source changes/identity changes cannot overwrite a newer
+identification. Storage failures remain errors rather than silent success.
+
+Web and SwiftUI summaries show **Holo / Non-holo / Reverse holo (estimated)** or
+**Needs review**. Reviewed values take precedence. Review panels expose reasons and
+limitations. **Use finish estimate in review** only fills the form; saving still
+requires an explicit review action. Condition grading remains manual.
+
+Sources for the underlying APIs/data:
+[Vision recognized-text range boxes](https://developer.apple.com/documentation/vision/vnrecognizedtext/boundingbox(for:)),
+[TCGdex card variants](https://tcgdex.dev/reference/card#variants).
+Private labels, predictions and validation output are in ignored
+`Diagnostics/finish-estimator/`. Saved-batch refreshes did not start hardware.
+The separately authorized new-card run is recorded below.
+
+
+### Deployment and new-card test — B-014
+
+The signed service, CLI, MCP, native application and HTTP/web application were
+updated. Existing B-009, B-012 and B-013 identifications received estimates without
+changing identity, manual finish/condition, review timestamps or source provenance.
+Original file checksums were verified. Browser checks exercised refreshing an
+estimate and filling a review form without saving it; neither changed reviewed
+fields. Desktop and 390-pixel phone layouts passed. The full Swift suite reported
+96 passing tests; opt-in fixture checks were also run separately. All 15 web tests,
+TypeScript/Vite and signed release builds passed.
+
+After this implementation was frozen, the user loaded 15 additional cards reported
+as normal. One authorized duplex PNG scan produced B-014, job
+`61EBDD86-F1A2-4F18-8E65-F8E104F2EB63`. All 30 sides were captured and automatically
+prepared, oriented and analyzed, with no job errors. The user confirmed that all
+15 cards reached the tray cleanly with no new damage. All 60 original/prepared
+file sizes and checksums passed. Every pair has one single-candidate front match;
+identities remain suggestions pending review.
+
+Nine fronts received a non-holo estimate; six abstained due to inconclusive
+set-code contrast. No holo or reverse-holo estimate was emitted. The six uncertain
+cards are C-001 Magnemite, C-002 Magnezone, C-003/C-004 Pachirisu, C-005 Heliolisk
+and C-011 Seedot, all from Mega Evolution. Their median set-code luminance was
+approximately 0.455–0.495, outside the dark-box threshold. The estimator was not
+retuned on these cards, and the user's normal label was not supplied to inference.
+This is a small new-card negative-control test with duplicate printings, not a
+benchmark for general finish accuracy or sensitivity to foil.
+
+Read-only production browser checks verified all 15 paired identity summaries,
+review dialogs and prepared front downloads against checksums, without changing
+job history. Desktop and phone layouts passed with no page errors or overflow.
+Private requests, records, physical confirmation, initial estimates and validation
+are retained under ignored `Diagnostics/normal-finish-test/`.
