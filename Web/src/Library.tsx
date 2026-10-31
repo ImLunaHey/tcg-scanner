@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "./auth";
 import { Modal } from "./Modal";
+import { IdentificationReview, finishes, conditions } from "./Identification";
 import { imageBlob, saveBlob, saveJSON, type Api } from "./api";
 import {
   batchLabel,
@@ -204,11 +205,18 @@ export function BatchDetail({ id }: { id: string }) {
     queryFn: ({ signal }) =>
       api.get<Batch>(`batches/${encodeURIComponent(id)}`, signal),
     refetchInterval: (query) =>
-      query.state.data && !isTerminal(query.state.data.state) ? 1500 : false,
+      query.state.data &&
+      (!isTerminal(query.state.data.state) ||
+        query.state.data.cardIdentifications?.some(
+          (value) => value.state === "processing",
+        ))
+        ? 1500
+        : false,
   });
   const [comparison, setComparison] = useState<number[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
   const [editing, setEditing] = useState<OriginalImage>();
+  const [identifying, setIdentifying] = useState<number>();
   const download = useMutation({
     mutationFn: async ({
       image,
@@ -235,6 +243,15 @@ export function BatchDetail({ id }: { id: string }) {
   const record = batch.data;
   const finished = isTerminal(record.state);
   function tile(image: OriginalImage, edit?: EditedImage) {
+    const identification = record.cardIdentifications?.find(
+      (value) => value.request.sequence === image.sequence,
+    );
+    const card =
+      identification?.state === "confirmed"
+        ? identification.evidence?.candidates.find(
+            (value) => value.id === identification.selectedCardID,
+          )
+        : undefined;
     return (
       <article className="image-card" key={edit?.request.id || image.sequence}>
         <Thumbnail id={id} image={image} editID={edit?.request.id} />
@@ -254,6 +271,19 @@ export function BatchDetail({ id }: { id: string }) {
             {(image.bytes / 1024 / 1024).toFixed(1)} MB
           </p>
           <div className="image-actions">
+            {!edit && (
+              <button
+                className="text-button"
+                disabled={!finished}
+                onClick={() => setIdentifying(image.sequence)}
+              >
+                {identification?.state === "processing"
+                  ? "Identifying…"
+                  : identification
+                    ? "Review identity"
+                    : "Identify card"}
+              </button>
+            )}
             <button
               className="text-button"
               disabled={download.isPending || archive.isPending}
@@ -275,6 +305,14 @@ export function BatchDetail({ id }: { id: string }) {
               </button>
             )}
           </div>
+          {!edit && card && (
+            <p className="small">
+              <strong>{card.name}</strong> · {card.setName} · {card.localID}
+              <br />
+              {finishes[identification!.finish]} ·{" "}
+              {conditions[identification!.condition]} (manual)
+            </p>
+          )}
           {!edit && (
             <label className="compare-check">
               <input
@@ -427,6 +465,13 @@ export function BatchDetail({ id }: { id: string }) {
           batchID={id}
           image={editing}
           close={() => setEditing(undefined)}
+        />
+      )}
+      {identifying !== undefined && (
+        <IdentificationReview
+          batchID={id}
+          sequence={identifying}
+          close={() => setIdentifying(undefined)}
         />
       )}
     </>

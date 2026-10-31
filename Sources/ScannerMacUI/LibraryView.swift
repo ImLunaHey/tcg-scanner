@@ -22,6 +22,7 @@ private struct BatchDetail: View {
     @Bindable var model: ScannerModel
     let record: ScanRecord
     @State private var editing: EditingImage?
+    @State private var identifying: EditingImage?
     @State private var compare = false
     var body: some View {
         ScrollView {
@@ -54,6 +55,11 @@ private struct BatchDetail: View {
                             ScanThumbnail(model: model, job: record.id, sequence: image.sequence).frame(height: 230)
                             Text("C-\(BatchNaming.number(image.sequence)) · original").font(.headline)
                             Text("\(image.width) × \(image.height) · side \(image.side)").font(.caption).foregroundStyle(.secondary)
+                            if let identification = record.cardIdentifications?.first(where: { $0.request.sequence == image.sequence }),
+                               let card = identification.evidence?.candidates.first(where: { $0.id == identification.selectedCardID }) {
+                                Text(card.name + " · " + card.setName + " · " + card.localID).font(.caption)
+                            }
+                            Button("Identify / review card…") { identifying = EditingImage(image: image) }.disabled(!record.state.terminal)
                             HStack {
                                 Button("Edit…") { editing = EditingImage(image: image) }.disabled(!record.state.terminal || model.busy)
                                 Button("Export…") { exportImage(record: record, image: image, model: model) }.disabled(model.busy)
@@ -77,5 +83,6 @@ private struct BatchDetail: View {
                 Text(record.outputDirectory).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
             }.padding(24)
         }.sheet(item: $editing) { ImageEditor(model: model, job: record.id, image: $0.image) }
+        .sheet(item: $identifying) { CardIdentificationView(model: model, job: record.id, sequence: $0.image.sequence) }
     }
 }

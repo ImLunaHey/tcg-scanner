@@ -1,3 +1,4 @@
+import type { Identification } from "./Identification";
 export type Format = "png" | "tiff";
 export type JobState =
   | "queued"
@@ -51,6 +52,7 @@ export type Batch = Omit<Job, "scannerID" | "progress"> & {
   request: Settings;
   warnings: string[];
   processedImages?: EditedImage[];
+  cardIdentifications?: Identification[];
 };
 export type EditedImage = {
   request: { id: string; sequence: number };

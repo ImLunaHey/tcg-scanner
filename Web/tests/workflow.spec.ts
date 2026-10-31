@@ -101,6 +101,27 @@ test("authenticated browser workflow, retry, review, export and cancellation", a
     page.getByRole("dialog", { name: "Compare captures" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Close comparison" }).click();
+  await page
+    .getByRole("button", { name: "Identify card", exact: true })
+    .first()
+    .click();
+  await page
+    .getByRole("button", { name: "Identify this image", exact: true })
+    .click();
+  await expect(page.getByRole("radio")).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: "Save reviewed identity" }),
+  ).toBeDisabled();
+  await expect(page.getByLabel("Finish · manual")).toHaveValue("unverified");
+  await expect(page.getByLabel("Condition · manual")).toHaveValue("unassessed");
+  await page.getByRole("radio").check();
+  await page.getByLabel("Finish · manual").selectOption("reverseHolo");
+  await page.getByLabel("Condition · manual").selectOption("lightlyPlayed");
+  await page.getByRole("button", { name: "Save reviewed identity" }).click();
+  await expect(page.getByText(/Identity confirmed by review/)).toBeVisible();
+  await page.getByRole("button", { name: "Close identification" }).click();
+  await page.reload();
+  await expect(page.getByText(/Furret.*Darkness Ablaze/)).toBeVisible();
   const zip = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export batch ZIP" }).click();
   const archive = await zip;
@@ -111,6 +132,9 @@ test("authenticated browser workflow, retry, review, export and cancellation", a
   )!;
   const manifest = JSON.parse(new TextDecoder().decode(files[manifestPath]));
   expect(manifest.images).toHaveLength(2);
+  expect(manifest.cardIdentifications[0].selectedCardID).toBe("swsh3-136");
+  expect(manifest.cardIdentifications[0].finish).toBe("reverseHolo");
+  expect(manifest.cardIdentifications[0].condition).toBe("lightlyPlayed");
   for (const image of manifest.images) {
     const bytes =
       files[manifestPath.replace("manifest.json", image.relativePath)];

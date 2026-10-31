@@ -1285,3 +1285,40 @@
     transition: none !important;
   }
 }
+/* Identification stays a review step, separate from original image storage. */
+.identification-modal {
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+.candidate-option {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line, #dce1d8);
+  border-radius: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+.candidate-option input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.candidate-set {
+  display: block;
+  margin: 4px 0;
+}
+.ocr-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 240px;
+  overflow-y: auto;
+  font-size: 12px;
+}
+.success-note {
+  padding: 12px;
+  border-radius: 10px;
+  background: #e4efdf;
+  color: #244a31;
+}
