@@ -70,5 +70,27 @@ binaries were signed, found to have identical designated requirements, and each
 verified against that requirement. Ad-hoc (`-`), malformed and unavailable
 identity configurations were confirmed to fail.
 
+### Live validation — 2026-10-31
+
+The native app, scanner service, CLI, MCP and HTTP gateway were installed with
+certificate-backed signatures and their fixed identifiers. Signature verification
+passed for every installed component. HTTP authentication and the existing
+Tailscale configuration were preserved.
+
+After the user approved the initial identity change, the signed service retrieved
+all 11 originals and two retained edits with matching SHA-256 hashes and generated
+their thumbnails. An actual update test then stopped the idle service, installed
+the differently built signed debug executable at the same path, and restarted it.
+It retrieved an existing SMB original without another permission approval. The
+signed release executable was restored and restarted, and the same read again
+succeeded without another approval. Both reads verified the original's full hash.
+No scan or paper feeding was initiated. The service finished idle on the release
+build with `/Volumes/scans` as its storage root.
+
+Private pre-update binaries and deployment configuration are backed up under
+`~/Library/Application Support/Scanner/backups/signing-20261031T183838Z/`.
+Signing requirement and live-update verification records are retained there too;
+build fixtures remain ignored under `.build/signing-validation/`.
+
 This is local development signing. Distribution to other Macs would require a
 separate Developer ID signing/notarization workflow; that is not implemented here.
