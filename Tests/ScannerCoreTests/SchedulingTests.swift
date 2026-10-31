@@ -15,6 +15,7 @@ private actor QueueBackend: ScannerBackend {
         return connected ? [Device(id: "queue", name: "Queue mock")] : []
     }
     func disconnect() { connected = false; hold = false }
+    func reconnect() { connected = true }
     func release() { hold = false }
     func inspect(deviceID: String) -> Inspection { Inspection(device: Device(id: deviceID, name: "Queue mock")) }
     func capture(deviceID: String, request: ScanRequest, store: ScanStorage) async throws -> CaptureOutcome {
@@ -123,6 +124,10 @@ private func waitFor(_ coordinator: ScannerCoordinator, id: UUID, terminal: Bool
     #expect(try await waitFor(coordinator, id: first.id).errors.first?.kind == "disconnected")
     #expect(try await waitFor(coordinator, id: second.id).errors.first?.kind == "disconnected")
     #expect(try await coordinator.events(after: 0).events.contains { $0.kind == "device.disconnected" })
+    await backend.reconnect()
+    #expect(try await coordinator.devices().count == 1)
+    let next = try await coordinator.startScan(ScanRequest(format: .png))
+    #expect(try await waitFor(coordinator, id: next.id).state == .completed)
 }
 
 private actor UnclosedBackend: ScannerBackend {
