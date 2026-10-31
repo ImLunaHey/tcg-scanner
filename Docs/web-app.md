@@ -59,8 +59,11 @@ using local OCR and TCGdex suggestions, with separate manual finish and conditio
 - Library: paginated history, live capture thumbnails, original/edited downloads,
   selected-image comparison, complete JSON manifests and batch ZIP export.
 - Optional manual copies: percentage crop coordinates and clockwise rotation,
-  processed by the existing native image service. No automatic image processing
-  runs; originals remain untouched. The default workflow is scan-only.
+  processed by the existing native image service; originals remain untouched.
+- Optional [card preparation](card-preparation.md): enable **Auto-crop and orient
+  cards** before scanning, or use **Prepare card** on an existing capture.
+  **Download card** exports the prepared PNG; **Original** retains the capture.
+  The default workflow remains scan-only.
 - Scanner details: capability values, ranges, defaults, evidence, vendor fields,
   unknowns and read-only status; report download. Unsupported driver fields remain
   inspection-only rather than pretending the engine can configure them.

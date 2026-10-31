@@ -1,10 +1,19 @@
 # Card-test readiness — 2026-10-31
 
-Card feeding has **not** been tested with this scanner. During web development the
-user reported removing a roller after watching a video and intends to scan **bare
-cards**. The video and exact removed assembly have not been identified. No removal
-of a plastic part was confirmed. Treat the feeder as modified and pause physical
-tests until its configuration is established. Browser scan tests use mocks only.
+One explicitly authorized expendable bare card was scanned successfully in B-007.
+The user reported clean feeding and no visible new damage. B-008 subsequently
+retained 18 images before cancellation: the user later clarified that 11 cards
+were loaded, all 11 reached the output tray, and reported no visible new damage.
+Two cards are unaccounted for in the saved batch. See
+[physical test results](card-preparation.md). This is not complete batch-count,
+order or bulk-feeding validation.
+
+The user reports removing the “main roller”; the video and precise assembly remain
+unidentified. No removal of a plastic part was confirmed. The feeder remains
+modified. The user subsequently authorized a controlled single-card test despite
+that uncertainty, followed by exactly three expendable cards for a batch test.
+Browser scan tests use mocks only. Do not infer permission for further hardware
+tests or changed transport-safety settings from these results.
 
 ## Evidence
 
@@ -34,25 +43,22 @@ by this document.
 
 ## Next focused milestone
 
-1. Confirm the feeder configuration and the precise expendable bare card to test.
-   Record its dimensions, condition and thickness where measurable. Photograph
-   both sides before feeding. Avoid valuable, damaged, curled or unusually thick
-   cards during validation.
-2. Add and validate card dimensions using the ICA APIs exposed by this driver.
-   Current production capture is A4 only; a profile named Pokémon does not change
-   that limitation. Preserve lossless PNG without automatic processing.
-3. Ask the user to approve the specific physical test and confirm the single card
-   is loaded. Do not reuse earlier paper-loading confirmation as card approval.
-4. Scan once, then inspect both card surfaces and edges for marks, dents, scratches,
-   curling and feeding problems. Record image dimensions, orientation and order.
-5. Only after that passes, agree a small expendable numbered batch to verify
-   separation, order and front/back correspondence. Uncertain or incomplete pairs
-   must be flagged rather than silently assigned card identities.
-6. Enable `C-001-front.png`/`C-001-back.png` only after the pairing rule is verified.
+1. Reconcile B-008's 11 loaded cards against nine captured fronts and nine apparent
+   backs. The test had been authorized as three cards; cancellation was requested
+   when the image count exceeded six. Do not silently mark it completed or retry
+   feeding. All 11 reached the output tray; pending driver image delivery at
+   cancellation is possible but unverified.
+2. Confirm the exact feeder modification before broader validation. A no-damage
+   report for this test is not a general guarantee for all card stock.
+3. Current capture remains full A4. Software whole-card preparation works on
+   saved scans, but one edge is flush with the scan boundary. Investigate supported
+   capture geometry without silently changing transport or multifeed settings.
+4. Establish physical order and front/back correspondence with an agreed numbered
+   test. The observed back/front alternation alone does not establish which
+   indistinguishable back belongs to which front after an interrupted feed.
+5. Enable `C-001-front.png`/`C-001-back.png` only after the pairing rule is verified.
    Keep original bytes and permanent B/C labels. High-volume use follows sustained
    feed, error-recovery and damage checks.
 
-The web dashboard is not a prerequisite for safe physical card validation; the
-remaining blockers are feeder configuration, card-sized capture and controlled
-hardware tests. Inventory recognition, pricing and selling integrations remain
-outside this milestone.
+Card preparation and English OCR run independently on saved images and require no
+additional feeder action. Finish and condition remain manual assessments.

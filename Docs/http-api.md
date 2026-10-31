@@ -107,6 +107,7 @@ requests are rejected. All HTTP profile IDs are UUIDs; resolve names through the
 | `GET /api/v1/images/{jobUUID}:{sequence}/metadata` | ImageMetadata |
 | `GET /api/v1/images/{jobUUID}:{sequence}/thumbnail` | Service-generated PNG, maximum 512 pixels on longest side |
 | `POST /api/v1/images/{jobUUID}:{sequence}/edits` | `id` UUID, `quarterTurns` 0–3, and normalized `crop` (`x`, `y`, `width`, `height`); creates a separate PNG via ScannerService, preserving the original. |
+| `POST /api/v1/images/{jobUUID}:{sequence}/prepare-card` | Stable `id` UUID; creates a cropped/oriented PNG copy. Returns 422 when no unambiguous card is found. See [preparation contracts](card-preparation.md). |
 | `GET /api/v1/events` | Server-Sent Events; see below |
 | `GET /api/v1/diagnostics` | Diagnostics; optional deviceID query |
 | `GET /api/v1/status` | ServiceStatus |
@@ -209,4 +210,8 @@ public-internet hardening. No public bind or wildcard address is accepted.
 Authenticated asynchronous identification and manual review are available at
 `/api/v1/images/{jobID}:{sequence}/identification` using GET, POST and PATCH.
 See [contracts, states and limitations](card-identification.md). Identification
-operates on saved originals and never starts a physical scan.
+operates on saved images (preferring prepared card copies) and never starts a
+physical scan.
+
+Scan requests also accept optional `prepareCards: true` to prepare captured images
+during processing. Defaults to false; feeder configuration is unaffected.

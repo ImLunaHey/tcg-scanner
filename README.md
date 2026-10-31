@@ -7,7 +7,9 @@ the service exclusively. No graphical application is required for scanning.
 The [remote web workspace](Docs/web-app.md) provides responsive scanning controls,
 live events and a batch library; see [web validation](Docs/milestone-7-validation.md).
 [Card feeding validation](Docs/card-test-readiness.md)
-is the next milestone; no physical card tests have been performed.
+now includes an explicitly authorized single-card test with clean feeding and no
+new damage reported. [Whole-card preparation](Docs/card-preparation.md) preserves
+originals while adding cropped and oriented PNG copies. Bulk feeding is not yet validated.
 Optional [English card identification](Docs/card-identification.md) now uses local
 Apple Vision OCR and TCGdex to suggest a card and set. Finish and condition are
 recorded through manual review; no automatic foil detection or grading is claimed.
@@ -16,8 +18,9 @@ See [native app installation and workflow](Docs/native-app.md) and
 See [MCP setup and agent workflow](Docs/mcp.md) and [milestone 4 validation](Docs/milestone-4-validation.md).
 
 Actual hardware evidence: [paper scans](Docs/milestone-2-validation.md) and
-[LaunchAgent verification](Docs/milestone-3-validation.md). Card feeding has not
-been validated. Discovery and diagnostics never request a scan.
+[LaunchAgent verification](Docs/milestone-3-validation.md), plus the controlled
+[card tests and their limitations](Docs/card-preparation.md). Discovery and
+diagnostics never request a scan.
 
 ## Scan storage
 
