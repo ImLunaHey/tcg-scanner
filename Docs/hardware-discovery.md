@@ -1,6 +1,6 @@
 # fi-8170 discovery investigation — 2026-10-31
 
-## Observed on this Mac
+## Before driver installation
 
 - macOS 26.5.2 (25F84), Apple Silicon; Swift 6.3.3 via Xcode.
 - USB registry shows vendor `0x04c5`, product `0x15ff`, location `0x02210000`,
@@ -16,10 +16,34 @@
   enumeration completion callback but discovered zero scanners.
 - Its JSON report is in ignored `Diagnostics/imagecapture-discovery.json`.
 
-USB visibility is verified. ImageCaptureCore scanner access, functional units,
-capabilities, settings and scanning are **not verified**. No session was opened,
-settings changed or paper fed. LaunchAgent operation has not been tested.
-The missing ICA driver is the leading explanation, not a proven exclusive cause.
+At this point only USB visibility was verified; the missing ICA driver was the
+leading explanation for empty ImageCaptureCore discovery.
+
+## After driver installation
+
+The user installed the official package through macOS Installer. The downloaded
+`pfufs-macOS_2.4.1.dmg` matched Ricoh's published SHA-256:
+`1d5f66b8b75aa0b1f06179e7142911764b528d66ba4bdf7bdf50f01c88ff3c69`.
+`pkgutil --check-signature` identified PFU LIMITED (XW4U7W2E9L), and `spctl`
+accepted the package as notarized. Installed receipt `com.fujitsu.fiscanner.pkg`
+reports version **2.4.1**.
+
+At 2026-10-31T14:48:40Z the same Swift probe completed successfully and found
+**one scanner**, with the following framework-reported values:
+
+- Name: `fi-8170`
+- Transport: `ICTransportTypeUSB`
+- USB vendor/product: `0x04c5` / `0x15ff`
+- Device module: `/Library/Image Capture/Devices/FujitsuScanner.app`
+- Module version: `1.0` (distinct from installer package version `2.4.1`)
+
+The full local report is in ignored
+`Diagnostics/imagecapture-discovery-after-install.json`.
+**ImageCaptureCore discovery is now hardware-verified** in this logged-in user's
+command-line process. Session access, functional units, capabilities, settings,
+scanning and LaunchAgent operation remain unverified. No session was opened,
+settings changed or paper fed. Next: open a diagnostic session and enumerate the
+functional units and exposed settings, without requesting a scan.
 
 ## Official support information
 
@@ -38,7 +62,7 @@ our device. They must not populate a hardware-tested capability report.
 Windows PaperStream features must not be assumed available through ICA.
 There is no evidence yet that an alternative backend is necessary.
 
-## Next step: install the official driver and repeat discovery
+## Driver installation and discovery reproduction
 
 1. Open the [fi-8170 download page](https://www.pfu.ricoh.com/global/scanners/fisp/dl/fi-8170.html).
 2. Select **macOS Tahoe 26**, then **Scanner Driver** under Software.
@@ -54,7 +78,7 @@ There is no evidence yet that an alternative backend is necessary.
    cat Diagnostics/imagecapture-discovery.json
    ```
 
-No driver has been installed by this investigation. If discovery is still empty,
+If discovery is empty on another installation,
 check whether Apple's Image Capture application lists the device. That separates
 system/driver visibility from issues specific to our command-line process. Do not
 press Scan. Capture the installed driver version and any errors before changing
