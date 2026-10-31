@@ -1,7 +1,7 @@
 # Local visible condition checks
 
-`blue-back-visible-marks-v1` flags candidate light marks in the blue border of an
-upright, automatically prepared standard Pokémon back. It runs in-process in Swift
+`blue-back-visible-marks-v2` flags candidate light marks in the blue border of an
+automatically prepared standard Pokémon back at any quarter turn. It runs in-process in Swift
 using ImageIO/Core Graphics. No images or prompts leave the Mac, and no model,
 interpreter or helper process is involved.
 
@@ -13,13 +13,14 @@ can cause false positives. No flagged marks does not establish Near Mint.
 
 ## Use
 
-In the web batch gallery, choose **Check condition** on a card. The panel defaults
-to the back when front/back evidence is available. It shows the inspected image,
-numbered candidate regions and reasons. Switch sides to see scope/limitations;
-unsupported fronts and uncertain back orientations explicitly require manual
-inspection. **Refresh visible checks** re-analyzes the saved source without
-feeding hardware. The native scan library provides **Check condition…** per side
-with the same observations and marked image.
+Checks run automatically during card processing. In the web batch gallery, click
+the visible-marks result to inspect it in the lightbox. Candidate marks have red
+boxes; a checked image without candidates explicitly says there are no boxes to
+show. Unsupported and inconclusive results show their reason and are not presented
+as clear results. Switch sides to see scope/limitations. **Review / refresh checks**
+opens the detailed panel, where **Refresh visible checks** re-analyzes the saved
+source without feeding hardware. The native scan library provides **Check condition…**
+per side with the same observations and marked image.
 
 New automatic card identifications run the check before the catalogue lookup,
 including backs that produce no identity match. A catalogue outage therefore does
@@ -35,6 +36,9 @@ selling grade or overwrites a review.
 - `findings`: `kind` (`edgeWhitening`, `cornerWhitening`, `linearMark`), `region`
   and `explanation`. Regions are normalized top-left coordinates.
 - `limitations` and optional `analyzedWidth`/`analyzedHeight`.
+- Optional `backRecognition` (`preparation` or `colour-layout`) and `coverage`.
+  A checked v2 result lists `backBorderWhitening`, `backCornerWhitening` and
+  `backBorderLinearMarks`; these describe inspected areas, not detected defects.
 
 Regions refer to the identification's exact `sourceEditID` and `sourceSHA256`,
 not an arbitrary later edit. Clients display that same source under the overlay.
@@ -60,9 +64,18 @@ catalogue-identification records can still be checked.
 ## Detection limits
 
 Analysis accepts one prepared image up to 32 MiB and 40 megapixels, with at least
-500 × 700 pixels, and creates at most a 1200-pixel analysis image. The preparation
-must already establish a standard blue back and upright orientation. The border
-must independently remain predominantly blue. Other cases abstain.
+500 × 700 pixels in either orientation, and creates at most a 1200-pixel analysis
+image. Automatic preparation is required. A back can be established by verified
+preparation or, when that evidence is missing, an independent standard-back
+colour/layout check. The latter tests all four quarter turns for a blue border,
+two yellow logo regions and the central red/white ball. Logo OCR is not required
+for this fallback. Known fronts are excluded; unrecognized designs abstain.
+The border must independently remain predominantly blue.
+
+Condition analysis does not rotate or rewrite images. Border bands adapt to
+portrait/landscape dimensions and findings stay in the exact source coordinates.
+Preparation warnings about a crop reaching the scan boundary remain visible;
+the checker cannot recover a missing edge.
 
 Only bright, low-saturation connected regions within a narrow blue-border band
 are considered. Very small noise and the outermost rim are excluded. Elongated
@@ -72,7 +85,7 @@ conservative heuristic, not a trained or calibrated defect classifier. It has no
 been validated for sensitivity against a physically labelled collection of worn
 cards. Known worn examples are the next validation step before broader use.
 
-## Validation and physical run B-015
+## Initial v1 validation and physical run B-015
 
 The user first authorized one scan of 14 newly loaded non-holo cards. Job
 `B5F95274-F58A-44FA-A79A-50C33FE72D8D` completed as B-015 at 300 DPI, duplex PNG,
@@ -146,3 +159,39 @@ B-013 candidate's red box, all fourteen updated B-015 normal finish summaries,
 mark-to-mark focus, fixed-size number labels and phone/dark-mode layout. Positive
 multi-mark tests used isolated browser fixtures and did not alter production data.
 Evidence is retained under ignored `Diagnostics/condition-lightbox/`.
+
+## v2 automatic coverage and result clarity
+
+C-006 and C-009 in B-015 were skipped by v1 because preparation could not read
+the back logo reliably. The v2 colour/layout fallback recognizes both saved backs
+without OCR. Fixture tests check each at all four quarter turns and reject saved
+fronts from B-009, B-013, B-014 and B-015 even when their preparation evidence is
+deliberately removed. Synthetic corner-mark tests verify that overlay coordinates
+and mark classification remain aligned through rotation. The fallback does not
+change card preparation or the saved image orientation.
+
+The deployed service refreshed all 28 B-015 identification checks: all 14 backs
+were checked, with no candidate border marks; all 14 fronts remain explicitly
+outside scope. All other record fields and all 56 original/prepared PNG checksums
+were unchanged. No new physical scan occurred. The absence of candidates is not
+evidence that these cards have no pre-existing wear.
+
+The same update refreshed 146 eligible saved identification sources across
+B-007–B-014. Before/after comparison preserved every field other than
+`conditionCheck`. Eligibility still requires an identification tied to an
+automatically prepared image; unsupported images remain explicitly unassessed.
+
+The automatic mock-scan test now covers raw captures for a previously recognized
+back plus both previously skipped backs, with and without catalogue availability.
+It verifies persisted observations without sending an explicit condition-check
+request. The full Swift suite passed 105 tests; seven targeted condition/fixture
+tests and the expanded automatic pipeline test passed separately. All 22 web tests,
+TypeScript/Vite and the release build with warnings treated as errors passed.
+
+Signed service/CLI/MCP, native app and HTTP/web updates were installed. Production
+HTTPS browser checks confirmed C-006/C-009's checked results, explicit unsupported
+front reasons, empty-result explanations, the real B-013/C-001 red candidate box,
+mark focusing, mobile dark layout and unchanged production records. Multi-mark
+fixtures were intercepted in the test browser only. The native app was compiled
+and installed but its UI was not visually exercised. Private before/after records,
+file verification and browser evidence are under ignored `Diagnostics/condition-v2/`.
