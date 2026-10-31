@@ -20,9 +20,11 @@ open "$HOME/Applications/Scanner.app"
 ```
 
 These scripts do not start scans. Service updates retain the database and images.
-The app installer does not change HTTP/Tailscale configuration. This is a local,
-ad-hoc-signed development installation; notarized distribution and App Store
-sandboxing are not implemented. The same macOS user must run the service and UI.
+The app installer does not change HTTP/Tailscale configuration. Configure the
+[local signing identity](signing.md) before using these scripts. The app and
+service use certificate-backed signatures to preserve identity across updates;
+notarized distribution and App Store sandboxing are not implemented. The same
+macOS user must run the service and UI.
 
 For development:
 

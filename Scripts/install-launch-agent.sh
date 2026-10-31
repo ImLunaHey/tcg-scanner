@@ -21,10 +21,20 @@ if [[ -e "$scanner_agent" ]]; then
     exit 1
 fi
 cd "$repo_dir"
+source Scripts/signing.sh
+scanner_load_signing_identity
 swift build -c release --disable-index-store
 mkdir -p "$scanner_bin" "$HOME/Library/LaunchAgents"
 for scanner_executable in scanner scanner-service scanner-mcp; do
     install -m 700 ".build/release/$scanner_executable" "$scanner_bin/$scanner_executable.new"
+    case "$scanner_executable" in
+        scanner) scanner_identifier=local.scanner.cli ;;
+        scanner-service) scanner_identifier=local.scanner.service ;;
+        scanner-mcp) scanner_identifier=local.scanner.mcp ;;
+    esac
+    scanner_sign "$scanner_bin/$scanner_executable.new" "$scanner_identifier"
+done
+for scanner_executable in scanner scanner-service scanner-mcp; do
     mv "$scanner_bin/$scanner_executable.new" "$scanner_bin/$scanner_executable"
 done
 "$scanner_bin/scanner-service" --launch-agent-plist "$scanner_agent"

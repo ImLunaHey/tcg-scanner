@@ -16,9 +16,12 @@ if launchctl print "$scanner_domain/local.scanner.http" >/dev/null 2>&1 || [[ -e
     exit 1
 fi
 cd "$scanner_repo"
+source Scripts/signing.sh
+scanner_load_signing_identity
 swift build -c release --disable-index-store --product scanner-http
 mkdir -p "$scanner_bin" "$HOME/Library/LaunchAgents"
 install -m 700 .build/release/scanner-http "$scanner_bin/scanner-http.new"
+scanner_sign "$scanner_bin/scanner-http.new" local.scanner.http
 mv "$scanner_bin/scanner-http.new" "$scanner_bin/scanner-http"
 if [[ ! -e "$scanner_support/http/token" ]]; then
     "$scanner_bin/scanner-http" --init-token

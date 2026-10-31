@@ -79,6 +79,9 @@ SMB authentication and macOS application privacy permissions are separate.
 `scanner-service`, running as a LaunchAgent, needs permission to access network
 volumes even when Terminal or the coding application can read the mount.
 Approve the macOS network-volume access request specifically for `scanner-service`.
+Updates now use a [persistent signing identity](signing.md) rather than ad-hoc
+signatures. Switching to that identity can require one final approval; subsequent
+builds must keep the same identity and identifier to preserve permission matching.
 If necessary, review its entry in System Settings → Privacy & Security → Files
 and Folders → Network Volumes. Other applications' permission requests are
 independent and are not required scanner permissions.

@@ -25,6 +25,8 @@ will require verified card pairing. See [storage configuration and migration](Do
 ## Build and startup
 
 Requires macOS 14+, Swift 6.2+ (Hummingbird's minimum) and the official ICA driver.
+Configure a [local signing identity](Docs/signing.md) before running app build or
+installation scripts. Plain `swift build` and automated tests do not require it.
 Hardware checks used Apple Silicon, macOS 26.5.2, Swift 6.3.3 and Ricoh driver
 package 2.4.1. Other macOS versions have not been hardware-tested.
 
