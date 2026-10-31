@@ -47,6 +47,9 @@ public final class ScannerDatabase: Sendable {
                     kind TEXT NOT NULL, payload BLOB NOT NULL);
                 """)
         }
+        migrator.registerMigration("v2-device-settings") { db in
+            try db.execute(sql: "CREATE TABLE deviceSettings (deviceID TEXT PRIMARY KEY, record BLOB NOT NULL)")
+        }
         try migrator.migrate(queue)
     }
     public func insert(_ record: ScanRecord, submission: ScanRequest) throws {

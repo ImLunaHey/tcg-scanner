@@ -3,6 +3,19 @@ import GRDB
 import ScannerAPI
 
 extension ScannerDatabase {
+    public func deviceSettings(_ id: String) throws -> ScanSettings? {
+        try queue.read { db in
+            try Data.fetchOne(db, sql: "SELECT record FROM deviceSettings WHERE deviceID = ?", arguments: [id]).map { try Wire.decoder().decode(ScanSettings.self, from: $0) }
+        }
+    }
+    public func saveDeviceSettings(_ settings: ScanSettings, deviceID: String) throws {
+        try settings.validate()
+        try queue.write { db in
+            try db.execute(sql: "INSERT OR REPLACE INTO deviceSettings VALUES (?, ?)", arguments: [deviceID, try Wire.encoder().encode(settings)])
+            try Self.appendEvent("settings.updated", payload: .object(["deviceID": .string(deviceID), "configuredSettings": .wrapping(settings)]), db: db)
+        }
+    }
+
     public func profiles() throws -> [ScanProfile] {
         try queue.read { db in try Data.fetchAll(db, sql: "SELECT record FROM profiles ORDER BY id").map { try Wire.decoder().decode(ScanProfile.self, from: $0) } }
     }

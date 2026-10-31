@@ -33,6 +33,7 @@ public struct DeviceList: Codable, Sendable {
     public init(devices: [Device]) { self.devices = devices }
 }
 public struct SettingsReport: Codable, Sendable {
+    public var configuredSettings: ScanSettings?
     public var schemaVersion = 1
     public var device: Device
     public var observedAt: Date

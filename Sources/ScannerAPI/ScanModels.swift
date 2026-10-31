@@ -10,15 +10,17 @@ public struct ScanRequest: Codable, Sendable, Equatable {
     public var deviceID: String?
     public var outputDirectory: String?
     public var profileID: UUID?
+    public var useDeviceSettings: Bool?
     public var dpi: Int
     public var duplex: Bool
     public var format: OriginalFormat
     public init(requestID: UUID = UUID(), deviceID: String? = nil, outputDirectory: String? = nil,
-                dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .tiff, profileID: UUID? = nil) {
+                dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .tiff, profileID: UUID? = nil, useDeviceSettings: Bool? = nil) {
         self.requestID = requestID; self.deviceID = deviceID; self.outputDirectory = outputDirectory
-        self.dpi = dpi; self.duplex = duplex; self.format = format; self.profileID = profileID
+        self.dpi = dpi; self.duplex = duplex; self.format = format; self.profileID = profileID; self.useDeviceSettings = useDeviceSettings
     }
     public func validate() throws {
+        guard !(profileID != nil && useDeviceSettings == true) else { throw ScannerError("invalidSettings", "Choose either a profile or device defaults.") }
         guard (150...600).contains(dpi) else { throw ScannerError("invalidSettings", "DPI must be between 150 and 600 and supported by the scanner.") }
         if let deviceID, deviceID.isEmpty || deviceID.utf8.count > 512 {
             throw ScannerError("invalidSettings", "Invalid scanner ID.")

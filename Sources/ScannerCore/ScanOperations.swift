@@ -16,6 +16,10 @@ extension ScannerCoordinator {
         // Selection suspends. Recheck idempotency/capacity before creating files or reserving hardware.
         if let existing = try existingSubmission(submission) { return existing }
         try acceptingJobs()
+        if submission.useDeviceSettings == true {
+            guard let settings = try database.deviceSettings(device.id) else { throw ScannerError("settingsNotFound", "No configured defaults for this scanner.") }
+            request.dpi = settings.dpi; request.duplex = settings.duplex; request.format = settings.format
+        }
         let database = self.database
         let store = try ScanStorage(root: storageRoot, device: device, request: request, queued: true, profile: profile, persist: database.save)
         let record = store.initialRecord

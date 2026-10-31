@@ -36,9 +36,7 @@ extension DiagnosticRouter {
             result = try .object(["schemaVersion": .number(1), "profiles": .wrapping(await coordinator.profiles())])
         case "v1.profiles.get":
             try only(params, keys: ["id"])
-            let id = try uuid(params, "id")
-            guard let profile = try await coordinator.profiles().first(where: { $0.id == id }) else { throw ScannerError("profileNotFound", "Unknown profile ID.") }
-            result = try .wrapping(profile)
+            result = try .wrapping(await coordinator.profile(identifier(params, "id")))
         case "v1.profiles.save":
             try only(params, keys: ["id", "name", "dpi", "duplex", "format"])
             let profile: ScanProfile
@@ -48,20 +46,20 @@ extension DiagnosticRouter {
             result = try .wrapping(profile)
         case "v1.profiles.delete":
             try only(params, keys: ["id"])
-            try await coordinator.deleteProfile(uuid(params, "id"))
+            try await coordinator.removeProfile(identifier(params, "id"))
             result = .object(["deleted": .bool(true)])
         default: return nil
         }
         return RPCResponse(id: request.id, result: result)
     }
-    private func only(_ params: [String: JSONValue], keys: Set<String>) throws {
+    func only(_ params: [String: JSONValue], keys: Set<String>) throws {
         guard params.keys.allSatisfy(keys.contains) else { throw RPCFailure(code: -32602, message: "Unknown parameter.") }
     }
-    private func uuid(_ params: [String: JSONValue], _ key: String) throws -> UUID {
+    func uuid(_ params: [String: JSONValue], _ key: String) throws -> UUID {
         guard case .string(let text) = params[key], let id = UUID(uuidString: text) else { throw RPCFailure(code: -32602, message: "Expected \(key) as UUID.") }
         return id
     }
-    private func integer(_ params: [String: JSONValue], _ key: String, default fallback: Int, range: ClosedRange<Int>) throws -> Int {
+    func integer(_ params: [String: JSONValue], _ key: String, default fallback: Int, range: ClosedRange<Int>) throws -> Int {
         guard let value = params[key] else { return fallback }
         guard case .number(let n) = value, n.isFinite, n.rounded() == n, n >= Double(range.lowerBound), n <= Double(range.upperBound) else {
             throw RPCFailure(code: -32602, message: "\(key) must be an integer within \(range).")

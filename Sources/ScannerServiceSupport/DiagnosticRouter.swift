@@ -20,6 +20,7 @@ public struct DiagnosticRouter: Sendable {
             return RPCResponse(id: request.id, error: RPCFailure(code: -32600, message: "Expected JSON-RPC 2.0 and a string or numeric ID."))
         }
         do {
+            if let response = try await controlResponse(request) { return response }
             if let response = try await serviceResponse(request) { return response }
             if request.method.hasPrefix("v1.scan.") || request.method == "v1.jobs.create" {
                 return try await scanResponse(request)
@@ -33,7 +34,10 @@ public struct DiagnosticRouter: Sendable {
             case "v1.capabilities":
                 result = try .wrapping(await coordinator.inspect(deviceID: deviceID))
             case "v1.settings":
-                result = try .wrapping(SettingsReport(await coordinator.inspect(deviceID: deviceID)))
+                let report = try await coordinator.inspect(deviceID: deviceID)
+                var settings = SettingsReport(report)
+                settings.configuredSettings = try await coordinator.configuredSettings(report.device.id)
+                result = try .wrapping(settings)
             case "v1.diagnostics":
                 let devices = try await coordinator.devices()
                 let report: Inspection?
@@ -75,7 +79,7 @@ private extension DiagnosticRouter {
         let record: ScanRecord
         switch request.method {
         case "v1.scan.start", "v1.jobs.create":
-            let allowed: Set<String> = ["requestID", "deviceID", "outputDirectory", "dpi", "duplex", "format", "profileID"]
+            let allowed: Set<String> = ["requestID", "deviceID", "outputDirectory", "dpi", "duplex", "format", "profileID", "useDeviceSettings"]
             guard params.keys.allSatisfy(allowed.contains) else { throw RPCFailure(code: -32602, message: "Unknown scan parameter.") }
             let options: ScanRequest
             do { options = try JSONValue.object(params).decode(ScanRequest.self) }
