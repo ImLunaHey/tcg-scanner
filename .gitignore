@@ -4,3 +4,8 @@ Diagnostics/
 # Local Xcode UI state; shared project/schemes and dependency pins remain tracked.
 xcuserdata/
 *.xcuserstate
+Web/node_modules/
+Web/dist/
+Web/test-results/
+Web/playwright-report/
+Web/*.tsbuildinfo

@@ -59,5 +59,7 @@ public struct WebAssets: Sendable {
         return Response(status: .ok, headers: [.contentType: asset.type],
                         body: request.method == .head ? .init() : .init(byteBuffer: ByteBuffer(bytes: asset.data)))
     }
-    static let contentPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; worker-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+    // WebKit reports renderer-managed style attributes under style-src-attr.
+    // Permit attributes only; stylesheets and executable code remain same-origin.
+    static let contentPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' blob:; connect-src 'self'; worker-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 }
