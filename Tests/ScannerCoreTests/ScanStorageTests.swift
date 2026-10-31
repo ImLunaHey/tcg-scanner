@@ -48,3 +48,20 @@ func makeTestPNG(at url: URL) throws {
     try await store.finish(errors: [ScannerError("test", "simulated failure")], cancelled: false, sessionClosed: true)
     #expect(await store.snapshot().state == .failed)
 }
+
+@Test func failedDuplexKeepsReceivedSideAndManifest() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let store = try ScanStorage(root: root, device: Device(id: "mock", name: "Mock"), request: ScanRequest(duplex: true, format: .png))
+    let file = store.incomingDirectory.appendingPathComponent("partial.png")
+    try makeTestPNG(at: file)
+    try await store.preserve(file, sequence: 1)
+    try await store.finish(errors: [ScannerError("disconnected", "Mock unplug")], cancelled: false, sessionClosed: false)
+    let report = await store.snapshot()
+    #expect(report.state == .failed)
+    #expect(report.images.count == 1)
+    #expect(report.warnings.contains(where: { $0.contains("Odd duplex") }))
+    let persisted = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: report.outputDirectory).appendingPathComponent("manifest.json")))
+    #expect(persisted.images[0].sha256 == report.images[0].sha256)
+    #expect(FileManager.default.fileExists(atPath: file.path))
+}

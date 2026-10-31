@@ -69,3 +69,19 @@ private func router() -> DiagnosticRouter { DiagnosticRouter(coordinator: Scanne
         #expect(response.result != nil)
     }
 }
+
+@Test func rejectsMalformedScanRequestsWithoutCreatingFiles() async throws {
+    for params in [JSONValue.object([:]), .object(["requestID": .string("bad")]),
+                   .object(["shell": .string("ignored")])] {
+        var request = RPCRequest(method: "v1.scan.start")
+        request.params = params
+        let response = await router().respond(to: try Wire.encoder().encode(request))
+        #expect(response.error?.code == -32602)
+    }
+    for method in ["v1.scan.status", "v1.scan.cancel"] {
+        var request = RPCRequest(method: method)
+        request.params = .object(["scanID": .string("not-a-uuid")])
+        let response = await router().respond(to: try Wire.encoder().encode(request))
+        #expect(response.error?.code == -32602)
+    }
+}
