@@ -1626,13 +1626,18 @@
 .lightbox-mark-overlay rect.focused {
   stroke-width: 3px;
 }
-.lightbox-mark-overlay text {
-  fill: white;
-  stroke: #900;
-  stroke-width: 0.002;
-  paint-order: stroke;
-  font-size: 0.025px;
+.lightbox-mark-number {
+  position: absolute;
+  transform: translateY(-100%);
+  font-size: 12px;
+  line-height: 16px;
   font-weight: 700;
+  background: #d00;
+  color: white;
+  border: 1px solid white;
+  border-radius: 3px;
+  padding: 0 3px;
+  pointer-events: none;
 }
 .lightbox-condition {
   padding: 8px 16px;

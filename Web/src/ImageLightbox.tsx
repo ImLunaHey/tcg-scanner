@@ -312,16 +312,26 @@ export function ImageLightbox({
                           index === focusedFinding ? "focused" : undefined
                         }
                       />
-                      <text
-                        x={Math.min(0.95, finding.region.x + 0.005)}
-                        y={Math.max(0.025, finding.region.y)}
-                      >
-                        {index + 1}
-                      </text>
                     </g>
                   ))}
                 </svg>
               )}
+              {current.conditionCheck &&
+                findings.map((finding, index) => (
+                  <span
+                    className="lightbox-mark-number"
+                    key={index}
+                    style={{
+                      left: `${Math.min(0.95, finding.region.x) * 100}%`,
+                      top: Math.max(
+                        18,
+                        finding.region.y * current.height * fit * zoom,
+                      ),
+                    }}
+                  >
+                    {index + 1}
+                  </span>
+                ))}
             </div>
           ) : (
             !error && <p role="status">Loading full-resolution image…</p>
