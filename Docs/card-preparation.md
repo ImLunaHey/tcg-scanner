@@ -368,3 +368,60 @@ prepared copies after refresh. Evidence is ignored under
 Original scan-boundary warnings still apply: deskew cannot reconstruct an edge
 that the scanner did not capture. The standard-back detector is not an authenticity
 check, and unrecognized back designs remain subject to manual review.
+
+
+## New bulk-card physical test — B-013, 2026-10-31
+
+The user loaded 20 different bulk-bin cards and said they should all be holo.
+That is an expected finish, not verified per-card ground truth. One authorized
+300 DPI duplex PNG job, `C4E36EC5-11C3-4A9C-A33A-475B1187EF4E`, ran with automatic
+card preparation and identification. Feeder safety settings were unchanged.
+The user reported all 20 fed cleanly with no new damage. No second scan was run.
+
+The job completed with 40 originals, 40 prepared copies, no errors and a closed
+scanner session. All 80 PNG file sizes and SHA-256 values were verified. The v3
+pipeline found 20 standard blue backs and 20 text-bearing fronts, with upright
+orientation evidence for all 40 images. All required 180-degree correction;
+13 images also received deskew corrections between −0.9° and +0.8°. Scan-boundary
+warnings remain where the captured edge meets the scan area.
+
+Every consecutive pair has one front with a single catalogue suggestion, backed
+by a recognized name and collector number. The twenty suggestions span eight
+sets and remain `reviewRequired`; these new cards do not have independently
+confirmed identity labels. Spectrier appears twice in the captured sequence.
+All finishes remain unverified and conditions unassessed. Catalogue availability
+of holo/reverse-holo variants does not establish the scanned card's finish.
+
+| Pair | Suggested card | Catalogue ID |
+| --- | --- | --- |
+| C-001 | Gwynn | `me05-078` |
+| C-002 | Gladion's Final Battle | `me05-077` |
+| C-003 | Rust Syndicate Grunt | `me05-081` |
+| C-004 | Team Rocket's Giovanni | `sv10-174` |
+| C-005 | Vileplume | `me02-003` |
+| C-006 | Spectrier | `me02.5-098` |
+| C-007 | Zamazenta | `sv10-146` |
+| C-008 | Okidogi | `me02.5-122` |
+| C-009 | Indeedee | `sv01-153` |
+| C-010 | Zarude | `me05-056` |
+| C-011 | Genesect | `me02-008` |
+| C-012 | Mismagius | `me02.5-086` |
+| C-013 | Tapu Koko | `me02.5-067` |
+| C-014 | Spectrier | `me02.5-098` |
+| C-015 | Iono's Kilowattrel | `me02.5-072` |
+| C-016 | Relicanth | `sv05-084` |
+| C-017 | Lillie's Ribombee | `sv09-067` |
+| C-018 | Emboar | `sv10.5w-013` |
+| C-019 | Armarouge | `me05-012` |
+| C-020 | Tornadus | `sv10.5w-078` |
+
+Read-only browser validation over the production Tailscale HTTPS address checked
+20 paired summaries, 20 correct identity dialogs and every prepared front download
+against its stored checksum. Desktop and 390-pixel phone layouts passed without
+page errors or horizontal overflow. Job history was unchanged by browser checks.
+Private request IDs, expectations, physical confirmation, records, checksums and
+screenshots are retained under ignored `Diagnostics/bulk-holo-test/`.
+
+The existing capture guard stops the job at 100 image callbacks, so this test
+used fewer than 50 duplex cards. Raising that limit and validating larger batches
+were outside this run.
