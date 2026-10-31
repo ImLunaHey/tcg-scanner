@@ -42,7 +42,7 @@ catalogue is cached in memory for 24 hours. First lookup and detail lookups need
 network access. Requests have deadlines, response-size limits and a fixed host;
 redirects are refused. No API key is required.
 
-The initial matcher looks for a card name in the upper image area and a collector
+The matcher looks for a card name in the upper image area and a collector
 number in the lower area, cross-checking the printed set total when readable.
 Zero padding is normalized while promo/subset prefixes are preserved. Conflicting
 legible numbers rule out a printing. Title-only matches remain ambiguous. Up to
@@ -54,8 +54,8 @@ The initial version does not perform fuzzy spelling correction, visual artwork
 matching or set-symbol recognition. Small cards inside a large A4 frame, unreadable
 numbers, stylized titles and catalogue omissions may produce no match. Card backs
 do not identify the card. Set variants/reprints can remain ambiguous even when OCR
-is correct. Physical scanner accuracy has not yet been validated: card feeding
-and card-sized capture are still a separate milestone.
+is correct. Saved fi-8170 scans have now been checked as described below; this small batch
+is not a general accuracy benchmark.
 
 ## Service contracts
 
@@ -162,3 +162,27 @@ Backups are under Application Support/Scanner/backups:
 Ignored evidence is in `Diagnostics/recognition/`, `Web/test-results/` and `.build/`.
 Physical phone/tablet testing and actual scanner-card recognition accuracy remain
 unverified. See [card-test readiness](card-test-readiness.md).
+
+## B-009 recognition corrections — 2026-10-31
+
+The initial run suggested one printing for nine of eleven fronts. Fire Energy
+remained ambiguous and Salamence ex had no match. Vision read the latter's
+stylized suffix as `@X` (and `CX` in another orientation). The matcher now accepts
+these narrow suffix variations only with collector-number agreement. Tall rotated
+text boxes no longer qualify as title/footer evidence.
+
+Basic Energy cards can match using an Energy title, the exact SVE set code and
+one unambiguous three-digit footer number, checked against SVE catalogue entries.
+An Energy title alone is insufficient. This resolved Fire Energy `sve-010`;
+collector 177/159 resolved Salamence ex `sv09-177`. The two saved fronts were
+reprocessed without feeding cards, changing original files or confirming identities.
+All eleven B-009 fronts now have a unique **suggestion**, awaiting manual review.
+
+Twelve recognition tests passed with the saved-batch fixture enabled (one unrelated
+reference fixture skipped). Tests include rejection of suffix-only matches,
+missing set codes and competing standalone numbers. Repeat the saved-image check:
+
+```sh
+SCANNER_RETRY_FIXTURE=/Volumes/scans/B-009 \
+  swift test --filter ScannerRecognitionTests --disable-index-store
+```
