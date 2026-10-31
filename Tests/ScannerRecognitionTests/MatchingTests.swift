@@ -56,3 +56,33 @@ func recognizeKnownCatalogueImage() async throws {
     let candidate = try JSONDecoder().decode(CardCandidate.self, from: Data(legacy.utf8))
     #expect(candidate.category == nil && candidate.types == nil)
 }
+
+@Test func uncertainEXSuffixRequiresCollectorNumberAndHorizontalTitle() {
+    let catalogue = [CatalogueCard(id: "sv09-177", localId: "177", name: "Salamence ex"), CatalogueCard(id: "old-64", localId: "64", name: "Salamence")]
+    let title = RecognizedLine(text: "Salamence @X", y: 0.908, height: 0.052)
+    let footer = RecognizedLine(text: "177/159", y: 0.032, height: 0.017)
+    #expect(CardMatcher.rank(lines: [title, footer], catalogue: catalogue).map(\.card.id) == ["sv09-177"])
+    #expect(!CardMatcher.rank(lines: [title], catalogue: catalogue).contains { $0.card.id == "sv09-177" })
+    #expect(CardMatcher.rank(lines: [RecognizedLine(text: "Salamence CX", y: 0.386, height: 0.427)], catalogue: catalogue).isEmpty)
+}
+@Test func energySymbolTitleRequiresPrintedSetCodeAndUniqueNumber() {
+    let catalogue = [CatalogueCard(id: "sve-010", localId: "010", name: "Fire Energy"), CatalogueCard(id: "sve-002", localId: "002", name: "Fire Energy"), CatalogueCard(id: "other-010", localId: "010", name: "Water Energy")]
+    let title = RecognizedLine(text: "Basic Energy", y: 0.9)
+    let code = RecognizedLine(text: "SVEEN", y: 0.03, height: 0.02)
+    let number = RecognizedLine(text: "010", y: 0.02, height: 0.02)
+    #expect(CardMatcher.rank(lines: [title, code, number], catalogue: catalogue).map(\.card.id) == ["sve-010"])
+    #expect(CardMatcher.rank(lines: [title, number], catalogue: catalogue).isEmpty)
+    #expect(CardMatcher.rank(lines: [title, code, number, RecognizedLine(text: "002", y: 0.02, height: 0.02)], catalogue: catalogue).isEmpty)
+}
+@Test(.enabled(if: ProcessInfo.processInfo.environment["SCANNER_RETRY_FIXTURE"] != nil))
+func savedEnergyAndFullArtEXAreIdentifiedWithoutFeeding() async throws {
+    let root = URL(fileURLWithPath: try #require(ProcessInfo.processInfo.environment["SCANNER_RETRY_FIXTURE"]))
+    let record = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: root.appendingPathComponent("manifest.json")))
+    let recognizer = CardRecognizer()
+    for (sequence, expected) in [(2, "sve-010"), (12, "sv09-177")] {
+        let image = try #require(record.processedImages?.last { $0.request.sequence == sequence && $0.cardPreparation != nil })
+        let evidence = try await recognizer.recognize(Data(contentsOf: root.appendingPathComponent(image.image.relativePath)))
+        #expect(evidence.candidates.map(\.id) == [expected])
+        #expect(evidence.orientation == 0)
+    }
+}

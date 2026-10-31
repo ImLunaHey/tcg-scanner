@@ -23,8 +23,8 @@ enum CardMatcher {
     }
     static func rank(lines: [RecognizedLine], catalogue: [CatalogueCard]) -> [Ranked] {
         let readable = lines.filter { $0.confidence >= 0.35 }
-        let titles = readable.filter { $0.y + $0.height > 0.65 }.map { " " + normalized($0.text) + " " }
-        let footers = readable.filter { $0.y < 0.30 }.map(\.text)
+        let titles = readable.filter { $0.y + $0.height > 0.65 && $0.height < 0.15 }.map { " " + normalized($0.text) + " " }
+        let footers = readable.filter { $0.y < 0.30 && $0.height <= 0.10 }.map(\.text)
         let fraction = try! NSRegularExpression(pattern: #"(?i)(?<![A-Z0-9])([A-Z]{0,5}[0-9]{1,4})\s*/\s*([A-Z]{0,5}[0-9]{1,4})(?![A-Z0-9])"#)
         var numbers: Set<String> = []
         var totalsByNumber: [String: Set<Int>] = [:]
@@ -42,16 +42,34 @@ enum CardMatcher {
                 if let range = Range(match.range, in: text) { numbers.insert(number(String(text[range]))) }
             }
         }
+        // Modern basic Energy prints a type symbol in its title and a standalone
+        // number. Require the printed SVE set code as well; "Energy" alone is ambiguous.
+        let energyTitle = titles.contains { $0.contains(" energy ") }
+        let sveCode = footers.contains { ["sve", "sveen", "sve en"].contains(normalized($0)) }
+        let standalone = Set(footers.compactMap { text -> String? in
+            let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return value.count == 3 && value.allSatisfy(\.isNumber) ? number(value) : nil
+        })
         return catalogue.compactMap { card -> Ranked? in
             let name = normalized(card.name)
-            guard name.count >= 3, titles.contains(where: { $0.contains(" " + name + " ") }) else { return nil }
+            guard name.count >= 3 else { return nil }
             let local = number(card.localId)
-            let numbered = numbers.contains(local)
+            let energyNumber = energyTitle && sveCode && standalone.count == 1 && standalone.contains(local) && card.id.hasPrefix("sve-")
+            let numbered = numbers.contains(local) || energyNumber
+            let exactName = titles.contains { $0.contains(" " + name + " ") }
+            let base = name.hasSuffix(" ex") ? String(name.dropLast(3)) : ""
+            let uncertainSuffix = numbered && !base.isEmpty && titles.contains { title in
+                [" x ", " cx "].contains { title.contains(" " + base + $0) }
+            }
+            guard exactName || uncertainSuffix || energyNumber else { return nil }
             // A legible conflicting collector number rules out this printing.
             guard numbers.isEmpty || numbered else { return nil }
+            let evidence: [String]
+            if energyNumber { evidence = ["Energy title", "Printed set code SVE", "Collector number " + card.localId] }
+            else if uncertainSuffix { evidence = ["Name with uncertain ex suffix; collector number agrees", "Collector number " + card.localId] }
+            else { evidence = numbered ? ["Name in title area", "Collector number " + card.localId] : ["Name in title area only; printing is ambiguous"] }
             return Ranked(card: card, score: (numbered ? 100 : 0) + name.count,
-                          evidence: numbered ? ["Name in title area", "Collector number " + card.localId] : ["Name in title area only; printing is ambiguous"],
-                          totals: totalsByNumber[local] ?? [])
+                          evidence: evidence, totals: totalsByNumber[local] ?? [])
         }.sorted { $0.score != $1.score ? $0.score > $1.score : $0.card.id < $1.card.id }
     }
 }
