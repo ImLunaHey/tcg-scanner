@@ -1540,3 +1540,63 @@
     gap: 8px;
   }
 }
+
+.condition-modal {
+  width: min(960px, calc(100vw - 32px));
+}
+.condition-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 16px;
+}
+.condition-image {
+  position: relative;
+  width: 100%;
+}
+.condition-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.condition-image svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.condition-image rect {
+  stroke: #ff6b35;
+  stroke-width: 0.004;
+  fill: #ff6b3526;
+}
+.condition-image text {
+  fill: #fff;
+  stroke: #21160f;
+  stroke-width: 0.003;
+  paint-order: stroke;
+  font-size: 0.035px;
+  font-weight: 700;
+}
+.condition-findings {
+  list-style: decimal;
+  padding-left: 24px;
+}
+.condition-limitations {
+  list-style: disc;
+  padding-left: 20px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 12px 0;
+}
+.condition-findings li,
+.condition-limitations li {
+  margin-bottom: 8px;
+}
+@media (max-width: 650px) {
+  .condition-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

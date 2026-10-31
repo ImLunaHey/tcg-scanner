@@ -18,6 +18,7 @@ import { useAuth } from "./auth";
 import { Modal } from "./Modal";
 import { ImageLightbox, type LightboxImage } from "./ImageLightbox";
 import { IdentificationReview, IdentitySummary } from "./Identification";
+import { ConditionReview, conditionSummary } from "./ConditionReview";
 import { imageBlob, saveBlob, saveJSON, type Api } from "./api";
 import {
   batchLabel,
@@ -227,6 +228,10 @@ export function BatchDetail({ id }: { id: string }) {
   const [comparison, setComparison] = useState<number[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
   const [editing, setEditing] = useState<OriginalImage>();
+  const [conditionPair, setConditionPair] = useState<{
+    sides: { sequence: number; label: string }[];
+    initial: number;
+  }>();
   const [identifying, setIdentifying] = useState<number>();
   const queries = useQueryClient();
   const [preparationIDs, setPreparationIDs] = useState<Record<number, string>>(
@@ -592,6 +597,16 @@ export function BatchDetail({ id }: { id: string }) {
                     identification={identity}
                     pending={!finished && record.request.prepareCards === true}
                   />
+                  <p className="small muted">
+                    {conditionSummary(
+                      record.cardIdentifications?.find(
+                        (i) =>
+                          i.request.sequence ===
+                          sides.find((s) => s.label === "Back")?.image
+                            ?.sequence,
+                      )?.conditionCheck,
+                    )}
+                  </p>
                   {sideWarning && <p className="small muted">{sideWarning}</p>}
                   {record.state !== "completed" && (
                     <p className="small muted">
@@ -603,6 +618,26 @@ export function BatchDetail({ id }: { id: string }) {
                     </p>
                   )}
                   <div className="paired-actions">
+                    <button
+                      className="text-button"
+                      disabled={!finished}
+                      onClick={() => {
+                        const items = sides
+                          .filter((s) => s.image)
+                          .map((s) => ({
+                            sequence: s.image!.sequence,
+                            label: s.label,
+                          }));
+                        setConditionPair({
+                          sides: items,
+                          initial:
+                            items.find((s) => s.label === "Back")?.sequence ||
+                            items[0].sequence,
+                        });
+                      }}
+                    >
+                      Check condition
+                    </button>
                     {reviewImage && (
                       <button
                         className="text-button"
@@ -780,6 +815,14 @@ export function BatchDetail({ id }: { id: string }) {
           close={() => setEditing(undefined)}
         />
       )}
+      {conditionPair && (
+        <ConditionReview
+          batch={record}
+          sides={conditionPair.sides}
+          initial={conditionPair.initial}
+          close={() => setConditionPair(undefined)}
+        />
+      )}
       {identifying !== undefined && (
         <IdentificationReview
           batchID={id}
@@ -809,7 +852,8 @@ function ImageEditor({
     )
     .at(-1);
   const [rotation, setRotation] = useState(initial?.request.quarterTurns || 0);
-  const sourceCrop = initial?.cardPreparation?.sourceCrop ?? initial?.request.crop;
+  const sourceCrop =
+    initial?.cardPreparation?.sourceCrop ?? initial?.request.crop;
   const [crop, setCrop] = useState(
     sourceCrop
       ? {

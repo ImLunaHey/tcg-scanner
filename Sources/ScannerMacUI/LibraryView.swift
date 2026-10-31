@@ -23,6 +23,7 @@ private struct BatchDetail: View {
     let record: ScanRecord
     @State private var editing: EditingImage?
     @State private var identifying: EditingImage?
+    @State private var checkingCondition: EditingImage?
     @State private var compare = false
     @State private var preparing = false
     @State private var preparationIDs: [Int: UUID] = [:]
@@ -60,7 +61,9 @@ private struct BatchDetail: View {
                             Text("\(prepared?.image.width ?? image.width) × \(prepared?.image.height ?? image.height) · side \(image.side)").font(.caption).foregroundStyle(.secondary)
                             if let identification = record.cardIdentifications?.first(where: { $0.request.sequence == image.sequence }) {
                                 CardIdentitySummary(identification: identification)
+                                if let check = identification.conditionCheck { Text(check.summary).font(.caption).foregroundStyle(.secondary) }
                             }
+                            Button("Check condition…") { checkingCondition = EditingImage(image: image) }.disabled(!record.state.terminal)
                             Button("Identify / review card…") { identifying = EditingImage(image: image) }.disabled(!record.state.terminal)
                             if let prepared {
                                 Button("Export prepared card…") { exportImage(record: record, image: prepared.image, editID: prepared.id, model: model) }
@@ -99,6 +102,7 @@ private struct BatchDetail: View {
                 Text(record.outputDirectory).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
             }.padding(24)
         }.sheet(item: $editing) { ImageEditor(model: model, job: record.id, image: $0.image) }
+        .sheet(item: $checkingCondition) { ConditionReviewView(model: model, job: record.id, sequence: $0.image.sequence) }
         .sheet(item: $identifying) { CardIdentificationView(model: model, job: record.id, sequence: $0.image.sequence) }
     }
 }

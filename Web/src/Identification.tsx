@@ -36,6 +36,8 @@ export type Identification = {
     | "confirmed"
     | "rejected";
   sourceSHA256: string;
+  sourceEditID?: string;
+  conditionCheck?: import("./ConditionReview").ConditionCheck;
   evidence?: {
     candidates: CardCandidate[];
     lines: { text: string }[];
