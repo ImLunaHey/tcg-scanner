@@ -167,3 +167,52 @@ export function groupCardCaptures(images: OriginalImage[]) {
   }
   return [...groups.values()].sort((a, b) => a.number - b.number);
 }
+
+// Display the side with card identity evidence first, independent of scanner/feed
+// direction. This does not rewrite acquisition order or assert verified pairing.
+export function presentCardPair(
+  pair: ReturnType<typeof groupCardCaptures>[number],
+  identifications: Identification[] = [],
+) {
+  const entries = [pair.first, pair.second].map((image) => ({
+    image,
+    identity: image
+      ? identifications.find(
+          (value) => value.request.sequence === image.sequence,
+        )
+      : undefined,
+  }));
+  const matched = entries.filter(
+    ({ identity }) =>
+      identity &&
+      (identity.state === "confirmed" || identity.state === "reviewRequired") &&
+      (identity.evidence?.candidates.length || 0) > 0,
+  );
+  if (matched.length === 1 && pair.first && pair.second) {
+    const front = matched[0];
+    const back = entries.find((entry) => entry !== front)!;
+    return {
+      identity: front.identity,
+      sides: [
+        { image: front.image, label: "Front" },
+        { image: back.image, label: "Back" },
+      ],
+      warning: undefined,
+    };
+  }
+  return {
+    identity:
+      matched[0]?.identity ||
+      entries.find(({ identity }) => identity?.state === "processing")
+        ?.identity ||
+      entries.find(({ identity }) => identity)?.identity,
+    sides: entries.map(({ image }, index) => ({
+      image,
+      label: `Side ${index + 1}`,
+    })),
+    warning:
+      matched.length > 1
+        ? "Both sides have card matches; review each side and check the pair."
+        : undefined,
+  };
+}

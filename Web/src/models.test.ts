@@ -1,9 +1,11 @@
+import type { Identification } from "./Identification";
 import { describe, it, expect } from "vitest";
 import {
   batchLabel,
   controls,
   uuid,
   groupCardCaptures,
+  presentCardPair,
   type OriginalImage,
   type Inspection,
 } from "./models";
@@ -62,4 +64,64 @@ it("keeps missing duplex sides in their sequence slots", () => {
     [2, undefined, 4],
     [3, undefined, 6],
   ]);
+});
+
+const sideIdentity = (sequence: number, state: Identification["state"]) =>
+  ({
+    request: { sequence },
+    state,
+    evidence: {
+      candidates:
+        state === "reviewRequired" || state === "confirmed"
+          ? [{ id: "card" }]
+          : [],
+    },
+  }) as unknown as Identification;
+
+it.each([1, 2])(
+  "shows the recognized front in either capture direction (%i)",
+  (front) => {
+    const images = [1, 2].map((sequence) => ({ sequence }) as OriginalImage);
+    const pair = groupCardCaptures(images)[0];
+    const result = presentCardPair(pair, [
+      sideIdentity(1, front === 1 ? "reviewRequired" : "noMatch"),
+      sideIdentity(2, front === 2 ? "reviewRequired" : "noMatch"),
+    ]);
+    expect(
+      result.sides.map((side) => [side.label, side.image?.sequence]),
+    ).toEqual([
+      ["Front", front],
+      ["Back", 3 - front],
+    ]);
+    expect(result.identity?.request.sequence).toBe(front);
+    expect(images.map((image) => image.sequence)).toEqual([1, 2]);
+  },
+);
+
+it("does not guess sides for ambiguous, unmatched, rejected or incomplete pairs", () => {
+  const pair = groupCardCaptures(
+    [1, 2].map((sequence) => ({ sequence }) as OriginalImage),
+  )[0];
+  for (const state of [
+    "reviewRequired",
+    "noMatch",
+    "rejected",
+    "processing",
+  ] as const) {
+    const result = presentCardPair(pair, [
+      sideIdentity(1, state),
+      sideIdentity(2, state),
+    ]);
+    expect(result.sides.map((side) => side.label)).toEqual([
+      "Side 1",
+      "Side 2",
+    ]);
+    if (state === "reviewRequired")
+      expect(result.warning).toContain("Both sides");
+  }
+  expect(
+    presentCardPair({ number: 1, second: pair.second }, [
+      sideIdentity(2, "reviewRequired"),
+    ]).sides.map((side) => side.label),
+  ).toEqual(["Side 1", "Side 2"]);
 });

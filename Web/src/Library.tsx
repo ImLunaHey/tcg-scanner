@@ -22,6 +22,7 @@ import { imageBlob, saveBlob, saveJSON, type Api } from "./api";
 import {
   batchLabel,
   groupCardCaptures,
+  presentCardPair,
   captureLabel,
   dateLabel,
   isTerminal,
@@ -272,7 +273,6 @@ export function BatchDetail({ id }: { id: string }) {
   const record = batch.data;
   const finished = isTerminal(record.state);
   const grouped = record.request.duplex && record.request.prepareCards === true;
-  const ricohOrder = /fi[- ]?8170/i.test(record.device.name);
   function tile(image: OriginalImage, edit?: EditedImage, side?: string) {
     const prepared = !edit
       ? record.processedImages
@@ -493,7 +493,7 @@ export function BatchDetail({ id }: { id: string }) {
       ))}
       <p className="library-note">
         {grouped
-          ? "Each card groups two consecutive captures. Front/back labels use the observed fi-8170 feed order; check correspondence before exporting. Originals remain unchanged."
+          ? "Each card groups two consecutive captures. Front/back labels follow card-recognition evidence; uncertain sides keep numbered labels. Check correspondence before exporting. Originals remain unchanged."
           : "Original captures are kept exactly as delivered. Side labels remain unassigned until front/back pairing is validated."}
       </p>
       {!finished && (
@@ -504,23 +504,11 @@ export function BatchDetail({ id }: { id: string }) {
       {grouped ? (
         <div className="card-pair-list">
           {groupCardCaptures(record.images).map((pair) => {
-            const sequences = [pair.second?.sequence, pair.first?.sequence];
-            const identity = sequences
-              .map((sequence) =>
-                record.cardIdentifications?.find(
-                  (value) => value.request.sequence === sequence,
-                ),
-              )
-              .find(Boolean);
-            const sides = ricohOrder
-              ? [
-                  { image: pair.second, label: "Front" },
-                  { image: pair.first, label: "Back" },
-                ]
-              : [
-                  { image: pair.first, label: "Side 1" },
-                  { image: pair.second, label: "Side 2" },
-                ];
+            const {
+              identity,
+              sides,
+              warning: sideWarning,
+            } = presentCardPair(pair, record.cardIdentifications);
             const views = sides.map((side) => {
               const prepared = record.processedImages
                 ?.filter(
@@ -542,7 +530,10 @@ export function BatchDetail({ id }: { id: string }) {
                 editID: view.prepared?.request.id,
                 label: `${captureLabel(pair.number)} · ${view.label}`,
               }));
-            const front = sides[0].image;
+            const reviewImage =
+              sides.find(
+                (side) => side.image?.sequence === identity?.request.sequence,
+              )?.image || sides[0].image;
             const warnings = [
               ...new Set(
                 views.flatMap(
@@ -601,6 +592,7 @@ export function BatchDetail({ id }: { id: string }) {
                     identification={identity}
                     pending={!finished && record.request.prepareCards === true}
                   />
+                  {sideWarning && <p className="small muted">{sideWarning}</p>}
                   {record.state !== "completed" && (
                     <p className="small muted">
                       {finished
@@ -611,11 +603,11 @@ export function BatchDetail({ id }: { id: string }) {
                     </p>
                   )}
                   <div className="paired-actions">
-                    {front && (
+                    {reviewImage && (
                       <button
                         className="text-button"
                         disabled={!finished}
-                        onClick={() => setIdentifying(front.sequence)}
+                        onClick={() => setIdentifying(reviewImage.sequence)}
                       >
                         {identity ? "Review identity" : "Identify card"}
                       </button>
@@ -648,6 +640,13 @@ export function BatchDetail({ id }: { id: string }) {
                       .map((view) => (
                         <div className="paired-actions" key={view.label}>
                           <span className="small">{view.label}</span>
+                          <button
+                            className="text-button"
+                            disabled={!finished}
+                            onClick={() => setIdentifying(view.image!.sequence)}
+                          >
+                            Identify / review
+                          </button>
                           <button
                             className="text-button"
                             disabled={!finished}
