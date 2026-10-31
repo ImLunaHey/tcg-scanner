@@ -59,7 +59,7 @@ struct GatewayPath {
               let url = URLComponents(string: target), url.fragment == nil, url.host == nil else {
             throw GatewayError(400, "invalidParams", "Invalid request target.")
         }
-        let raw = url.percentEncodedPath.split(separator: "/", omittingEmptySubsequences: false).dropFirst()
+        let raw = url.percentEncodedPath == "/" ? [] : Array(url.percentEncodedPath.split(separator: "/", omittingEmptySubsequences: false).dropFirst())
         components = try raw.map {
             guard let value = String($0).removingPercentEncoding, !value.isEmpty,
                   value != ".", value != "..", !value.contains("/"), !value.contains("\\"),

@@ -1,5 +1,6 @@
 import Foundation
 import ScannerAPI
+import ScannerHTTPSupport
 
 extension HTTPMain {
     func writeLaunchAgent(to path: String) throws {
@@ -12,6 +13,10 @@ extension HTTPMain {
         var arguments = [executable, "--socket", socket, "--host", host, "--port", String(port), "--token-file", tokenFile]
         if allowRemote { arguments.append("--allow-remote") }
         if let publicOrigin { arguments += ["--public-origin", publicOrigin] }
+        if let webRoot {
+            _ = try WebAssets(directory: webRoot)
+            arguments += ["--web-root", webRoot]
+        }
         let plist: [String: Any] = ["Label": "local.scanner.http", "ProgramArguments": arguments,
             "RunAtLoad": true, "KeepAlive": true, "ThrottleInterval": 10, "ExitTimeOut": 60,
             "ProcessType": "Background", "LimitLoadToSessionType": "Aqua", "Umask": 63,

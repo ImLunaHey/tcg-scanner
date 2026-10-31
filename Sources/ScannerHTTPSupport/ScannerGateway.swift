@@ -10,13 +10,16 @@ public struct ScannerGateway: HTTPResponder {
     let service: ServiceClient
     let access: GatewayAccess
     let configuration: GatewayConfiguration
-    public init(socketPath: String = SocketLocation.defaultPath, token: String, configuration: GatewayConfiguration) throws {
+    let webAssets: WebAssets?
+    public init(socketPath: String = SocketLocation.defaultPath, token: String, configuration: GatewayConfiguration, webAssets: WebAssets? = nil) throws {
         self.service = ServiceClient(client: UnixClient(path: socketPath))
         self.access = try GatewayAccess(token: token)
         self.configuration = configuration
+        self.webAssets = webAssets
     }
     public func respond(to request: Request, context: BasicRequestContext) async throws -> Response {
         var response: Response
+        var isWebAsset = false
         do {
             guard let authority = request.head.authority, configuration.authorities.contains(authority.lowercased()) else {
                 throw GatewayError(403, "accessDenied", "Unrecognized HTTP authority.")
@@ -27,8 +30,11 @@ public struct ScannerGateway: HTTPResponder {
             guard request.headers[.cookie] == nil, request.headers[values: .authorization].count <= 1 else {
                 throw GatewayError(400, "invalidParams", "Use one Bearer authorization header; cookies are not accepted.")
             }
-            let principal = try await access.authenticate(request.headers[.authorization])
             let path = try GatewayPath(request.head.path ?? "")
+            if let asset = try webAssets?.response(for: request, path: path) {
+                response = asset; isWebAsset = true
+            } else {
+            let principal = try await access.authenticate(request.headers[.authorization])
             let kind = path.components == ["api", "v1", "events"] ? "events" : (path.components.starts(with: ["api", "v1", "images"]) ? "image" : "request")
             try await access.acquire(kind)
             let lease = RequestLease(access: access, kind: kind)
@@ -45,11 +51,12 @@ public struct ScannerGateway: HTTPResponder {
             } catch {
                 await lease.finish(); throw error
             }
+            }
         } catch { response = errorResponse(error) }
         response.headers[.cacheControl] = "no-store"
         response.headers[HTTPField.Name("X-Content-Type-Options")!] = "nosniff"
         response.headers[HTTPField.Name("Referrer-Policy")!] = "no-referrer"
-        response.headers[HTTPField.Name("Content-Security-Policy")!] = "default-src 'none'; frame-ancestors 'none'"
+        response.headers[HTTPField.Name("Content-Security-Policy")!] = isWebAsset ? WebAssets.contentPolicy : "default-src 'none'; frame-ancestors 'none'"
         return response
     }
     func collect(_ request: Request) async throws -> [String: JSONValue] {
