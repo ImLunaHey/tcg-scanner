@@ -52,18 +52,20 @@ function Login() {
       <main className="login-form-area">
         <form
           className="login-form"
+          name="scanner-login"
+          autoComplete="on"
           onSubmit={async (e) => {
             e.preventDefault();
             if (busy) return;
             setBusy(true);
             setError(undefined);
             const credential = key;
-            setKey("");
             try {
               await connect(credential);
             } catch (error) {
               setError(error);
             } finally {
+              setKey("");
               setBusy(false);
             }
           }}
@@ -77,11 +79,18 @@ function Login() {
             Enter your access key to open this workspace. Your session stays in
             this browser tab for up to one hour.
           </p>
+          <input
+            type="hidden"
+            name="username"
+            autoComplete="username"
+            value="scanner"
+          />
           <label className="field">
             <span>Access key</span>
             <input
               type="password"
-              autoComplete="off"
+              name="password"
+              autoComplete="current-password"
               autoCapitalize="none"
               spellCheck={false}
               required
