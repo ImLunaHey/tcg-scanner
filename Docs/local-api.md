@@ -54,7 +54,7 @@ vendor enum/label discrepancies remain explicit in reports.
   "requestID": "b627ee02-f78a-4dbe-b2d0-3f3b33cfa8a0",
   "dpi": 300,
   "duplex": false,
-  "format": "tiff"
+  "format": "png"
 }
 ```
 

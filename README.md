@@ -71,9 +71,9 @@ The default storage root is `~/Scans`. All output directories must stay inside t
 service's configured `--storage-root`.
 
 ```sh
-.build/debug/scanner scan --output ~/Scans/test-scans --dpi 300 --format tiff
+.build/debug/scanner scan --output ~/Scans/test-scans --dpi 300 --format png
 # Reload the sheet before another scan:
-.build/debug/scanner scan --duplex --dpi 300 --format tiff --no-wait --json
+.build/debug/scanner scan --duplex --dpi 300 --format png --no-wait --json
 .build/debug/scanner jobs status JOB_UUID --json
 .build/debug/scanner jobs cancel JOB_UUID --json
 .build/debug/scanner jobs list --json
@@ -87,6 +87,8 @@ Ctrl-C in the waiting CLI disconnects the client; use `jobs cancel` to cancel th
 service-owned job.
 
 Pass `--request-id UUID` to deduplicate retries, including after service restart.
+For a pre-PNG-default request that omitted format, pass `--format tiff` when retrying
+that same request ID after upgrading.
 The same UUID with different inputs is rejected. A new UUID means a new physical
 scan; never generate one merely because a response was lost.
 
@@ -108,7 +110,7 @@ or UUID. Profiles currently cover the basic A4 workflow, not card processing.
 Save per-device defaults without feeding paper or writing hardware properties:
 
 ```sh
-.build/debug/scanner configure --dpi 300 --duplex --format tiff --json
+.build/debug/scanner configure --dpi 300 --duplex --format png --json
 # Only after paper is ready:
 .build/debug/scanner scan --use-device-settings --no-wait --json
 ```
@@ -124,15 +126,17 @@ Retrieve existing scans without feeding:
 .build/debug/scanner batches show JOB_UUID --json
 .build/debug/scanner batches manifest JOB_UUID > manifest.json
 .build/debug/scanner images metadata JOB_UUID 1 --json
-.build/debug/scanner images download JOB_UUID 1 --output ./original.tiff --json
+.build/debug/scanner images download JOB_UUID 1 --output ./original.png --json
 ```
 
 Downloads verify chunk and complete-file SHA-256 values, use private file permissions,
 and refuse to overwrite an existing destination. Image access uses service-owned
-job IDs and sequence numbers. The CLI export destination is local to the CLI.
+job IDs and sequence numbers. The CLI export destination is local to the CLI. Use the original image’s extension:
+this command downloads unchanged bytes and does not convert historical TIFFs to PNG.
 
 Current scan scope: A4, RGB, 8 bits per channel, driver-supported 150–600 DPI,
-TIFF or PNG. **Only 300-DPI TIFF simplex and duplex have been physically tested.**
+PNG by default, with TIFF available explicitly via `--format tiff`. PNG is lossless
+and suitable for browser workflows. **Only 300-DPI TIFF simplex and duplex have been physically tested.**
 The PNG path is fixture-tested. Scans require ADF/A4/geometry/bit-depth controls
 plus cropping and blank-page-skip controls. Unsupported settings fail before
 feeding. Multifeed, paper thickness and transport safety settings are never written.
@@ -146,8 +150,8 @@ Each job creates a unique batch directory:
 scan-UUID/
   manifest.json
   incoming/                  # untouched driver files, including partial/invalid files
-  originals/page-000001.tiff  # verified byte-identical copies
-  originals/page-000002.tiff
+  originals/page-000001.png  # verified byte-identical copies
+  originals/page-000002.png
 ```
 
 Manifests update atomically after each image. GRDB/SQLite stores jobs, original

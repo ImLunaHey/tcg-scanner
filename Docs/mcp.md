@@ -88,7 +88,7 @@ status remain available. Discovery and diagnostics never initiate a scan.
    it does not immediately write hardware properties. Busy devices reject changes.
 4. Call `scanner_start_scan` with one new `requestID` UUID for the intended scan.
    Pass either a profile UUID or `useDeviceSettings: true`, or explicit scan settings.
-   If omitted, explicit settings default to 300 DPI, simplex, TIFF.
+   If omitted, explicit settings default to 300 DPI, simplex, PNG.
 5. Poll `scanner_get_job` with `id`, or use events (`after`, `waitSeconds` up to 20).
    Creation is asynchronous. Check the terminal state and errors, including when
    some images were retained from a failed or cancelled job.
@@ -105,7 +105,9 @@ Example tool arguments (replace placeholders with real IDs):
 }
 ```
 
-Reuse the **same requestID and same arguments** after a lost response. Changing
+Reuse the **same requestID and same arguments** after a lost response. When
+retrying a request originally submitted before the PNG-default change with no
+format specified, pass `format: "tiff"` to preserve the original effective input. Changing
 inputs with that ID returns conflict; a new ID requests another physical scan.
 Create-profile likewise requires an explicit `id` UUID for safe retries. Profile
 updates accept a UUID or unique name; use its stable UUID when renaming.
@@ -132,11 +134,12 @@ and follow `nextOffset` until `eof`. Verify the concatenated bytes against
 `metadata.image.sha256` and `metadata.image.bytes`. No filesystem path is accepted.
 The manifest preserves driver callback order and marks side identity unknown.
 
-For a local file export, the CLI performs the same verified transfer:
+For a local file export, the CLI performs the same verified transfer. Use the
+original format’s extension; downloading does not convert historical TIFFs to PNG:
 
 ```sh
 "$HOME/Library/Application Support/Scanner/bin/scanner" \
-  images download JOB_UUID 1 --output ./original.tiff --json
+  images download JOB_UUID 1 --output ./original.png --json
 ```
 
 ## Access and limits

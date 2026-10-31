@@ -97,9 +97,23 @@ jobs and no pause. The MCP process exited cleanly after the client closed stdin.
 Evidence: `Diagnostics/milestone4/physical-duplex/` (ignored), including the recorded
 request UUID, job, manifest, settings, retrieved TIFFs and preview copies. Originals
 and incoming driver files remain in the scan directory. Preview conversion did not
-modify original TIFFs. Operator feedback about feeding or sheet damage for this
-specific test has not yet been recorded.
+modify original TIFFs. The operator subsequently confirmed the sheet looked fine,
+with no feeding or damage problem reported.
 
 Physical cancellation, unplugging during feeding, sleep/wake during feeding and
 extended unattended operation remain unverified. Front/back inference, image
 processing, remote HTTP, native UI and web UI belong to later milestones.
+
+## PNG default preference
+
+Following the successful paper test, the operator requested PNG for the selling
+workflow. New Swift request/settings/profile values, CLI scan/configure/profile
+creation and MCP scan defaults now select PNG. Explicit TIFF remains supported;
+prior jobs and original TIFFs retain their recorded format and bytes. The installed
+General documents profile was updated to PNG without changing DPI or duplex.
+
+TIFF was used for the initial lossless hardware validation. PNG is also lossless.
+[eBay currently accepts both formats](https://www.ebay.com/help/selling/listings/pictures-videos/picture-requirements?id=4148);
+PNG is the chosen default for browser use. PNG decoding/storage already has mock
+coverage, but a physical PNG scan still requires a newly loaded sheet and operator
+confirmation. The previous TIFF scan does not establish driver PNG output support.

@@ -15,7 +15,7 @@ public struct ScanRequest: Codable, Sendable, Equatable {
     public var duplex: Bool
     public var format: OriginalFormat
     public init(requestID: UUID = UUID(), deviceID: String? = nil, outputDirectory: String? = nil,
-                dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .tiff, profileID: UUID? = nil, useDeviceSettings: Bool? = nil) {
+                dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .png, profileID: UUID? = nil, useDeviceSettings: Bool? = nil) {
         self.requestID = requestID; self.deviceID = deviceID; self.outputDirectory = outputDirectory
         self.dpi = dpi; self.duplex = duplex; self.format = format; self.profileID = profileID; self.useDeviceSettings = useDeviceSettings
     }

@@ -13,7 +13,7 @@ struct Configure: ParsableCommand {
     @OptionGroup var options: ClientOptions
     @Option var dpi = 300
     @Flag var duplex = false
-    @Option var format = "tiff"
+    @Option var format = "png"
     func validate() throws {
         guard (150...600).contains(dpi), OriginalFormat(rawValue: format) != nil else { throw ValidationError("Use DPI 150–600 and format tiff/png.") }
     }

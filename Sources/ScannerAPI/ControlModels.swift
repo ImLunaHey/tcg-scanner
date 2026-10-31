@@ -5,7 +5,7 @@ public struct ScanSettings: Codable, Sendable, Equatable {
     public var dpi: Int
     public var duplex: Bool
     public var format: OriginalFormat
-    public init(dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .tiff) {
+    public init(dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .png) {
         self.dpi = dpi; self.duplex = duplex; self.format = format
     }
     public func validate() throws { try ScanRequest(dpi: dpi, duplex: duplex, format: format).validate() }

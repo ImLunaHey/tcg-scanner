@@ -15,7 +15,7 @@ struct Profiles: ParsableCommand {
         @Option var id: String?
         @Option var dpi = 300
         @Flag var duplex = false
-        @Option var format = "tiff"
+        @Option var format = "png"
         func validate() throws {
             if let id, UUID(uuidString: id) == nil { throw ValidationError("id must be a UUID.") }
             guard OriginalFormat(rawValue: format) != nil else { throw ValidationError("Format must be tiff or png.") }
@@ -40,7 +40,7 @@ extension Profiles {
         @Option(help: "Stable UUID for retrying profile creation.") var id: String?
         @Option var dpi = 300
         @Flag var duplex = false
-        @Option var format = "tiff"
+        @Option var format = "png"
         func validate() throws {
             if let id, UUID(uuidString: id) == nil { throw ValidationError("id must be a UUID.") }
             guard OriginalFormat(rawValue: format) != nil else { throw ValidationError("Format must be tiff or png.") }

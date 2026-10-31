@@ -8,7 +8,7 @@ struct Scan: ParsableCommand {
     @Option(help: "Output directory inside the service's storage root. Default: storage root.") var output: String?
     @Option(help: "Resolution supported by the driver (150–600 DPI).") var dpi = 300
     @Flag(help: "Scan both sides of each sheet.") var duplex = false
-    @Option(help: "Original format: tiff or png.") var format = "tiff"
+    @Option(help: "Original format: tiff or png.") var format = "png"
     @Option(help: "Request UUID to reuse when retrying a start request, including after a restart.") var requestID: String?
     @Option(help: "Saved profile UUID or unique name; its DPI, duplex and format replace those scan options.") var profile: String?
     @Flag(help: "Use validated service defaults for this device instead of DPI/duplex/format options.") var useDeviceSettings = false
