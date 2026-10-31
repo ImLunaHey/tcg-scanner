@@ -225,3 +225,38 @@ review dialogs and prepared front downloads against checksums, without changing
 job history. Desktop and phone layouts passed with no page errors or overflow.
 Private requests, records, physical confirmation, initial estimates and validation
 are retained under ignored `Diagnostics/normal-finish-test/`.
+
+### Dense set-code lettering correction — v2
+
+B-014 exposed a weakness in whole-box median brightness: dense white `MEG EN`
+lettering occupied enough of a black box to put six normal cards into the
+uncertain range. Version `modern-set-code-polarity-v2` additionally measures broad,
+uninterrupted dark/light background rectangles. It excludes the side border,
+requires patches wider than narrow glyph stems and taller than thin outlines,
+and requires one polarity to dominate. Blank patches, competing backgrounds,
+contradiction with the original contrast measurement and ambiguous catalogue
+variants still cannot produce a verified finish.
+
+The bounded Swift routine runs in-process and adds optional
+`darkBackgroundAreaFraction` and `lightBackgroundAreaFraction` diagnostics.
+All fifteen saved B-014 fronts now suggest normal, without using their batch ID,
+card name or supplied finish labels as inference inputs. Existing B-009/B-013
+estimates, including the physically checked reverse-holo Larvesta and holo
+Vileplume/Indeedee, are preserved in fixture checks. B-014 was used to develop this
+correction and is now a regression/calibration sample, not independent validation
+of v2. Its original v1 predictions remain in the earlier diagnostic snapshot.
+
+The full Swift suite passed 98 tests; a separate fixture-enabled run covered
+B-009, B-013 and B-014, plus synthetic dense lettering, inverse polarity, thin
+outlines, blank regions, competing patches and contradictory evidence. All
+physical labels remain separate from automated estimates. No new scan is needed
+for this correction.
+
+The signed service and CLI/MCP binaries were deployed, and B-014 was refreshed
+through the existing finish-estimate API. All fifteen live results are v2 normal
+estimates. The refresh preserved every non-estimate field and all 60 original and
+prepared PNG checksums. A production HTTPS browser check verified all fifteen
+`Non-holo (estimated)` summaries, unchanged manual review, unchanged job data and
+phone layout. New scans use v2 automatically. The earlier saved batches were used
+for read-only fixture validation and were not rewritten. Private before/after
+records and verification are in ignored `Diagnostics/finish-estimator-v2/`.
