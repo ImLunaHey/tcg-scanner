@@ -21,8 +21,9 @@ Application Support. The previous executable and plist are backed up before the
 gateway restarts. ScannerService, the native app and active scan jobs are not
 restarted. Keep the old asset directories for rollback; they contain no scans.
 
-For this installation, visit **http://100.117.220.119:8170/** while connected to
-Tailscale. Resolve the current address with `tailscale ip -4` if it changes.
+For this installation, visit **https://pulsar.tail3275e2.ts.net:8443/** while
+connected to Tailscale. The scanner gateway binds to `127.0.0.1:8170`;
+Tailscale Serve supplies HTTPS on port 8443. Port 443 already serves another app.
 Use the root URL for the login page, rather than an `/api/v1/` endpoint.
 
 On the scanner Mac, copy the existing private access key without printing it:
@@ -32,17 +33,41 @@ pbcopy < "$HOME/Library/Application Support/Scanner/http/token"
 ```
 
 Paste it into the login form. Signing in exchanges it for a revocable one-hour
-Bearer session; the root key is cleared from the form and never stored in browser
-storage. Only the session token/expiry are stored in this tab's sessionStorage.
+Bearer session; the root key is cleared from the form and never stored by the
+application in browser storage. The HTTPS login form supports password-manager
+saving with username `scanner` and the access key as its password. Your password
+manager controls whether it offers to save or autofill the credential. Only the session token/expiry are stored in this tab's sessionStorage.
 Sign out revokes that session and clears the query cache. Restarting the HTTP
 gateway invalidates sessions, so sign in again after gateway updates. Credentials
 are never placed in URLs, cookies, asset bundles or server logs.
 
-The configured HTTP address is carried inside the encrypted Tailscale connection.
-Do not expose the port publicly. For browser HTTPS, the existing gateway also
-supports Tailscale Serve with an exact configured HTTPS public origin; see
-[HTTP deployment](http-api.md). Tailscale Serve is not required or enabled by
-the web installer.
+The configured HTTPS address is private to the tailnet, using
+[Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve); Funnel is
+not enabled for this scanner endpoint. The gateway's exact `--public-origin` is
+`https://pulsar.tail3275e2.ts.net:8443`, so authenticated browser requests pass its
+existing Host/Origin checks. The older HTTP address is no longer the entry point.
+
+HTTPS and password-manager support do not change session lifetime: sessions still
+expire after an hour, disappear when the tab session is discarded, and are
+invalidated by gateway restart. Use the same access key at the HTTPS address.
+The web installer preserves the configured bind address and HTTPS origin.
+
+The Serve route was added with:
+
+```sh
+/Applications/Tailscale.app/Contents/MacOS/Tailscale serve --bg --https=8443 --yes http://127.0.0.1:8170
+```
+
+To disable only this route, use `serve --https=8443 off`; do not reset the entire
+Serve configuration. The existing port-443 route remains unchanged. Prior gateway
+and Serve configurations are backed up under
+`~/Library/Application Support/Scanner/backups/https-20261031T212214Z/`.
+
+Validation used the normal browser/OS certificate trust store, without bypassing
+TLS verification: login, authenticated API access, paired previews, cropped PNG
+download checksum, mobile layout and logout passed. The API still rejects
+unauthenticated requests. Password-manager field metadata was verified; a save
+prompt in the user's particular browser has not been tested.
 
 ## Available workflow
 

@@ -215,3 +215,11 @@ physical scan.
 
 Scan requests also accept optional `prepareCards: true` to prepare captured images
 during processing. Defaults to false; feeder configuration is unaffected.
+
+## This installation's HTTPS entry point
+
+The current dashboard/API origin is `https://pulsar.tail3275e2.ts.net:8443`.
+Tailscale Serve proxies it privately to the gateway at `127.0.0.1:8170`, with
+that exact HTTPS value configured as `--public-origin`. Authentication remains
+required and forwarded headers do not grant access. See [deployment and rollback
+notes](web-app.md). The installation defaults above still apply to new setups.
