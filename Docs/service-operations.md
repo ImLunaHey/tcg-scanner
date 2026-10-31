@@ -102,10 +102,12 @@ not reconstruct a deleted database by crawling arbitrary folders.
   logged-in user session if macOS requests it. This machine did not require a new
   prompt for the tested LaunchAgent. Do not assume identical behavior on another Mac.
 
-## Remaining physical paper tests
+## Physical paper validation
 
-These steps are deliberately manual. Automated tests use mocks and never feed the
-fi-8170. Obtain confirmation that ordinary expendable A4 paper is loaded before
+The single-sheet duplex test below passed through the LaunchAgent on 2026-10-31;
+see [the recorded result](milestone-3-validation.md). Physical cancellation, unplug
+and sleep/wake tests remain outstanding. These steps are deliberately manual.
+Automated tests use mocks and never feed the fi-8170. Obtain confirmation that ordinary expendable A4 paper is loaded before
 starting a physical scan; do not use cards for these checks.
 
 1. With the LaunchAgent running, load one FRONT/BACK-marked A4 sheet. Run:

@@ -60,8 +60,8 @@ Observed:
 - Events preserved cursor order across these restarts: service start, device
   connection, profile update, graceful stop, subsequent starts.
 - SQLite `PRAGMA integrity_check` returned `ok`; database and socket modes were 0600.
-  The live job table remained empty throughout these checks: no physical scan was
-  initiated during this milestone.
+  The live job table remained empty during these initial restart checks. A later
+  explicitly confirmed physical scan is recorded below.
 
 Ignored evidence is retained in `Diagnostics/milestone3/`: launchd device/capability
 reports, service status, profile before/after restart, events and second-owner
@@ -70,12 +70,45 @@ Library directories. Existing milestone-2 originals remain untouched. The final 
 running with automatic login startup enabled, fi-8170 discovered, no active job,
 zero queued jobs and no pause.
 
+## Physical duplex scan through LaunchAgent
+
+After the user confirmed that the marked A4 sheet was loaded, the installed CLI
+submitted one duplex, 300-DPI TIFF job to the running LaunchAgent. No GUI was used.
+
+- Job: `8D93D5FD-C0A7-4379-B5EC-B8EB16291611`.
+- Started: `2026-10-31T15:45:19Z`; completed: `2026-10-31T15:45:26Z`.
+- State: `completed`; errors: none; scanner session closure confirmed.
+- Output: `~/Scans/validation/scan-8d93d5fd-c0a7-4379-b5ec-b8eb16291611/`.
+- Two original TIFFs, each 2480 × 3508 pixels and one image per file.
+- Visual inspection confirmed handwritten BACK in `page-000001.tiff` and FRONT in
+  `page-000002.tiff`. This observation applies to this loading orientation; side
+  metadata remains unknown and no general front/back pairing rule is inferred.
+
+| Original | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `page-000001.tiff` | 747478 | `c35998f39e44bda575c943fc3a618b6d784cf75b94ad9b502b73f01669a39b05` |
+| `page-000002.tiff` | 695478 | `63dfceb6e654f79b8a0db460d06e7be817fb228d3dfa0f6060a04ee6886e0928` |
+
+Independent checksums match the manifest and retained incoming driver files.
+The manifest, API result and SQLite job record match, with two persisted image
+rows. Events 11–17 record queued, preparing, scanning, each saved image, processing
+and completed. The service returned to idle with no queued jobs.
+
+Before/after settings reports match for all enumerated common settings and vendor
+values. Cropping returned to 2, blank-page skipping to 3, and multifeed detection
+remained 1. No driver error was reported; physical feeding condition or sheet damage
+has not independently been confirmed by the user for this particular run.
+
+Evidence: `Diagnostics/milestone3/physical-duplex/` (ignored); originals remain in
+`~/Scans/validation/`. No application processing or rotation was applied.
+
 ## Explicit limits
 
 The earlier milestone verified real simplex/duplex 300-DPI TIFF A4 scans through
-the foreground service. This milestone verifies **launchd discovery and inspection**;
-physical feeding, cancellation, disconnection and sleep/wake in that process context
-have not yet been tested. Mock tests do not establish those hardware behaviors.
+the foreground service. This milestone additionally verifies **launchd discovery,
+inspection and a completed duplex paper scan with persistent metadata**. Physical
+cancellation, disconnection and sleep/wake in that process context remain untested.
+Mock tests do not establish those hardware behaviors.
 See [service operations](service-operations.md) for exact supervised paper tests.
 
 Crash recovery was tested with persisted interrupted-job fixtures and newer
