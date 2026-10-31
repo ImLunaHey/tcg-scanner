@@ -136,8 +136,8 @@ this command downloads unchanged bytes and does not convert historical TIFFs to 
 
 Current scan scope: A4, RGB, 8 bits per channel, driver-supported 150–600 DPI,
 PNG by default, with TIFF available explicitly via `--format tiff`. PNG is lossless
-and suitable for browser workflows. **Only 300-DPI TIFF simplex and duplex have been physically tested.**
-The PNG path is fixture-tested. Scans require ADF/A4/geometry/bit-depth controls
+and suitable for browser workflows. **Physical tests passed for 300-DPI TIFF simplex
+and duplex, and 300-DPI PNG duplex.** Other modes remain hardware-unverified. Scans require ADF/A4/geometry/bit-depth controls
 plus cropping and blank-page-skip controls. Unsupported settings fail before
 feeding. Multifeed, paper thickness and transport safety settings are never written.
 Temporary changes are restored after the scan stops.

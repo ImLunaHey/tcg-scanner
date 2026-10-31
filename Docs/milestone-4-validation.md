@@ -114,6 +114,37 @@ General documents profile was updated to PNG without changing DPI or duplex.
 
 TIFF was used for the initial lossless hardware validation. PNG is also lossless.
 [eBay currently accepts both formats](https://www.ebay.com/help/selling/listings/pictures-videos/picture-requirements?id=4148);
-PNG is the chosen default for browser use. PNG decoding/storage already has mock
-coverage, but a physical PNG scan still requires a newly loaded sheet and operator
-confirmation. The previous TIFF scan does not establish driver PNG output support.
+PNG is the chosen default for browser use. PNG decoding/storage has mock coverage;
+the subsequent supervised physical test below verifies actual driver PNG output.
+
+## Physical PNG duplex test
+
+After the operator reloaded the marked A4 sheet and confirmed readiness, the
+installed MCP server received one scan request with no format argument. This
+exercised the new PNG default through the actual Swift service and ICA driver.
+
+- Job: `C993DDA4-DF86-454B-BC27-63E09E64B984`.
+- Started: `2026-10-31T16:38:17Z`; completed: `2026-10-31T16:38:24Z`.
+- Applied settings: A4, duplex, 300 DPI, RGB, 8 bits per channel, PNG.
+- State: completed; errors: none; scanner session closure confirmed.
+- Output: `~/Scans/validation/scan-c993dda4-df86-454b-bc27-63e09e64b984/`.
+- Two originals, each 2480 × 3508 pixels, ImageIO type `public.png`, PNG file signature.
+- Visual inspection confirmed BACK in sequence 1 and FRONT in sequence 2.
+  Side metadata remains unknown; this does not establish a general pairing rule.
+
+| Sequence | Bytes | Verified SHA-256 |
+| --- | ---: | --- |
+| 1 | 851374 | `47f032f8a38c3a45b46a2b31ae50dde11af0988c0ded8614ff3a6ea800d72b4c` |
+| 2 | 887397 | `22d5c9b0435d0614e224ebe851fc0e83a591407ed7eacaa3c49427cca6c24287` |
+
+Both PNGs were retrieved through MCP in bounded chunks. Chunk and full-file hashes
+passed, and downloaded bytes matched the preserved originals. No TIFF conversion
+was used. Before/after settings matched except observation time; multifeed remained
+unchanged. The service returned to idle, with no queued jobs and no pause. The MCP
+process exited cleanly after stdin closed.
+
+Ignored evidence is retained in `Diagnostics/milestone4/physical-png-duplex/`.
+Original images and incoming driver files remain in the output directory. Physical
+feeding or damage feedback for this particular run has not yet been recorded.
+This verifies PNG duplex at 300 DPI; it does not establish other resolutions,
+PNG simplex, card safety or marketplace upload acceptance for these test images.

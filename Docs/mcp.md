@@ -159,10 +159,10 @@ long polling if immediate controls are needed.
 
 Only DPI, duplex and original format are configurable through these tools.
 Multifeed, paper thickness and transport safety settings cannot be changed.
-Only A4 300-DPI TIFF simplex/duplex have physical scan evidence. PNG and other
+A4 300-DPI TIFF simplex/duplex and PNG duplex have physical scan evidence. Other
 workflow branches have automated fixtures, not equivalent hardware validation.
 
 The compiled MCP executable has passed a complete mock scan/cancel/download
 workflow, read-only checks against the real fi-8170, and a supervised physical
-300-DPI TIFF duplex paper scan initiated and retrieved through MCP. Both marked
+300-DPI duplex paper scans in TIFF and PNG initiated and retrieved through MCP. Both marked
 sides and checksums were verified; see [validation evidence](milestone-4-validation.md).
