@@ -64,7 +64,7 @@ private func router() throws -> DiagnosticRouter { DiagnosticRouter(coordinator:
     try server.start()
     defer { server.stopAccepting(); try? FileManager.default.removeItem(atPath: directory) }
     for method in ["v1.devices", "v1.capabilities", "v1.settings", "v1.diagnostics"] {
-        let response = try await Task.detached { try UnixClient(path: path).call(RPCRequest(method: method)) }.value
+        let response = try await UnixClient(path: path).callAsync(RPCRequest(method: method))
         #expect(response.error == nil)
         #expect(response.result != nil)
     }

@@ -5,6 +5,16 @@ import ScannerAPI
 public struct UnixClient: Sendable {
     public let path: String
     public init(path: String = SocketLocation.defaultPath) { self.path = path }
+    /// For concurrent Swift clients: blocking socket I/O stays off the cooperative executor.
+    /// Socket deadlines still apply if the awaiting task is cancelled.
+    public func callAsync(_ request: RPCRequest) async throws -> RPCResponse {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                do { continuation.resume(returning: try call(request)) }
+                catch { continuation.resume(throwing: error) }
+            }
+        }
+    }
     /// Blocking transport for the headless CLI; never called on a GUI actor.
     public func call(_ request: RPCRequest) throws -> RPCResponse {
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)

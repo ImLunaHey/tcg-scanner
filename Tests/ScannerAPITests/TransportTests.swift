@@ -17,7 +17,7 @@ import ScannerAPI
     #expect(throws: ScannerError.self) { try second.start() }
     let attrs = try FileManager.default.attributesOfItem(atPath: path)
     #expect((attrs[.posixPermissions] as? NSNumber)?.intValue == 0o600)
-    let response = try await Task.detached { try UnixClient(path: path).call(RPCRequest(method: "v1.devices")) }.value
+    let response = try await UnixClient(path: path).callAsync(RPCRequest(method: "v1.devices"))
     #expect(response.result == .object(["ok": .bool(true)]))
 }
 

@@ -24,6 +24,7 @@ let package = Package(
         .testTarget(name: "ScannerAPITests", dependencies: ["ScannerCore", "ScannerServiceSupport", "ScannerTransport", "ScannerAPI"]),
         .testTarget(name: "ScannerCLITests", dependencies: ["ScannerCLI", "ScannerAPI"]),
         .testTarget(name: "ScannerCoreTests", dependencies: ["ScannerCore", "ScannerAPI", "ScannerPersistence"]),
+        .testTarget(name: "ScannerServiceTests", dependencies: ["ScannerCore", "ScannerAPI", "ScannerPersistence", "ScannerTransport", "ScannerServiceSupport"]),
         .testTarget(name: "ScannerPersistenceTests", dependencies: ["ScannerPersistence", "ScannerAPI"])
     ]
 )
