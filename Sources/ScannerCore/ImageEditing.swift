@@ -8,7 +8,7 @@ extension ScannerCoordinator {
     public func editImage(_ request: ImageEditRequest) async throws -> ProcessedImage {
         try request.validate()
         try validateStorage()
-        guard !stopping, editingJobs.count < 2, !editingJobs.contains(request.jobID) else { throw ScannerError("busy", "Another image edit is running; retry shortly.") }
+        guard !stopping, editingJobs.count < 2, !editingJobs.contains(request.jobID), !preparingCardJobs.contains(request.jobID) else { throw ScannerError("busy", "Another image edit is running; retry shortly.") }
         editingJobs.insert(request.jobID)
         defer { editingJobs.remove(request.jobID) }
         var record = try await scanStatus(request.jobID)

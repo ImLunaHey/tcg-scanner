@@ -67,7 +67,7 @@ public enum CardProcessor {
         guard let card = components.max(by: { $0.count < $1.count }) else { throw ScannerError("cardNotFound", "No clear card boundary found against a black background. Original retained.") }
         let w = Double(card.maxX - card.minX + 1), h = Double(card.maxY - card.minY + 1)
         let ratio = min(w, h) / max(w, h)
-        guard (0.60...0.83).contains(ratio), w * h >= Double(width * height) * 0.015 else {
+        guard (0.60...0.83).contains(ratio), w * h >= Double(width * height) * 0.015, w * h < Double(width * height) * 0.85 else {
             throw ScannerError("cardNotFound", "Detected shape does not have a supported card aspect ratio. Use manual cropping; original retained.")
         }
         for other in components where other.count > card.count / 5 {
@@ -99,6 +99,10 @@ public enum CardProcessor {
         let total = votes.reduce(0, +)
         if lines[best] >= 4 && votes[best] >= 20 && votes[best] >= total * 0.8 { return (best, true) }
         // Symmetric Pokémon-back logos do not establish which end is the top.
-        return (0, false)
+        let source = CGImageSourceCreateWithData(data as CFData, nil)
+        let properties = source.flatMap { CGImageSourceCopyPropertiesAtIndex($0, 0, nil) as? [CFString: Any] }
+        let width = properties?[kCGImagePropertyPixelWidth] as? Int ?? 0
+        let height = properties?[kCGImagePropertyPixelHeight] as? Int ?? 0
+        return (width > height ? 1 : 0, false)
     }
 }

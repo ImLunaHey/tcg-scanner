@@ -62,6 +62,11 @@ struct HTTPRecognitionMock: CardRecognizing {
         #expect(manifest.cardIdentifications?.first?.condition == .nearMint)
         #expect(manifest.images.first?.sha256 == job.images.first?.sha256)
         #expect(manifest.state == .completed)
+        let preparePath = "/api/v1/images/\(job.id):1/prepare-card"
+        // A blank mock frame is deliberately rejected, with a client-actionable error.
+        let preparation = try await client.execute(uri: preparePath, method: .post, headers: httpHeaders(), body: buffer(.object(["id": .string(UUID().uuidString)])))
+        #expect(preparation.status.code == 422)
+        #expect(try await client.execute(uri: preparePath, method: .post, headers: httpHeaders(), body: buffer(.object(["id": .string(UUID().uuidString), "path": .string("/etc/passwd")]))).status.code == 400)
     }
     #expect(await backend.captures == 1)
     await coordinator.shutdownScans()

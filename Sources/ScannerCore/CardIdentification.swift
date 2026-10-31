@@ -8,7 +8,7 @@ extension ScannerCoordinator {
         try validateStorage()
         var record = try await scanStatus(request.jobID)
         guard record.state.terminal, scans[record.id] == nil else { throw ScannerError("busy", "Wait until the scan finishes before identifying images.") }
-        guard let image = record.images.first(where: { $0.sequence == request.sequence }) else { throw ScannerError("imageNotFound", "Original image not found.") }
+        guard let original = record.images.first(where: { $0.sequence == request.sequence }) else { throw ScannerError("imageNotFound", "Original image not found.") }
         if let existing = record.cardIdentifications?.first(where: { $0.request.id == request.id }) {
             guard existing.request == request else { throw ScannerError("conflict", "Identification ID already has different inputs.") }
             try BatchFiles.writeManifest(record, root: storageRoot)
@@ -19,8 +19,11 @@ extension ScannerCoordinator {
             throw ScannerError("conflict", "This image already has an identification. Review or reject it before trying again.")
         }
         guard identificationTasks.isEmpty else { throw ScannerError("busy", "Another identification is running; retry when it finishes.") }
+        let prepared = record.processedImages?.last(where: { $0.request.sequence == request.sequence && $0.cardPreparation != nil })
+        let image = prepared?.image ?? original
         guard image.bytes <= 32 * 1024 * 1024 else { throw ScannerError("resourceLimit", "OCR source exceeds 32 MiB.") }
-        let identification = CardIdentification(request: request, sourceSHA256: image.sha256)
+        var identification = CardIdentification(request: request, sourceSHA256: image.sha256)
+        identification.sourceEditID = prepared?.id
         record.cardIdentifications = (record.cardIdentifications ?? []).filter { $0.request.sequence != request.sequence } + [identification]
         try database.save(record)
         do { try BatchFiles.writeManifest(record, root: storageRoot) }

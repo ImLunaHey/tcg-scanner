@@ -18,7 +18,7 @@ final class ScanConfiguration {
             throw ScannerError("unsupportedSetting", "Driver must expose the requested DPI, 8-bit depth, inches and A4.")
         }
         guard !request.duplex || feeder.supportsDuplexScanning else { throw ScannerError("unsupportedSetting", "Duplex is not supported by this driver.") }
-        guard feeder.documentLoaded else { throw ScannerError("feederEmpty", "Load expendable A4 paper before starting a scan.") }
+        guard feeder.documentLoaded else { throw ScannerError("feederEmpty", "Load the intended test media before starting a scan.") }
         guard !feeder.scanInProgress else { throw ScannerError("busy", "Scanner is already scanning.") }
         let snapshot = (feeder.measurementUnit, feeder.documentType, feeder.pixelDataType, feeder.bitDepth,
                         feeder.resolution, feeder.duplexScanningEnabled, feeder.scanArea)

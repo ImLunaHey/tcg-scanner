@@ -11,13 +11,15 @@ public struct ScanRequest: Codable, Sendable, Equatable {
     public var outputDirectory: String?
     public var profileID: UUID?
     public var useDeviceSettings: Bool?
+    public var prepareCards: Bool?
     public var dpi: Int
     public var duplex: Bool
     public var format: OriginalFormat
     public init(requestID: UUID = UUID(), deviceID: String? = nil, outputDirectory: String? = nil,
-                dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .png, profileID: UUID? = nil, useDeviceSettings: Bool? = nil) {
+                dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .png, profileID: UUID? = nil, useDeviceSettings: Bool? = nil, prepareCards: Bool? = nil) {
         self.requestID = requestID; self.deviceID = deviceID; self.outputDirectory = outputDirectory
         self.dpi = dpi; self.duplex = duplex; self.format = format; self.profileID = profileID; self.useDeviceSettings = useDeviceSettings
+        self.prepareCards = prepareCards
     }
     public func validate() throws {
         guard !(profileID != nil && useDeviceSettings == true) else { throw ScannerError("invalidSettings", "Choose either a profile or device defaults.") }
@@ -65,7 +67,7 @@ public struct ScanRecord: Codable, Sendable {
     public var cardIdentifications: [CardIdentification]?
     public var errors: [ScannerError] = []
     public var warnings = ["Images retain driver callback order. Physical front/back identity is not inferred.",
-                           "Original means the driver's delivered file, not raw sensor data. No application image processing is applied."]
+                           "Original means the driver's delivered file, not raw sensor data. No application image processing is applied to originals."]
     public var appliedSettings: [String: JSONValue] = [:]
     public var sessionClosed = false
     public init(device: Device, request: ScanRequest, outputDirectory: String) {

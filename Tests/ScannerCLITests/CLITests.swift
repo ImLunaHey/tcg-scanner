@@ -7,6 +7,9 @@ import ScannerAPI
     let job = UUID().uuidString; let id = UUID().uuidString
     let start = try Scanner.parseAsRoot(["images", "identify", job, "1", "--request-id", id, "--json"]) as! Images.Identify
     #expect(start.requestID == id && start.options.json)
+    #expect(try Scanner.parseAsRoot(["images", "prepare-card", job, "1", "--request-id", id]) is Images.PrepareCard)
+    let scan = try Scanner.parseAsRoot(["scan", "--prepare-cards"]) as! Scan
+    #expect(scan.prepareCards)
     #expect(try Scanner.parseAsRoot(["images", "identification", job, "1"]) is Images.Identification)
     #expect(try Scanner.parseAsRoot(["images", "review", job, "1", "--identification-id", id, "--reject"]) is Images.Review)
     #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["images", "review", job, "1", "--identification-id", id]) }

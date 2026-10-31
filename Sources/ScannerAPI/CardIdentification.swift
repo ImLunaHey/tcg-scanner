@@ -64,6 +64,7 @@ public struct CardIdentification: Codable, Sendable {
     public var schemaVersion = 1
     public var request: IdentificationRequest
     public var sourceSHA256: String
+    public var sourceEditID: UUID?
     public var state: IdentificationState = .processing
     public var createdAt = Date()
     public var completedAt: Date?

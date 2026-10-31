@@ -48,6 +48,9 @@ public struct ScannerClient: Sendable {
         return try await call("v1.settings.set", params: .object(params))
     }
     public func edit(_ request: ImageEditRequest) async throws -> ProcessedImage { try await call("v1.images.edit", params: .wrapping(request)) }
+    public func prepareCard(jobID: UUID, sequence: Int, id: UUID) async throws -> ProcessedImage {
+        try await call("v1.images.prepareCard", params: .object(["jobID": .string(jobID.uuidString), "sequence": .number(Double(sequence)), "id": .string(id.uuidString)]))
+    }
     public func identify(_ request: IdentificationRequest) async throws -> CardIdentification { try await call("v1.images.identify", params: .wrapping(request)) }
     public func review(jobID: UUID, sequence: Int, identificationID: UUID, cardID: String?, finish: CardFinish, condition: CardCondition) async throws -> CardIdentification {
         var params: [String: JSONValue] = ["jobID": .string(jobID.uuidString), "sequence": .number(Double(sequence)),

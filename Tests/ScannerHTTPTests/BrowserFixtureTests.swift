@@ -26,7 +26,7 @@ private actor BrowserMock: ScannerBackend {
                 try await Task.sleep(for: .milliseconds(600))
                 let context = try #require(CGContext(data: nil, width: 600, height: 840, bitsPerComponent: 8, bytesPerRow: 2400,
                     space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue))
-                context.setFillColor(red: sequence == 1 ? 0.82 : 0.25, green: 0.7, blue: 0.65, alpha: 1)
+                context.setFillColor(red: 0, green: 0, blue: 0, alpha: 1)
                 context.fill(CGRect(x: 0, y: 0, width: 600, height: 840))
                 context.setFillColor(red: 0.9, green: 0.94, blue: 0.87, alpha: 1)
                 context.fill(CGRect(x: 70, y: 120, width: 460, height: 600))

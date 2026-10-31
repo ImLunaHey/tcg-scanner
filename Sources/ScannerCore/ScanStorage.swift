@@ -55,6 +55,14 @@ public actor ScanStorage {
         record.state = .processing
         try save()
     }
+    public func addPreparedImage(_ image: ProcessedImage) throws {
+        record.processedImages = (record.processedImages ?? []) + [image]
+        try save()
+    }
+    public func addPreparationWarning(_ warning: String) throws {
+        record.warnings.append(warning)
+        try save()
+    }
     public func markScanning(settings: [String: JSONValue]) throws {
         record.state = .scanning; record.appliedSettings = settings
         try save()

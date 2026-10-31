@@ -17,6 +17,11 @@ extension ScannerGateway {
             if method == .delete { try await access.revoke(principal); return try jsonResponse(.object(["revoked": .bool(true)])) }
         }
         if parts == ["events"], method == .get { return try await events(request, path: path, principal: principal) }
+        if parts.count == 3, parts[0] == "images", parts[2] == "prepare-card", method == .post {
+            try path.only([]); try only(body, ["id"])
+            var params = try imageParameters(parts[1]); params.merge(body) { _, value in value }
+            return try jsonResponse(await service.call("images.prepareCard", params), status: 201)
+        }
         if parts.count == 3, parts[0] == "images", parts[2] == "identification" {
             try path.only([])
             var params = try imageParameters(parts[1])
@@ -67,7 +72,7 @@ extension ScannerGateway {
             try path.only([])
             if parts == ["jobs"], method == .post {
                 rpc = "jobs.create"; status = 202
-                try only(body, ["requestID", "deviceID", "profileID", "useDeviceSettings", "dpi", "duplex", "format"])
+                try only(body, ["requestID", "deviceID", "profileID", "useDeviceSettings", "dpi", "duplex", "format", "prepareCards"])
                 if let key = request.headers[HTTPField.Name("Idempotency-Key")!] {
                     let id = try uuid(key)
                     if let supplied = body["requestID"] {

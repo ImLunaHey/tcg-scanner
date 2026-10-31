@@ -61,7 +61,8 @@ extension ScannerCoordinator {
         }
         do {
             try await store.markProcessing()
-            try await store.finish(errors: outcome.errors, cancelled: outcome.cancelled, sessionClosed: outcome.sessionClosed)
+            if record.request.prepareCards == true, outcome.errors.isEmpty, !outcome.cancelled { await prepareCapturedCards(store) }
+            try await store.finish(errors: outcome.errors, cancelled: outcome.cancelled || Task.isCancelled, sessionClosed: outcome.sessionClosed)
         } catch {
             await store.recordPersistenceFailure(error)
             persistenceError = ScannerError("storage", error: error)

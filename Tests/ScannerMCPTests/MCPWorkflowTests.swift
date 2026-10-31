@@ -72,7 +72,7 @@ private func poll(_ peer: StdioPeer, id: String, terminal: Bool) async throws ->
     _ = try await peer.initialize()
     let tools = try await peer.request("tools/list")
     guard case .object(let object) = tools, case .array(let list) = object["tools"] else { throw ScannerError("test", "Missing tools") }
-    #expect(list.count == 25)
+    #expect(list.count == 26)
     _ = try payload(await peer.tool("scanner_list_devices"))
     _ = try payload(await peer.tool("scanner_get_capabilities"))
     _ = try payload(await peer.tool("scanner_get_settings"))

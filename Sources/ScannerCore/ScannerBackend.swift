@@ -29,6 +29,7 @@ public actor ScannerCoordinator {
     var eventWaiters = 0
     var thumbnailWorkers = 0
     var editingJobs: Set<UUID> = []
+    var preparingCardJobs: Set<UUID> = []
     var identificationTasks: [UUID: Task<Void, Never>] = [:]
     let cardRecognizer: any CardRecognizing
     let database: ScannerDatabase
