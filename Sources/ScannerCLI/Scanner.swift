@@ -4,7 +4,7 @@ import ArgumentParser
 struct Scanner: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "scanner", abstract: "Scanner discovery, diagnostics and basic A4 scanning through ScannerService.",
-        version: "0.2.0", subcommands: [Devices.self, Capabilities.self, Settings.self, DiagnosticsCommand.self, Scan.self, ScanStatus.self, ScanCancel.self])
+        version: "0.3.0", subcommands: [Devices.self, Capabilities.self, Settings.self, DiagnosticsCommand.self, Scan.self, ScanStatus.self, ScanCancel.self, Jobs.self, Events.self, ServiceStatusCommand.self, Profiles.self])
 }
 struct Devices: ParsableCommand {
     static let configuration = CommandConfiguration(abstract: "List local scanners exposed by ImageCaptureCore.")

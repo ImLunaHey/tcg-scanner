@@ -43,3 +43,17 @@ import ScannerAPI
     #expect(throws: ScannerError.self) { try UnixIO.readLine(fds[1], limit: 100, seconds: 0) }
     #expect(throws: ScannerError.self) { try UnixIO.address("/" + String(repeating: "x", count: 104)) }
 }
+
+@Test func hardwareOwnershipIsSeparateFromEndpointOwnership() throws {
+    let directory = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let path = directory.appendingPathComponent("hardware.lock").path
+    do {
+        let owner = try HardwareOwnerLock(path: path)
+        _ = withExtendedLifetime(owner) {
+            #expect(throws: ScannerError.self) { try HardwareOwnerLock(path: path) }
+        }
+    }
+    let newOwner = try HardwareOwnerLock(path: path)
+    withExtendedLifetime(newOwner) {}
+}

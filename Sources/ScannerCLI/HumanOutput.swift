@@ -20,7 +20,18 @@ enum HumanOutput {
             if let report = d.inspection { inspection(report) }
             else { for d in d.devices { device(d) } }
             messages(d.warnings, [])
-        default: break
+        case "jobs.list":
+            let page = try result.decode(JobPage.self)
+            for job in page.jobs { print("\(job.id.uuidString)  \(job.state.rawValue)  \(job.progress.imagesSaved) image(s)") }
+            if page.jobs.isEmpty { print("No jobs.") }
+            if let offset = page.nextOffset { print("More jobs: --offset \(offset)") }
+        case "service.status":
+            let status = try result.decode(ServiceStatus.self)
+            print("Active: \(status.activeJobID?.uuidString ?? "none"); queued: \(status.queuedJobs); paused: \(status.paused); stopping: \(status.stopping)")
+            if let error = status.persistenceError { print("Error: \(error.message)") }
+        default:
+            let encoder = Wire.encoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            print(String(decoding: try encoder.encode(result), as: UTF8.self))
         }
     }
     private static func device(_ d: Device) {

@@ -25,3 +25,13 @@ import ScannerAPI
     #expect(ClientOptions.hasInspectionErrors(.object(["inspection": .object(["errors": .array([.string("failed")])])])))
     #expect(!ClientOptions.hasInspectionErrors(.object(["errors": .array([])])))
 }
+
+@Test func parsesPersistentJobsProfilesAndEvents() throws {
+    #expect(try Scanner.parseAsRoot(["jobs", "list", "--json"]) is Jobs.List)
+    #expect(try Scanner.parseAsRoot(["service-status"]) is ServiceStatusCommand)
+    #expect(try Scanner.parseAsRoot(["events", "--follow", "--after", "12"]) is Events)
+    #expect(try Scanner.parseAsRoot(["profiles", "save", "Documents", "--duplex"]) is Profiles.Save)
+    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["jobs", "list", "--limit", "101"]) }
+    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["events", "--after", "-1"]) }
+    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["scan", "--profile", "invalid"]) }
+}

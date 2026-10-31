@@ -16,6 +16,6 @@ enum LaunchAgent {
             "StandardOutPath": logs.appendingPathComponent("stdout.log").path,
             "StandardErrorPath": logs.appendingPathComponent("service.jsonl").path]
         let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
-        try data.write(to: URL(fileURLWithPath: path), options: [.atomic, .withoutOverwriting])
+        try data.write(to: URL(fileURLWithPath: path), options: .withoutOverwriting)
     }
 }
