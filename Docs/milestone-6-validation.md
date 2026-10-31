@@ -73,14 +73,15 @@ committed.
 The HTTP LaunchAgent configuration's SHA-256 was unchanged across the service/app
 update, preserving the existing authenticated Tailscale listener.
 
-## Remaining physical acceptance check
+## Physical checks after the initial implementation
 
-Milestone 6 is implemented, but a new scan initiated and cancelled from the native
-GUI still needs physical validation. Notification permission/delivery has also
-not been exercised; notification opt-in remains under the user's control.
+A subsequent [SMB storage validation](storage-migration-validation.md) completed a
+new duplex PNG scan from the native GUI, including progress, completion and both
+previews. Cancellation during an active physical scan still needs validation.
+Notification permission/delivery has also not been exercised; notification opt-in remains under the user's control.
 Do not treat the earlier CLI/MCP paper scans as a native GUI hardware test.
 
-For the next supervised check:
+The original supervised-check procedure is retained here for future regression tests:
 
 1. Remove cards. Load one expendable A4 sheet marked FRONT/BACK.
 2. Open Scanner, choose fi-8170, 300 DPI, PNG and Duplex.

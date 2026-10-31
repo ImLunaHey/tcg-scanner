@@ -39,6 +39,10 @@ xcodebuild -project Apps/ScannerMac/ScannerMac.xcodeproj -scheme ScannerMac \
 The Xcode application target and SwiftPM executable use the same SwiftUI library.
 The normal app bundle is `Scanner.app`; its executable is `ScannerMac`.
 
+The configured workflow is scan-only; image files now sit directly inside each
+batch folder. Manual editing remains optional and is not part of scanning. See
+[storage policy](storage.md) for the SMB destination and naming requirements.
+
 ## Workflow
 
 - **Dashboard:** select a scanner and a shared profile or custom settings. DPI
@@ -109,8 +113,9 @@ bounded background task, and source SHA-256 is verified before rendering.
 The result is a `ProcessedImage` containing the request, timestamp, source digest
 and generated image metadata. A nullable `processedImages` array is added to
 `ScanRecord`/batch manifests, retaining compatibility with existing records.
-Files are named `processed/<edit-uuid>.png`, with a JSON recovery sidecar. Files
-are created exclusively, synced, recorded in SQLite, then the batch manifest is
+Files are named `edit-<edit-uuid>.png` in the batch folder, with a hidden
+`.edit-<edit-uuid>.json` recovery sidecar. Legacy processed paths remain readable.
+Files are created exclusively, synced, recorded in SQLite, then the batch manifest is
 atomically published. A repeated request can repair the manifest or recover a
 complete sidecar after a crash before the ledger commit. Partial files are
 retained and produce a storage error; they are never silently overwritten.

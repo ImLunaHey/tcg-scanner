@@ -13,6 +13,13 @@ Actual hardware evidence: [paper scans](Docs/milestone-2-validation.md) and
 [LaunchAgent verification](Docs/milestone-3-validation.md). Card feeding has not
 been validated. Discovery and diagnostics never request a scan.
 
+## Scan storage
+
+This installation saves scans to `smb://lake/scans` at `/Volumes/scans`.
+Each batch has one folder with image files directly inside; no `originals/` or
+`processed/` folders are used. New scans default to PNG without application image
+processing. See [storage configuration and migration](Docs/storage.md).
+
 ## Build and startup
 
 Requires macOS 14+, Swift 6.2+ (Hummingbird's minimum) and the official ICA driver.

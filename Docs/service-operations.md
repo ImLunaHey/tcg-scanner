@@ -1,3 +1,9 @@
+Current installation: image storage is configured as `/Volumes/scans` on
+`smb://lake/scans`. See [storage configuration](storage.md), including the separate
+macOS network-volume permission required by the background service. Local SQLite
+metadata stays in Application Support. Older examples of `~/Scans` below describe
+the default when no persistent storage configuration is present.
+
 # ScannerService operations
 
 ## Installation and process context
