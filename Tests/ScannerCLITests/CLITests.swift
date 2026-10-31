@@ -44,6 +44,8 @@ import ScannerAPI
     #expect(update.dpi == nil && update.format == nil)
     #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["profiles", "update", "pokemon"]) }
     #expect(try Scanner.parseAsRoot(["batches", "list", "--json"]) is Batches.List)
+    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["batches", "list", "--limit", "101"]) }
+    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["images", "metadata", "bad", "1"]) }
     #expect(try Scanner.parseAsRoot(["configure", "--dpi", "600", "--duplex"]) is Configure)
     #expect(try Scanner.parseAsRoot(["device", "--json"]) is DeviceCommand)
     #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["scan", "--profile", "pokemon", "--use-device-settings"]) }

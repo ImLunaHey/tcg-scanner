@@ -74,6 +74,7 @@ private actor ControlBackend: ScannerBackend {
     #expect(try await service.createProfile(original) == original)
     #expect(try await service.createProfile(original) == original)
     await #expect(throws: ScannerError.self) { try await service.createProfile(ScanProfile(name: "POKEMON")) }
+    await #expect(throws: ScannerError.self) { try await service.saveProfile(ScanProfile(name: "pokemon")) }
     let updated = try await service.updateProfile("Pokemon", patch: ProfilePatch(name: "Paper"))
     #expect(updated.dpi == 600 && updated.duplex && updated.format == .png)
     #expect(try await service.profile("Paper").id == original.id)

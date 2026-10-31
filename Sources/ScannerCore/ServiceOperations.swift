@@ -6,6 +6,7 @@ extension ScannerCoordinator {
     public func profiles() throws -> [ScanProfile] { try database.profiles() }
     public func saveProfile(_ profile: ScanProfile) throws {
         guard !stopping else { throw ScannerError("busy", "Service is shutting down.") }
+        try uniqueProfileName(profile)
         try database.saveProfile(profile)
     }
     public func deleteProfile(_ id: UUID) throws { try database.deleteProfile(id) }

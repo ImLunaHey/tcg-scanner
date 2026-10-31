@@ -18,6 +18,7 @@ import ScannerAPI
         return ImageChunk(metadata: metadata, offset: offset, data: part, sha256: hash(part))
     }
     #expect(try Data(contentsOf: destination) == bytes)
+    #expect(try (FileManager.default.attributesOfItem(atPath: destination.path)[.posixPermissions] as? NSNumber)?.intValue == 0o600)
     #expect(throws: ScannerError.self) {
         try OriginalDownload.write(to: destination, metadata: metadata) { _ in throw ScannerError("test", "Must not read") }
     }

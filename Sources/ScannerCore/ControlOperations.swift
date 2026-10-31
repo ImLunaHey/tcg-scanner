@@ -28,7 +28,7 @@ extension ScannerCoordinator {
         return value
     }
     public func removeProfile(_ identifier: String) throws { try deleteProfile(profile(identifier).id) }
-    private func uniqueProfileName(_ profile: ScanProfile) throws {
+    func uniqueProfileName(_ profile: ScanProfile) throws {
         guard try !database.profiles().contains(where: { $0.id != profile.id && $0.name.caseInsensitiveCompare(profile.name) == .orderedSame }) else {
             throw ScannerError("conflict", "A profile with this name already exists.")
         }

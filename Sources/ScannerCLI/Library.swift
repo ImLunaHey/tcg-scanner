@@ -29,16 +29,21 @@ struct Batches: ParsableCommand {
         @OptionGroup var options: ClientOptions
         @Option var limit = 50
         @Option var offset = 0
+        func validate() throws {
+            guard (1...100).contains(limit), (0...1_000_000).contains(offset) else { throw ValidationError("limit must be 1–100 and offset 0–1000000.") }
+        }
         func run() throws { _ = try options.perform("batches.list", params: .object(["limit": .number(Double(limit)), "offset": .number(Double(offset))])) }
     }
     struct Show: ParsableCommand {
         @OptionGroup var options: ClientOptions
         @Argument var id: String
+        func validate() throws { guard UUID(uuidString: id) != nil else { throw ValidationError("Batch ID must be a UUID.") } }
         func run() throws { _ = try options.perform("batches.get", params: .object(["id": .string(id)])) }
     }
     struct Manifest: ParsableCommand {
         @OptionGroup var options: ClientOptions
         @Argument var id: String
+        func validate() throws { guard UUID(uuidString: id) != nil else { throw ValidationError("Batch ID must be a UUID.") } }
         func run() throws { try options.writeJSON(options.request("batches.get", params: .object(["id": .string(id)]))) }
     }
 }
@@ -48,6 +53,9 @@ struct Images: ParsableCommand {
         @OptionGroup var options: ClientOptions
         @Argument var jobID: String
         @Argument var sequence: Int
+        func validate() throws {
+            guard UUID(uuidString: jobID) != nil, (1...100).contains(sequence) else { throw ValidationError("Provide a job UUID and sequence 1–100.") }
+        }
         func run() throws { _ = try options.perform("images.get", params: .object(["jobID": .string(jobID), "sequence": .number(Double(sequence))])) }
     }
     struct Download: ParsableCommand {
@@ -86,6 +94,7 @@ enum OriginalDownload {
         let staging = destination.deletingLastPathComponent().appendingPathComponent(".scanner-download-" + UUID().uuidString)
         try Data().write(to: staging, options: .withoutOverwriting)
         defer { try? FileManager.default.removeItem(at: staging) }
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: staging.path)
         let file = try FileHandle(forWritingTo: staging)
         defer { try? file.close() }
         var digest = SHA256(); var offset = 0
