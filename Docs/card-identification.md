@@ -52,6 +52,13 @@ redirects are refused. No API key is required.
 
 The matcher looks for a card name in the upper image area and a collector
 number in the lower area, cross-checking the printed set total when readable.
+When a name/number match fails catalogue validation, a bounded second Vision pass
+reads the footer number region. It must independently produce a fraction matching
+a previously ranked printing and its official total. The service never removes a
+digit to force a match. Successful retries retain a warning identifying the extra
+OCR pass. B-010 Larvesta's rarity dot was initially read as a trailing zero; the
+focused pixel reread resolves it to `028/159•`.
+
 Zero padding is normalized while promo/subset prefixes are preserved. Conflicting
 legible numbers rule out a printing. Title-only matches remain ambiguous. Up to
 five candidates are shown after at most eight detail lookups, with the evidence used; this is not a calibrated

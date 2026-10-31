@@ -86,3 +86,41 @@ func savedEnergyAndFullArtEXAreIdentifiedWithoutFeeding() async throws {
         #expect(evidence.orientation == 0)
     }
 }
+
+@Test func rarityDotIsNotADigitAndConflictingSetTotalsStayDistinct() {
+    let catalogue = [CatalogueCard(id: "sv09-028", localId: "028", name: "Larvesta")]
+    let title = RecognizedLine(text: "Larvesta", y: 0.91, height: 0.04)
+    let whole = CardMatcher.rank(lines: [title, RecognizedLine(text: "028/1590", y: 0.03, height: 0.02)], catalogue: catalogue)
+    let focused = CardMatcher.rank(lines: [title, RecognizedLine(text: "028/159•", y: 0.03, height: 0.02)], catalogue: catalogue)
+    #expect(whole.first?.totals == [1590]) // Never silently drop the last digit.
+    #expect(focused.first?.totals == [159])
+    #expect(CardMatcher.rank(lines: [title, RecognizedLine(text: "029/159•", y: 0.03, height: 0.02)], catalogue: catalogue).isEmpty)
+}
+
+@Test(.enabled(if: ProcessInfo.processInfo.environment["SCANNER_LARVESTA_FIXTURE"] != nil))
+func savedLarvestaFooterIsRereadFromPixelsWithoutChangingTheCard() async throws {
+    let path = try #require(ProcessInfo.processInfo.environment["SCANNER_LARVESTA_FIXTURE"])
+    let data = try Data(contentsOf: URL(fileURLWithPath: path))
+    let initial = try #require(CardOCR.read(data).first)
+    #expect(initial.lines.contains { $0.text == "028/1590" })
+    let footer = try CardOCR.refineFooter(data, reading: initial)
+    #expect(footer.lines.contains { $0.text.contains("028/159") && !$0.text.contains("1590") })
+    #expect(footer.lines.filter { $0.text.contains("028/159") }.allSatisfy { $0.y < 0.15 && $0.height < 0.1 })
+    let result = try await CardRecognizer().recognize(data)
+    #expect(result.candidates.map(\.id) == ["sv09-028"])
+    #expect(result.candidates.first?.evidence.contains("Printed set total 159") == true)
+    #expect(result.warnings.contains { $0.contains("re-read") })
+}
+
+@Test(.enabled(if: ProcessInfo.processInfo.environment["SCANNER_REPEAT_BATCH"] != nil))
+func savedRepeatBatchMatchesAllElevenExpectedPrintings() async throws {
+    let root = URL(fileURLWithPath: try #require(ProcessInfo.processInfo.environment["SCANNER_REPEAT_BATCH"]))
+    let record = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: root.appendingPathComponent("manifest.json")))
+    let recognizer = CardRecognizer()
+    let expected = ["sve-010", "sv09-028", "sv09-015", "sv09-099", "sv09-149", "sv09-100", "sv09-076", "sv09-177", "sv09-139", "sv09-071", "sv09-120"]
+    for (index, id) in expected.enumerated() {
+        let image = try #require(record.processedImages?.last { $0.request.sequence == (index + 1) * 2 && $0.cardPreparation != nil })
+        let result = try await recognizer.recognize(Data(contentsOf: root.appendingPathComponent(image.image.relativePath)))
+        #expect(result.candidates.map(\.id) == [id])
+    }
+}
