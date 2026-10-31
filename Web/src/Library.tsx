@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "./auth";
 import { Modal } from "./Modal";
+import { ImageLightbox, type LightboxImage } from "./ImageLightbox";
 import { IdentificationReview, IdentitySummary } from "./Identification";
 import { imageBlob, saveBlob, saveJSON, type Api } from "./api";
 import {
@@ -214,6 +215,10 @@ export function BatchDetail({ id }: { id: string }) {
         ? 1500
         : false,
   });
+  const [lightbox, setLightbox] = useState<{
+    images: LightboxImage[];
+    initial: number;
+  }>();
   const [comparison, setComparison] = useState<number[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
   const [editing, setEditing] = useState<OriginalImage>();
@@ -279,11 +284,29 @@ export function BatchDetail({ id }: { id: string }) {
     );
     return (
       <article className="image-card" key={edit?.request.id || image.sequence}>
-        <Thumbnail
-          id={id}
-          image={prepared?.image || image}
-          editID={prepared?.request.id || edit?.request.id}
-        />
+        <button
+          className="preview-button"
+          aria-label={`Enlarge ${captureLabel(image.sequence)}`}
+          onClick={(event) => {
+            event.currentTarget.focus();
+            setLightbox({
+              images: [
+                {
+                  ...(prepared?.image || image),
+                  editID: prepared?.request.id || edit?.request.id,
+                  label: captureLabel(image.sequence),
+                },
+              ],
+              initial: 0,
+            });
+          }}
+        >
+          <Thumbnail
+            id={id}
+            image={prepared?.image || image}
+            editID={prepared?.request.id || edit?.request.id}
+          />
+        </button>
         <div className="image-card-body">
           <div className="section-heading">
             <h3>{side || captureLabel(image.sequence)}</h3>
@@ -491,36 +514,173 @@ export function BatchDetail({ id }: { id: string }) {
                   { image: pair.first, label: "Side 1" },
                   { image: pair.second, label: "Side 2" },
                 ];
+            const views = sides.map((side) => {
+              const prepared = record.processedImages
+                ?.filter(
+                  (edit) =>
+                    edit.request.sequence === side.image?.sequence &&
+                    edit.cardPreparation,
+                )
+                .at(-1);
+              return {
+                ...side,
+                prepared,
+                display: prepared?.image || side.image,
+              };
+            });
+            const lightboxImages = views
+              .filter((view) => view.display)
+              .map((view) => ({
+                ...view.display!,
+                editID: view.prepared?.request.id,
+                label: `${captureLabel(pair.number)} · ${view.label}`,
+              }));
+            const front = sides[0].image;
+            const warnings = [
+              ...new Set(
+                views.flatMap(
+                  (view) => view.prepared?.cardPreparation?.warnings || [],
+                ),
+              ),
+            ];
             return (
               <section
-                className="card-pair panel"
+                className="card-pair"
                 key={pair.number}
                 aria-label={`Card ${captureLabel(pair.number)}`}
               >
-                <div className="section-heading">
-                  <h2>{captureLabel(pair.number)}</h2>
-                  <span className="badge">
-                    {pair.first && pair.second ? "2 sides" : "Incomplete pair"}
-                  </span>
+                <div className="paired-visuals">
+                  {views.map((view, index) => (
+                    <div
+                      className={`paired-side ${index === 0 ? "main-side" : "back-side"}`}
+                      key={view.label}
+                    >
+                      {view.display ? (
+                        <button
+                          className="preview-button"
+                          aria-label={`Enlarge ${view.label.toLowerCase()} of ${captureLabel(pair.number)}`}
+                          onClick={(event) => {
+                            event.currentTarget.focus();
+                            setLightbox({
+                              images: lightboxImages,
+                              initial: lightboxImages.findIndex(
+                                (image) =>
+                                  image.sequence === view.display!.sequence,
+                              ),
+                            });
+                          }}
+                        >
+                          <Thumbnail
+                            id={id}
+                            image={view.display}
+                            editID={view.prepared?.request.id}
+                          />
+                        </button>
+                      ) : (
+                        <p className="small">Image missing</p>
+                      )}
+                      <span className="side-caption">{view.label}</span>
+                    </div>
+                  ))}
                 </div>
-                <IdentitySummary identification={identity} />
-                {record.state !== "completed" && (
-                  <p className="small muted">
-                    {finished
-                      ? "Interrupted batch · check pairing and card count"
-                      : "Capture in progress · pairing pending"}
-                  </p>
-                )}
-                <div className="card-pair-sides">
-                  {sides.map(({ image, label }) =>
-                    image ? (
-                      tile(image, undefined, label)
-                    ) : (
-                      <div className="empty" key={label}>
-                        {label} image not received
-                      </div>
-                    ),
+                <div className="paired-info">
+                  <div className="section-heading">
+                    <h2>{captureLabel(pair.number)}</h2>
+                    {(!pair.first || !pair.second) && (
+                      <span className="badge">Incomplete pair</span>
+                    )}
+                  </div>
+                  <IdentitySummary identification={identity} />
+                  {record.state !== "completed" && (
+                    <p className="small muted">
+                      {finished
+                        ? "Interrupted batch · check card count"
+                        : "Scanning…"}
+                    </p>
                   )}
+                  <div className="paired-actions">
+                    {front && (
+                      <button
+                        className="text-button"
+                        disabled={!finished}
+                        onClick={() => setIdentifying(front.sequence)}
+                      >
+                        {identity ? "Review identity" : "Identify card"}
+                      </button>
+                    )}
+                    {views
+                      .filter((view) => view.display)
+                      .map((view) => (
+                        <button
+                          key={view.label}
+                          className="text-button"
+                          disabled={download.isPending || archive.isPending}
+                          onClick={() =>
+                            download.mutate({
+                              image: view.display!,
+                              editID: view.prepared?.request.id,
+                            })
+                          }
+                        >
+                          Download {view.label.toLowerCase()}
+                        </button>
+                      ))}
+                  </div>
+                  <details className="pair-details">
+                    <summary>
+                      Edit, originals & checks
+                      {warnings.length ? ` (${warnings.length})` : ""}
+                    </summary>
+                    {views
+                      .filter((view) => view.image)
+                      .map((view) => (
+                        <div className="paired-actions" key={view.label}>
+                          <span className="small">{view.label}</span>
+                          <button
+                            className="text-button"
+                            disabled={!finished}
+                            onClick={() => setEditing(view.image)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="text-button"
+                            disabled={download.isPending || archive.isPending}
+                            onClick={() =>
+                              download.mutate({ image: view.image! })
+                            }
+                          >
+                            Original
+                          </button>
+                          {!view.prepared && (
+                            <button
+                              className="text-button"
+                              disabled={!finished || prepare.isPending}
+                              onClick={() => {
+                                const requestID =
+                                  preparationIDs[view.image!.sequence] ||
+                                  uuid();
+                                setPreparationIDs({
+                                  ...preparationIDs,
+                                  [view.image!.sequence]: requestID,
+                                });
+                                prepare.mutate({
+                                  sequence: view.image!.sequence,
+                                  requestID,
+                                });
+                              }}
+                            >
+                              Prepare card
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    {warnings.map((warning) => (
+                      <p key={warning} className="small muted">
+                        {warning}
+                      </p>
+                    ))}
+                  </details>
                 </div>
               </section>
             );
@@ -558,6 +718,14 @@ export function BatchDetail({ id }: { id: string }) {
           </p>
         ))}
       </details>
+      {lightbox && (
+        <ImageLightbox
+          batchID={id}
+          images={lightbox.images}
+          initial={lightbox.initial}
+          close={() => setLightbox(undefined)}
+        />
+      )}
       {compareOpen && (
         <Modal close={() => setCompareOpen(false)}>
           <section

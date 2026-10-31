@@ -263,17 +263,19 @@ test("card batch groups consecutive captures and shows identity once", async ({
   await expect(page.locator(".card-pair")).toHaveCount(1);
   await expect(card.locator(".thumbnail img")).toHaveCount(2);
   await expect(
-    card.getByRole("heading", { name: "Side 1", exact: true }),
+    card.locator(".side-caption").getByText("Side 1", { exact: true }),
   ).toBeVisible();
   await expect(
-    card.getByRole("heading", { name: "Side 2", exact: true }),
+    card.locator(".side-caption").getByText("Side 2", { exact: true }),
   ).toBeVisible();
   await expect(
-    card.getByRole("button", { name: "Download card", exact: true }),
-  ).toHaveCount(2);
+    card.getByRole("button", { name: "Download side 1", exact: true }),
+  ).toBeVisible();
+  await expect(
+    card.getByRole("button", { name: "Download side 2", exact: true }),
+  ).toBeVisible();
   await card
     .getByRole("button", { name: "Identify card", exact: true })
-    .nth(1)
     .click();
   await page
     .getByRole("button", { name: "Identify this image", exact: true })
@@ -288,13 +290,53 @@ test("card batch groups consecutive captures and shows identity once", async ({
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBeTruthy();
-  const boxes = await card.locator(".thumbnail").evaluateAll((elements) =>
-    elements.map((e) => {
-      const r = e.getBoundingClientRect();
-      return { top: r.top, left: r.left };
-    }),
-  );
-  expect(Math.abs(boxes[0].top - boxes[1].top)).toBeLessThan(2);
-  expect(boxes[1].left).toBeGreaterThan(boxes[0].left);
+  expect((await card.boundingBox())!.height).toBeLessThan(420);
+  const front = card.getByRole("button", {
+    name: "Enlarge side 1 of C-001",
+    exact: true,
+  });
+  await front.click();
+  const lightbox = page.getByRole("dialog");
+  await expect(lightbox.getByRole("img")).toBeVisible();
+  expect(
+    await lightbox
+      .getByRole("img")
+      .evaluate((image: HTMLImageElement) => image.naturalHeight),
+  ).toBeGreaterThan(512);
+  const initialWidth = (await lightbox.getByRole("img").boundingBox())!.width;
+  await lightbox.getByRole("button", { name: "Zoom in", exact: true }).click();
+  expect(
+    (await lightbox.getByRole("img").boundingBox())!.width,
+  ).toBeGreaterThan(initialWidth);
+  const frontURL = await lightbox.getByRole("img").getAttribute("src");
+  await lightbox
+    .getByRole("button", { name: "C-001 · Side 2", exact: true })
+    .click();
+  await expect(
+    lightbox.getByRole("img", { name: "C-001 · Side 2", exact: true }),
+  ).toBeVisible();
+  await expect(lightbox.getByRole("img")).not.toHaveAttribute("src", frontURL!);
+  await page.keyboard.press("Escape");
+  await expect(lightbox).toHaveCount(0);
+  await expect(front).toBeFocused();
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => getComputedStyle(document.documentElement).backgroundColor,
+      ),
+    )
+    .toBe("rgb(16, 22, 21)");
+  await expect
+    .poll(() => card.evaluate((e) => getComputedStyle(e).backgroundColor))
+    .toBe("rgb(24, 33, 31)");
+  await page.emulateMedia({ colorScheme: "light" });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => getComputedStyle(document.documentElement).backgroundColor,
+      ),
+    )
+    .toBe("rgb(247, 248, 245)");
   await page.getByRole("button", { name: "Sign out" }).click();
 });

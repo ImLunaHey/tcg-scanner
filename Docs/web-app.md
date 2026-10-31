@@ -84,13 +84,16 @@ using local OCR and TCGdex suggestions, with separate manual finish and conditio
 - Library: paginated history, live capture thumbnails, original/edited downloads,
   selected-image comparison, complete JSON manifests and batch ZIP export. Duplex
   card jobs group adjacent captures into a card with both sides and one identity
-  summary; missing sides and interrupted batches remain flagged.
+  summary and shared controls; missing sides and interrupted batches remain flagged.
+  The front is prominent, the back smaller, and editing/originals/checks are
+  collapsed under each card.
 - Optional manual copies: percentage crop coordinates and clockwise rotation,
   processed by the existing native image service; originals remain untouched.
 - [Card preparation](card-preparation.md): **Auto-crop and orient cards** starts
   enabled in the scan controls; disable it for documents. Use **Prepare card**
   on an existing capture.
-  **Download card** exports the prepared PNG; **Original** retains the capture.
+  **Download front/back** exports the prepared PNG for paired cards; **Original**
+  under the expanded controls retains the capture. Ungrouped images use **Download card**.
   Unique identity suggestions show their name, set and collector number directly
   on the capture tile, clearly distinguished from confirmed identities.
 - Scanner details: capability values, ranges, defaults, evidence, vendor fields,
@@ -160,3 +163,16 @@ ignored. The fixture tests cover desktop, phone and tablet layouts, Chromium and
 WebKit, authentication, CRUD, lost-response idempotency, cancellation, thumbnails,
 manual edits, comparison, byte-verified ZIP exports, reconnection and revocation.
 Viewport emulation is not a claim of testing on physical iPhones/iPads.
+
+## Appearance and image inspection
+
+Light/dark appearance follows the system/browser `prefers-color-scheme` setting,
+including changes while the page is open. There is no theme toggle or stored
+appearance override. Scan pixels retain their original colours in both themes.
+
+Click any library preview to open an authenticated, full-resolution lightbox.
+Paired cards provide front/back switching in that same dialog. Use zoom buttons,
+**Fit** or **100%**; scroll or drag with a mouse to pan, or swipe on touch screens.
+Close with the close button or Escape. Keyboard focus stays in the dialog and
+returns to the opening preview afterward. Closing/switching revokes temporary
+image URLs. This is a view operation; it does not modify saved images.
