@@ -59,23 +59,46 @@ Existing physical job: `8D93D5FD-C0A7-4379-B5EC-B8EB16291611`.
 | 2 | 695478 | `63dfceb6e654f79b8a0db460d06e7be817fb228d3dfa0f6060a04ee6886e0928` |
 
 These are the unchanged images from the earlier confirmed LaunchAgent paper scan.
-No physical scan was started during milestone 4 implementation. Local ignored
-evidence is in `Diagnostics/milestone4/`; original scans remain in their existing
+No physical scan was started during the initial implementation checks. A subsequent
+confirmed paper test is recorded below. Local ignored evidence is in
+`Diagnostics/milestone4/`; original scans remain in their existing
 locations. Codex's `scanner` stdio registration points to the installed executable;
 new sessions can load it. This does not assert that an already-open session has
 refreshed its available tools.
 
-## Remaining physical acceptance check
+## Physical MCP duplex acceptance test
 
-The complete MCP workflow is verified with a mock scanner. Physical scanning through
-the same service has prior CLI evidence, and real scanner inspection/image retrieval
-through MCP passed. A physical job initiated through MCP itself remains untested.
+After the operator confirmed the marked A4 sheet was loaded, one new job was
+submitted through the installed Swift MCP executable over stdio. The current agent
+session had not loaded the registered scanner tools, so a temporary diagnostic
+stdio client exercised the actual MCP initialize/tools-call protocol. It did not
+call the scanner hardware directly or use the CLI scan command.
 
-For that test, have the operator load one expendable FRONT/BACK-marked A4 sheet and
-confirm readiness. Use `scanner_get_device`, then explicitly call
-`scanner_start_scan` with a new request UUID, `dpi: 300`, `duplex: true`,
-`format: "tiff"`. Poll to completion, retrieve the manifest and both originals,
-verify hashes and markings, and ask about feeding problems. Do not use cards.
+- Job: `945EE3E2-F609-4C1B-9F2E-A778759B1566`.
+- Started: `2026-10-31T16:33:43Z`; completed: `2026-10-31T16:33:50Z`.
+- Settings: A4, duplex, 300 DPI, RGB, 8 bits per channel, TIFF.
+- State: completed; errors: none; scanner session closure confirmed.
+- Output: `~/Scans/validation/scan-945ee3e2-f609-4c1b-9f2e-a778759b1566/`.
+- Two originals, each 2480 × 3508 pixels and one image per file.
+- Visual inspection confirmed BACK in sequence 1 and FRONT in sequence 2.
+  Labels describe this observed loading orientation; side metadata remains unknown.
+
+| Sequence | Bytes | Verified SHA-256 |
+| --- | ---: | --- |
+| 1 | 713280 | `69e51f444f0105a2a9ce67a66a1cc647bdb471139673c87c182173c8151120bb` |
+| 2 | 706700 | `28acb039e6f483acfd8afb802b7a1e6605ce2af0bba6b9435d45046ac7a7ee64` |
+
+Both originals were retrieved through `scanner_read_image`; every chunk and the
+complete image passed SHA-256 checks, and retrieved bytes matched the retained
+original files. Before/after settings reports matched except for observation time.
+Multifeed settings were not changed. The service returned to idle, with zero queued
+jobs and no pause. The MCP process exited cleanly after the client closed stdin.
+
+Evidence: `Diagnostics/milestone4/physical-duplex/` (ignored), including the recorded
+request UUID, job, manifest, settings, retrieved TIFFs and preview copies. Originals
+and incoming driver files remain in the scan directory. Preview conversion did not
+modify original TIFFs. Operator feedback about feeding or sheet damage for this
+specific test has not yet been recorded.
 
 Physical cancellation, unplugging during feeding, sleep/wake during feeding and
 extended unattended operation remain unverified. Front/back inference, image

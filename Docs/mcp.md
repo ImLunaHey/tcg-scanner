@@ -160,6 +160,6 @@ Only A4 300-DPI TIFF simplex/duplex have physical scan evidence. PNG and other
 workflow branches have automated fixtures, not equivalent hardware validation.
 
 The compiled MCP executable has passed a complete mock scan/cancel/download
-workflow and read-only checks against the real fi-8170 and saved physical scans.
-A new physical scan initiated through MCP remains a separate supervised paper test;
-see [validation evidence](milestone-4-validation.md).
+workflow, read-only checks against the real fi-8170, and a supervised physical
+300-DPI TIFF duplex paper scan initiated and retrieved through MCP. Both marked
+sides and checksums were verified; see [validation evidence](milestone-4-validation.md).
