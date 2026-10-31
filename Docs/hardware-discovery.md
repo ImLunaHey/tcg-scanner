@@ -106,8 +106,9 @@ features. Tone presets must not be treated as verified equivalents. Their broade
 availability is unknown. No software processing is implemented yet. Continuous
 feeding, error recovery, actual image output and card safety remain untested.
 
-The milestone still needs the production Swift package/backend and diagnostic
-CLI; these probes establish the real hardware/API path before that implementation.
+The probes have now been migrated into the Swift package and service-backed
+CLI. See [validation](milestone-1-validation.md). The standalone scripts were
+removed to leave one supported hardware owner; their source remains in Git history.
 
 ## Official support information
 
@@ -137,9 +138,15 @@ There is no evidence yet that an alternative backend is necessary.
 
    ```sh
    mkdir -p .build Diagnostics
-   swiftc -swift-version 6 -parse-as-library Scripts/probe-imagecapture.swift -o .build/probe-imagecapture
-   .build/probe-imagecapture > Diagnostics/imagecapture-discovery.json
-   cat Diagnostics/imagecapture-discovery.json
+   swift build
+   .build/debug/scanner-service --verbose
+   ```
+
+   In another terminal from the repository:
+
+   ```sh
+   .build/debug/scanner devices --json
+   .build/debug/scanner capabilities --json > Diagnostics/capabilities.json
    ```
 
 If discovery is empty on another installation,
