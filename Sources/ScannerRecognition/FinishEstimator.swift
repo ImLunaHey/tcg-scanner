@@ -41,22 +41,35 @@ public enum FinishEstimator {
         // do not turn a black-background code into a mid-gray average.
         let region = ImageCrop(x: marker.x - 0.002, y: 1 - marker.y - marker.height - 0.0015,
                                width: marker.width + 0.004, height: marker.height + 0.003)
-        let luminance = try pixels(data, region: region, turns: evidence.orientation)
+        let patch = try pixels(data, region: region, turns: evidence.orientation)
+        let luminance = patch.values
         let median = luminance.sorted()[luminance.count / 2]
         let dark = Double(luminance.filter { $0 < 0.30 }.count) / Double(luminance.count)
         let light = Double(luminance.filter { $0 > 0.70 }.count) / Double(luminance.count)
-        var result = decision(card: card, median: median, dark: dark, light: light)
+        let background = MarkerBackground.measure(luminance, width: patch.width, height: patch.height)
+        var result = decision(card: card, median: median, dark: dark, light: light, background: background)
         result.limitations = limitations; result.region = region; result.sourceQuarterTurns = evidence.orientation
         result.medianLuminance = median
+        result.darkBackgroundAreaFraction = background.darkArea
+        result.lightBackgroundAreaFraction = background.lightArea
         return result
     }
 
-    static func decision(card: CardCandidate, median: Double, dark: Double, light: Double) -> FinishEstimate {
+    static func decision(card: CardCandidate, median: Double, dark: Double, light: Double,
+                         background: MarkerBackground? = nil) -> FinishEstimate {
         var result = FinishEstimate(state: .uncertain, candidateID: card.id, evidence: ["Set-code contrast is inconclusive."])
-        if median > 0.65 && light > 0.40 && dark > 0.08 {
+        guard dark > 0.08 && light > 0.08 else { return result }
+        let overall: String? = median > 0.65 && light > 0.40 ? "light" :
+            median < 0.45 && dark > 0.30 ? "dark" : nil
+        if let overall, let spatial = background?.polarity, overall != spatial {
+            result.evidence = ["Set-code background and overall contrast disagree."]
+            return result
+        }
+        let polarity = background?.polarity ?? overall
+        if polarity == "light" {
             result.state = .estimated; result.suggestedFinish = .reverseHolo; result.markerPolarity = "light"
             result.evidence = ["Light set-code box with dark lettering suggests a reverse-holo printing."]
-        } else if median < 0.45 && dark > 0.30 && light > 0.08 {
+        } else if polarity == "dark" {
             result.markerPolarity = "dark"
             let regular = card.availableFinishes.filter { $0 == .normal || $0 == .holo }
             if Set(regular).count == 1, let finish = regular.first {
@@ -66,10 +79,13 @@ public enum FinishEstimator {
                 result.evidence = ["Dark set-code box suggests the regular printing, but it does not distinguish holo from non-holo."]
             }
         }
+        if background?.polarity != nil {
+            result.evidence.append("Broad clear background patches were measured separately from the set-code lettering.")
+        }
         return result
     }
 
-    private static func pixels(_ data: Data, region: ImageCrop, turns: Int) throws -> [Double] {
+    private static func pixels(_ data: Data, region: ImageCrop, turns: Int) throws -> (values: [Double], width: Int, height: Int) {
         guard data.count <= 32 * 1024 * 1024, (0..<4).contains(turns),
               let source = CGImageSourceCreateWithData(data as CFData, nil), CGImageSourceGetCount(source) == 1,
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
@@ -95,6 +111,6 @@ public enum FinishEstimator {
             let blue = 0.0722 * Double(rgba[i * 4 + 2])
             values.append((red + green + blue) / 255)
         }
-        return values
+        return (values, w, h)
     }
 }
