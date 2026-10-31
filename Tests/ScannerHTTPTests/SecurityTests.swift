@@ -91,3 +91,23 @@ import ScannerAPI
     for _ in 0..<4 { try await access.acquire("events") }
     await #expect(throws: GatewayError.self) { try await access.acquire("events") }
 }
+
+@Test func imageDownloadsDoNotBlockIdentityOrMetadataRequests() async throws {
+    var configuration = try GatewayConfiguration(); configuration.authorities.insert("localhost")
+    let gateway = try ScannerGateway(socketPath: "/tmp/missing-http-test-\(UUID())", token: httpTestToken, configuration: configuration)
+    try await gateway.access.acquire("image"); try await gateway.access.acquire("image")
+    let app = Application(responder: gateway)
+    try await app.test(.router) { client async throws in
+        let path = "/api/v1/images/\(UUID()):1"
+        for suffix in ["", "/thumbnail"] {
+            #expect(try await client.execute(uri: path + suffix, method: .get, headers: httpHeaders()).status.code == 429)
+        }
+        // Reaching the deliberately unavailable service proves these requests
+        // passed admission despite both binary download slots being occupied.
+        for suffix in ["/metadata", "/identification"] {
+            #expect(try await client.execute(uri: path + suffix, method: .get, headers: httpHeaders()).status.code == 503)
+        }
+        #expect(try await client.execute(uri: path + "/identification", method: .post, headers: httpHeaders(), body: buffer(.object(["id": .string(UUID().uuidString)]))).status.code == 503)
+    }
+    await gateway.access.release("image"); await gateway.access.release("image")
+}

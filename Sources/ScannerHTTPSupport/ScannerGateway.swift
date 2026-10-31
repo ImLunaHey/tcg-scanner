@@ -35,7 +35,11 @@ public struct ScannerGateway: HTTPResponder {
                 response = asset; isWebAsset = true
             } else {
             let principal = try await access.authenticate(request.headers[.authorization])
-            let kind = path.components == ["api", "v1", "events"] ? "events" : (path.components.starts(with: ["api", "v1", "images"]) ? "image" : "request")
+            // Only binary image responses consume download slots. Metadata and
+            // identification controls must remain available while previews load.
+            let binaryImage = request.method == .get && path.components.starts(with: ["api", "v1", "images"]) &&
+                (path.components.count == 4 || (path.components.count == 5 && path.components.last == "thumbnail"))
+            let kind = path.components == ["api", "v1", "events"] ? "events" : (binaryImage ? "image" : "request")
             try await access.acquire(kind)
             let lease = RequestLease(access: access, kind: kind)
             do {
