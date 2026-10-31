@@ -43,7 +43,12 @@ import UserNotifications
         notificationsEnabled = defaults.bool(forKey: "scanner.notifications")
         if let data = defaults.data(forKey: "scanner.pendingScan") { pending = try? Wire.decoder().decode(ScanRequest.self, from: data) }
     }
-    var canScan: Bool { connected && !busy && !selectedDevice.isEmpty && service?.activeJobID == nil && service?.paused == false && service?.stopping == false && inspection != nil && !dpiValues.isEmpty && paperReady }
+    var canScan: Bool {
+        guard connected, !busy, paperReady, service?.stopping == false else { return false }
+        // A replay may retrieve an already-active job, including after app relaunch.
+        if pending != nil { return true }
+        return !selectedDevice.isEmpty && service?.activeJobID == nil && service?.paused == false && inspection != nil && !dpiValues.isEmpty
+    }
     var dpiValues: [Int] {
         guard let allowed = inspection?.units.first(where: { $0.type == 3 })?.settings["resolutionDPI"]?.allowed,
               case .array(let values) = allowed else { return [] }

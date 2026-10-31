@@ -8,7 +8,7 @@ import ScannerServiceSupport
 
 private actor DesktopMock: ScannerBackend {
     func devices() -> [Device] { [Device(id: "desktop", name: "Desktop mock")] }
-    func capture(deviceID: String, request: ScanRequest, store: ScanStorage) async throws -> CaptureOutcome { CaptureOutcome() }
+    func capture(deviceID: String, request: ScanRequest, store: ScanStorage) async throws -> CaptureOutcome { try await Task.sleep(for: .milliseconds(100)); return CaptureOutcome() }
     func inspect(deviceID: String) -> Inspection {
         var result = Inspection(device: Device(id: deviceID, name: "Desktop mock"))
         var unit = UnitSnapshot(); unit.type = 3
@@ -54,6 +54,7 @@ private actor LostReply {
     #expect(relaunched.pending?.requestID == id)
     try await relaunched.refresh()
     relaunched.paperReady = true
+    #expect(relaunched.canScan)
     relaunched.start()
     while relaunched.busy && ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(5)) }
     #expect(relaunched.pending == nil)

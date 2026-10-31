@@ -4,6 +4,7 @@ import ImageIO
 import Testing
 import ScannerAPI
 import ScannerCore
+import ScannerPersistence
 import ScannerImageProcessing
 
 private func fixture() throws -> Data {
@@ -40,7 +41,8 @@ private actor Paper: ScannerBackend {
 @Test func editsAreIdempotentAndPreserveOriginalsAndRejectSymlinks() async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: root) }
-    let coordinator = try ScannerCoordinator(backend: Paper(), storageRoot: root)
+    let database = try ScannerDatabase()
+    let coordinator = try ScannerCoordinator(backend: Paper(), storageRoot: root, database: database)
     var record = try await coordinator.startScan(ScanRequest())
     let deadline = ContinuousClock.now + .seconds(5)
     while !record.state.terminal && ContinuousClock.now < deadline {
@@ -54,6 +56,12 @@ private actor Paper: ScannerBackend {
     let second = try await coordinator.editImage(request)
     #expect(first.image.sha256 == second.image.sha256)
     #expect(first.createdAt == second.createdAt)
+    // Simulate a crash after files were committed but before the ledger recorded the edit.
+    try database.save(record)
+    let restarted = try ScannerCoordinator(backend: Paper(), storageRoot: root, database: database)
+    let recovered = try await restarted.editImage(request)
+    #expect(recovered.id == first.id && recovered.createdAt == first.createdAt)
+    #expect(try await restarted.scanStatus(record.id).processedImages?.count == 1)
     var changed = request; changed.quarterTurns = 2
     await #expect(throws: ScannerError.self) { try await coordinator.editImage(changed) }
     #expect(try Data(contentsOf: path) == original)

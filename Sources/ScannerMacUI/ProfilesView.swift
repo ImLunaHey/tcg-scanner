@@ -68,7 +68,15 @@ private struct ProfileEditor: View {
             Text(draft.creating ? "Create profile" : "Edit profile").font(.title2.bold())
             Form {
                 TextField("Name", text: $draft.profile.name)
-                Stepper("Resolution: \(draft.profile.dpi) DPI", value: $draft.profile.dpi, in: 150...600, step: 50)
+                if model.dpiValues.isEmpty {
+                    TextField("Resolution (150–600 DPI)", value: $draft.profile.dpi, format: .number)
+                } else {
+                    Picker("Resolution", selection: $draft.profile.dpi) {
+                        ForEach(Array(Set(model.dpiValues + [draft.profile.dpi])).sorted(), id: \.self) { dpi in
+                            Text("\(dpi) DPI" + (model.dpiValues.contains(dpi) ? "" : " · unsupported on selected scanner")).tag(dpi)
+                        }
+                    }
+                }
                 Toggle("Duplex", isOn: $draft.profile.duplex)
                 Picker("Output", selection: $draft.profile.format) { Text("PNG").tag(OriginalFormat.png); Text("TIFF").tag(OriginalFormat.tiff) }
                 Text("The selected scanner must support this resolution and duplex mode. Supported DPI: \(model.dpiValues.map(String.init).joined(separator: ", ")).").font(.caption).foregroundStyle(.secondary)
