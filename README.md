@@ -1,9 +1,10 @@
 # Native macOS scanner platform
 
-Milestones 1–3: Swift scanner discovery, capability reports, basic A4 simplex/duplex
+Milestones 1–4: Swift scanner discovery, capability reports, basic A4 simplex/duplex
 scanning, and a persistent background service for the USB Ricoh fi-8170.
-The CLI uses the service exclusively. No graphical application is required.
-MCP, HTTP, SwiftUI, web interfaces and card processing remain later milestones.
+The CLI and Swift MCP server use the service exclusively. No graphical application
+is required. HTTP, SwiftUI, web interfaces and card processing remain later milestones.
+See [MCP setup and agent workflow](Docs/mcp.md) and [milestone 4 validation](Docs/milestone-4-validation.md).
 
 Actual hardware evidence: [paper scans](Docs/milestone-2-validation.md) and
 [LaunchAgent verification](Docs/milestone-3-validation.md). Card feeding has not
@@ -48,6 +49,7 @@ From the repository, the debug CLI can also use the installed service:
 ```sh
 .build/debug/scanner devices
 .build/debug/scanner devices --json
+.build/debug/scanner device --json
 .build/debug/scanner capabilities --json
 .build/debug/scanner settings --json
 .build/debug/scanner diagnostics --json
@@ -89,16 +91,45 @@ The same UUID with different inputs is rejected. A new UUID means a new physical
 scan; never generate one merely because a response was lost.
 
 ```sh
-.build/debug/scanner profiles save 'Documents' --dpi 300 --duplex --json
+.build/debug/scanner profiles create 'Documents' --dpi 300 --duplex --json
 .build/debug/scanner profiles list --json
-# Use the UUID returned by profiles save:
-.build/debug/scanner scan --profile PROFILE_UUID --no-wait --json
+.build/debug/scanner profiles show Documents --json
+.build/debug/scanner profiles update Documents --dpi 300 --json
+.build/debug/scanner scan --profile Documents --no-wait --json
 ```
 
 A selected profile supplies DPI, duplex and format, replacing those command
 options. Jobs snapshot profiles when submitted; later edits cannot change queued
 or active hardware configuration. Saving a profile does not touch hardware.
-Profiles currently cover the validated basic A4 workflow, not card processing.
+Names are unique without regard to case. `profiles update` changes only supplied
+fields; `--no-duplex` explicitly selects simplex. `profiles delete` accepts a name
+or UUID. Profiles currently cover the basic A4 workflow, not card processing.
+
+Save per-device defaults without feeding paper or writing hardware properties:
+
+```sh
+.build/debug/scanner configure --dpi 300 --duplex --format tiff --json
+# Only after paper is ready:
+.build/debug/scanner scan --use-device-settings --no-wait --json
+```
+
+Defaults are validated against the idle scanner and snapshotted into each job.
+Use either a profile or device defaults, not both. `device --json` reports readiness
+when the driver exposes it; a ready result is a momentary observation.
+
+Retrieve existing scans without feeding:
+
+```sh
+.build/debug/scanner batches list --json
+.build/debug/scanner batches show JOB_UUID --json
+.build/debug/scanner batches manifest JOB_UUID > manifest.json
+.build/debug/scanner images metadata JOB_UUID 1 --json
+.build/debug/scanner images download JOB_UUID 1 --output ./original.tiff --json
+```
+
+Downloads verify chunk and complete-file SHA-256 values, use private file permissions,
+and refuse to overwrite an existing destination. Image access uses service-owned
+job IDs and sequence numbers. The CLI export destination is local to the CLI.
 
 Current scan scope: A4, RGB, 8 bits per channel, driver-supported 150–600 DPI,
 TIFF or PNG. **Only 300-DPI TIFF simplex and duplex have been physically tested.**
@@ -149,6 +180,8 @@ scanners, matching the current backend's session limitation.
 - **ScannerTransport**: private Unix sockets; blocking CLI and asynchronous Swift client APIs.
 - **ScannerService**: hardware owner, main run loop, monitoring, lifecycle and structured logs.
 - **ScannerCLI**: ArgumentParser client; imports no hardware backend.
+- **ScannerMCP / ScannerMCPSupport**: official Swift MCP SDK, stdio tools and schemas;
+  communicates through the same private Unix socket, with no hardware backend.
 
 Default socket: `~/Library/Application Support/Scanner/run/control.sock`.
 Directory mode 0700, socket mode 0600, and same-user peer checks restrict local
@@ -167,7 +200,8 @@ partial inspections include errors and exit 1.
 `swift test` uses Swift Testing, mock backends and real Unix sockets. It covers
 concurrent submissions, queue cancellation, immutable profile snapshots,
 persistence/recovery, disconnects, simulated sleep, disk failure, transport limits,
-permissions, checksums and CLI parsing. Automated tests never feed the real scanner.
+permissions, checksums, CLI parsing, private original exports, and a complete workflow
+through the compiled MCP executable over stdio. Automated tests never feed the real scanner.
 Physical sleep/wake, unplugging during capture and cancellation during a real feed
 remain unverified; do those controlled paper checks before unattended operation.
 

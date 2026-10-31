@@ -96,8 +96,9 @@ and completed. The service returned to idle with no queued jobs.
 
 Before/after settings reports match for all enumerated common settings and vendor
 values. Cropping returned to 2, blank-page skipping to 3, and multifeed detection
-remained 1. No driver error was reported; physical feeding condition or sheet damage
-has not independently been confirmed by the user for this particular run.
+remained 1. No driver error was reported. The user subsequently confirmed “yep it
+worked!” after this test. They explicitly reported no feeding problems during the
+earlier paper run; no additional claim about sheet damage is inferred.
 
 Evidence: `Diagnostics/milestone3/physical-duplex/` (ignored); originals remain in
 `~/Scans/validation/`. No application processing or rotation was applied.

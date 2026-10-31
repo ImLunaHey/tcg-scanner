@@ -12,6 +12,10 @@ The installer refuses a loaded agent or an existing plist. Update by running
 A manual foreground service must be stopped before loading the agent. Another
 owner at any socket is rejected by the fixed per-user hardware lock.
 
+The installer deploys `scanner`, `scanner-service` and `scanner-mcp`. MCP clients
+launch their own stdio adapter; closing that adapter does not stop the service or
+cancel service-owned jobs. See [MCP setup](mcp.md).
+
 Installed paths:
 
 | Item | Location |
