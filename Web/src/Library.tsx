@@ -279,7 +279,10 @@ export function BatchDetail({ id }: { id: string }) {
         ? identification.evidence?.candidates.find(
             (value) => value.id === identification.selectedCardID,
           )
-        : undefined;
+        : identification?.state === "reviewRequired" &&
+            identification.evidence?.candidates.length === 1
+          ? identification.evidence.candidates[0]
+          : undefined;
     return (
       <article className="image-card" key={edit?.request.id || image.sequence}>
         <Thumbnail
@@ -382,10 +385,32 @@ export function BatchDetail({ id }: { id: string }) {
           ))}
           {!edit && card && (
             <p className="small">
+              <span>
+                {identification!.state === "confirmed"
+                  ? "Confirmed"
+                  : "Suggested · review required"}
+              </span>
+              <br />
               <strong>{card.name}</strong> · {card.setName} · {card.localID}
+              {card.officialSetCount ? `/${card.officialSetCount}` : ""}
               <br />
               {finishes[identification!.finish]} ·{" "}
               {conditions[identification!.condition]} (manual)
+            </p>
+          )}
+          {!edit && !card && identification && (
+            <p className="small muted">
+              {identification.state === "processing"
+                ? "Identifying card…"
+                : identification.state === "reviewRequired"
+                  ? `${identification.evidence?.candidates.length || 0} possible matches · review identity`
+                  : identification.state === "noMatch"
+                    ? "No card match found"
+                    : identification.state === "failed"
+                      ? "Identification failed · retry in review"
+                      : identification.state === "rejected"
+                        ? "Suggestions rejected"
+                        : "Identity unavailable"}
             </p>
           )}
           {!edit && (

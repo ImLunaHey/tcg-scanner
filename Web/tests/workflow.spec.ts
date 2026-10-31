@@ -59,6 +59,9 @@ test("authenticated browser workflow, retry, review, export and cancellation", a
     .selectOption({ label: name });
   await page.getByLabel("I have checked the feeder setup").check();
 
+  await expect(page.getByLabel("Auto-crop and orient cards")).toBeChecked();
+  await page.getByLabel("Auto-crop and orient cards").uncheck();
+
   // The server creates the job but the first response is lost. Retry must reuse its UUID.
   let requests = 0;
   const ids: string[] = [];
@@ -124,6 +127,18 @@ test("authenticated browser workflow, retry, review, export and cancellation", a
   ).toBeDisabled();
   await expect(page.getByLabel("Finish · manual")).toHaveValue("unverified");
   await expect(page.getByLabel("Condition · manual")).toHaveValue("unassessed");
+  await page.getByRole("button", { name: "Close identification" }).click();
+  await expect(page.locator(".image-card").first()).toContainText(
+    "Suggested · review required",
+  );
+  await expect(page.locator(".image-card").first()).toContainText("Furret");
+  await expect(page.locator(".image-card").first()).toContainText(
+    "Darkness Ablaze",
+  );
+  await page
+    .getByRole("button", { name: "Review identity", exact: true })
+    .first()
+    .click();
   await page.getByRole("radio").check();
   await page.getByLabel("Finish · manual").selectOption("reverseHolo");
   await page.getByLabel("Condition · manual").selectOption("lightlyPlayed");

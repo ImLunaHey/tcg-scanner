@@ -56,11 +56,10 @@ private struct BatchDetail: View {
                         let prepared = record.processedImages?.last(where: { $0.request.sequence == image.sequence && $0.cardPreparation != nil })
                         VStack(alignment: .leading, spacing: 8) {
                             ScanThumbnail(model: model, job: record.id, sequence: image.sequence, edit: prepared?.id).frame(height: 230)
-                            Text("C-\(BatchNaming.number(image.sequence)) · original").font(.headline)
-                            Text("\(image.width) × \(image.height) · side \(image.side)").font(.caption).foregroundStyle(.secondary)
-                            if let identification = record.cardIdentifications?.first(where: { $0.request.sequence == image.sequence }),
-                               let card = identification.evidence?.candidates.first(where: { $0.id == identification.selectedCardID }) {
-                                Text(card.name + " · " + card.setName + " · " + card.localID).font(.caption)
+                            Text("C-\(BatchNaming.number(image.sequence)) · \(prepared == nil ? "original" : "cropped card")").font(.headline)
+                            Text("\(prepared?.image.width ?? image.width) × \(prepared?.image.height ?? image.height) · side \(image.side)").font(.caption).foregroundStyle(.secondary)
+                            if let identification = record.cardIdentifications?.first(where: { $0.request.sequence == image.sequence }) {
+                                CardIdentitySummary(identification: identification)
                             }
                             Button("Identify / review card…") { identifying = EditingImage(image: image) }.disabled(!record.state.terminal)
                             if let prepared {
@@ -79,7 +78,7 @@ private struct BatchDetail: View {
                             }
                             HStack {
                                 Button("Edit…") { editing = EditingImage(image: image) }.disabled(!record.state.terminal || model.busy)
-                                Button("Export…") { exportImage(record: record, image: image, model: model) }.disabled(model.busy)
+                                Button(prepared == nil ? "Export…" : "Export original…") { exportImage(record: record, image: image, model: model) }.disabled(model.busy)
                             }
                         }.padding(10).background(.background, in: RoundedRectangle(cornerRadius: 10))
                     }
@@ -101,5 +100,36 @@ private struct BatchDetail: View {
             }.padding(24)
         }.sheet(item: $editing) { ImageEditor(model: model, job: record.id, image: $0.image) }
         .sheet(item: $identifying) { CardIdentificationView(model: model, job: record.id, sequence: $0.image.sequence) }
+    }
+}
+
+private struct CardIdentitySummary: View {
+    let identification: CardIdentification
+    private var card: CardCandidate? {
+        if identification.state == .confirmed {
+            return identification.evidence?.candidates.first { $0.id == identification.selectedCardID }
+        }
+        if identification.state == .reviewRequired, identification.evidence?.candidates.count == 1 {
+            return identification.evidence?.candidates.first
+        }
+        return nil
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            if let card {
+                Text(identification.state == .confirmed ? "Confirmed" : "Suggested · review required").foregroundStyle(.secondary)
+                Text(card.name).bold()
+                Text(card.setName + " · " + card.localID + (card.officialSetCount.map { "/\($0)" } ?? ""))
+            } else {
+                switch identification.state {
+                case .processing: Text("Identifying card…")
+                case .reviewRequired: Text("\(identification.evidence?.candidates.count ?? 0) possible matches · review identity")
+                case .noMatch: Text("No card match found")
+                case .failed: Text("Identification failed · retry in review")
+                case .rejected: Text("Suggestions rejected")
+                case .confirmed: Text("Identity unavailable")
+                }
+            }
+        }.font(.caption)
     }
 }

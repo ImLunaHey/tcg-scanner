@@ -28,7 +28,7 @@ import UserNotifications
     var nextOffset: Int?
     var dpi = 300
     var duplex = false
-    var prepareCards = false
+    var prepareCards = true
     var format: OriginalFormat = .png
     var paperReady = false
     var pending: ScanRequest?
