@@ -67,10 +67,10 @@ final class ServiceLifetime {
         server.stopAccepting(releaseLockWhenDrained: false)
         log("Shutting down; cancelling any active scan and closing sessions.")
         Task { @MainActor in
+            let deadline = ContinuousClock.now + .seconds(55)
             await coordinator.shutdownScans()
             await monitor?.value
             await sleepTask?.value
-            let deadline = ContinuousClock.now + .seconds(120)
             while server.activeConnections > 0 && ContinuousClock.now < deadline {
                 try? await Task.sleep(for: .milliseconds(100))
             }

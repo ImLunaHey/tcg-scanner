@@ -12,6 +12,11 @@ extension ScannerDatabase {
     public func saveProfile(_ profile: ScanProfile) throws {
         try profile.validate()
         try queue.write { db in
+            let exists = try Bool.fetchOne(db, sql: "SELECT EXISTS(SELECT 1 FROM profiles WHERE id = ?)", arguments: [profile.id.uuidString]) ?? false
+            let count = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM profiles") ?? 0
+            if !exists && count >= 256 {
+                throw ScannerError("resourceLimit", "At most 256 profiles may be saved.")
+            }
             try db.execute(sql: "INSERT OR REPLACE INTO profiles VALUES (?, ?)", arguments: [profile.id.uuidString, try Wire.encoder().encode(profile)])
             try Self.appendEvent("profile.updated", payload: .wrapping(profile), db: db)
         }

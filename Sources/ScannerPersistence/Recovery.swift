@@ -25,7 +25,7 @@ extension ScannerDatabase {
                 record.errors.append(ScannerError("interrupted", "Service stopped before this job finished. Physical feeding was not resumed; inspect retained files before submitting a new job."))
                 record.warnings.append("Unindexed or partial files may remain in incoming/ or originals/. Recovery never deletes or overwrites image files.")
             }
-            if safe {
+            if safe && manifest.resolvingSymlinksInPath().path == manifest.path {
                 do { try Wire.encoder().encode(record).write(to: manifest, options: .atomic) }
                 catch { record.warnings.append("Could not update recovered manifest: \(error.localizedDescription)") }
             } else { record.warnings.append("Storage root changed or path is unsafe; on-disk manifest left untouched.") }

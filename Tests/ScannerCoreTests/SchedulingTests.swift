@@ -22,12 +22,12 @@ private actor QueueBackend: ScannerBackend {
         defer { active -= 1 }
         guard connected else { return CaptureOutcome(errors: [ScannerError("disconnected", "Mock unplugged")]) }
         try await store.markScanning(settings: [:])
-        do { while hold { try await Task.sleep(for: .milliseconds(5)) } }
-        catch is CancellationError { return CaptureOutcome(cancelled: true) }
-        guard connected else { return CaptureOutcome(errors: [ScannerError("disconnected", "Mock unplugged")]) }
         let file = store.incomingDirectory.appendingPathComponent("page.png")
         try makeTestPNG(at: file)
         try await store.preserve(file, sequence: 1)
+        do { while hold { try await Task.sleep(for: .milliseconds(5)) } }
+        catch is CancellationError { return CaptureOutcome(cancelled: true) }
+        guard connected else { return CaptureOutcome(errors: [ScannerError("disconnected", "Mock unplugged")]) }
         return CaptureOutcome()
     }
 }
@@ -35,7 +35,7 @@ private func waitFor(_ coordinator: ScannerCoordinator, id: UUID, terminal: Bool
     let deadline = ContinuousClock.now + .seconds(5)
     while true {
         let record = try await coordinator.scanStatus(id)
-        if terminal ? record.state.terminal : record.state == .scanning { return record }
+        if terminal ? record.state.terminal : record.state == .scanning && !record.images.isEmpty { return record }
         guard ContinuousClock.now < deadline else { throw ScannerError("testTimeout", "Job never reached expected state.") }
         try await Task.sleep(for: .milliseconds(5))
     }
@@ -123,4 +123,47 @@ private func waitFor(_ coordinator: ScannerCoordinator, id: UUID, terminal: Bool
     #expect(try await waitFor(coordinator, id: first.id).errors.first?.kind == "disconnected")
     #expect(try await waitFor(coordinator, id: second.id).errors.first?.kind == "disconnected")
     #expect(try await coordinator.events(after: 0).events.contains { $0.kind == "device.disconnected" })
+}
+
+private actor UnclosedBackend: ScannerBackend {
+    var calls = 0
+    func devices() -> [Device] { [Device(id: "unclosed", name: "Unclosed mock")] }
+    func inspect(deviceID: String) -> Inspection { Inspection(device: Device(id: deviceID, name: "Unclosed mock")) }
+    func capture(deviceID: String, request: ScanRequest, store: ScanStorage) -> CaptureOutcome {
+        calls += 1
+        return CaptureOutcome(errors: [ScannerError("cleanup", "Simulated unconfirmed session closure")], sessionClosed: false)
+    }
+}
+@Test func wakingCannotClearUnconfirmedHardwareOwnership() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let backend = UnclosedBackend()
+    let coordinator = try ScannerCoordinator(backend: backend, storageRoot: root)
+    let record = try await coordinator.startScan(ScanRequest())
+    _ = try await waitFor(coordinator, id: record.id)
+    try await coordinator.resumeAfterWake()
+    #expect(await coordinator.status().paused)
+    await #expect(throws: ScannerError.self) { try await coordinator.startScan(ScanRequest()) }
+    #expect(await backend.calls == 1)
+}
+
+@Test func storageFailureStopsQueueAndRetainsReceivedFiles() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let backend = QueueBackend()
+    let coordinator = try ScannerCoordinator(backend: backend, storageRoot: root)
+    let first = try await coordinator.startScan(ScanRequest(format: .png))
+    _ = try await waitFor(coordinator, id: first.id, terminal: false)
+    let second = try await coordinator.startScan(ScanRequest(format: .png))
+    // Simulate a storage location becoming unavailable without deleting any files.
+    let moved = root.appendingPathComponent("moved-batch")
+    try FileManager.default.moveItem(at: URL(fileURLWithPath: first.outputDirectory), to: moved)
+    await backend.release()
+    #expect(try await waitFor(coordinator, id: first.id).state == .failed)
+    #expect(await coordinator.status().persistenceError != nil)
+    #expect(try await coordinator.scanStatus(second.id).state == .queued)
+    #expect(await backend.entered.count == 1)
+    #expect(FileManager.default.fileExists(atPath: moved.appendingPathComponent("manifest.json").path))
+    #expect(FileManager.default.fileExists(atPath: moved.appendingPathComponent("originals/page-000001.png").path))
+    await coordinator.shutdownScans()
 }

@@ -66,3 +66,24 @@ import ScannerPersistence
     #expect(throws: ScannerError.self) { try db.saveProfile(ScanProfile(name: "")) }
     #expect(throws: ScannerError.self) { try db.jobs(limit: 101) }
 }
+
+@Test func persistenceRejectsUnsafePathsAndRecoveryLeavesSymlinksUntouched() throws {
+    let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    defer { try? FileManager.default.removeItem(at: root) }
+    let sentinel = root.appendingPathComponent("sentinel")
+    try Data("preserve me".utf8).write(to: sentinel)
+    let link = root.appendingPathComponent("linked.sqlite")
+    try FileManager.default.createSymbolicLink(at: link, withDestinationURL: sentinel)
+    #expect(throws: ScannerError.self) { try ScannerDatabase(path: link.path) }
+    let manifest = root.appendingPathComponent("manifest.json")
+    try FileManager.default.createSymbolicLink(at: manifest, withDestinationURL: sentinel)
+    let database = try ScannerDatabase()
+    let request = ScanRequest()
+    let record = ScanRecord(device: Device(id: "test", name: "Test"), request: request, outputDirectory: root.path)
+    try database.insert(record, submission: request)
+    try database.recoverInterruptedJobs(storageRoot: root.deletingLastPathComponent())
+    #expect(try String(contentsOf: sentinel, encoding: .utf8) == "preserve me")
+    #expect(try FileManager.default.destinationOfSymbolicLink(atPath: manifest.path) == sentinel.path)
+    #expect(try database.job(record.id)?.state == .failed)
+}

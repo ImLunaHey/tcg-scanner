@@ -23,6 +23,7 @@ public actor ScannerCoordinator {
     var scans: [UUID: ScanStorage] = [:]
     var queue: [UUID] = []
     var paused = false
+    var requiresRestart = false
     var persistenceError: ScannerError?
     var eventWaiters = 0
     let database: ScannerDatabase
@@ -39,7 +40,7 @@ public actor ScannerCoordinator {
         return devices
     }
     public func inspect(deviceID: String?) async throws -> Inspection {
-        guard !inspecting && activeScanID == nil && !stopping && !paused else { throw ScannerError("busy", "Scanner is busy or shutting down; retry shortly.") }
+        guard !inspecting && activeScanID == nil && !stopping && !paused && !requiresRestart else { throw ScannerError("busy", "Scanner is busy or shutting down; retry shortly.") }
         inspecting = true
         defer { inspecting = false; scheduleNext() }
         let selected = try await selectDevice(deviceID)

@@ -32,11 +32,11 @@ extension ScannerCoordinator {
         return try database.job(request.requestID)
     }
     private func acceptingJobs() throws {
-        guard !stopping && !paused && persistenceError == nil else { throw ScannerError("busy", "Service is stopping, paused or has a persistence error.") }
+        guard !stopping && !paused && !requiresRestart && persistenceError == nil else { throw ScannerError("busy", "Service is stopping, paused or has a persistence error.") }
         guard queue.count < 100 else { throw ScannerError("resourceLimit", "Queue is full (100 waiting jobs).") }
     }
     func scheduleNext() {
-        guard !stopping, !paused, persistenceError == nil, !inspecting, activeScanID == nil, !queue.isEmpty else { return }
+        guard !stopping, !paused, !requiresRestart, persistenceError == nil, !inspecting, activeScanID == nil, !queue.isEmpty else { return }
         let id = queue.removeFirst()
         guard let store = scans[id] else { return }
         activeScanID = id
@@ -62,7 +62,7 @@ extension ScannerCoordinator {
             // Do not start another physical job after a persistence failure.
             try? database.save(await store.snapshot())
         }
-        if !outcome.sessionClosed { paused = true }
+        if !outcome.sessionClosed { requiresRestart = true }
         scans[id] = nil; activeScanID = nil; scanTask = nil
         scheduleNext()
     }

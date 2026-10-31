@@ -11,7 +11,7 @@ enum LaunchAgent {
         var arguments = [executable, "--storage-root", options.storageRoot, "--database", options.database, "--socket", options.socket]
         if options.verbose { arguments.append("--verbose") }
         let plist: [String: Any] = ["Label": "local.scanner.service", "ProgramArguments": arguments,
-            "RunAtLoad": true, "KeepAlive": true, "ThrottleInterval": 10, "ExitTimeOut": 150,
+            "RunAtLoad": true, "KeepAlive": true, "ThrottleInterval": 10, "ExitTimeOut": 60,
             "ProcessType": "Interactive", "LimitLoadToSessionType": "Aqua", "Umask": 63,
             "StandardOutPath": logs.appendingPathComponent("stdout.log").path,
             "StandardErrorPath": logs.appendingPathComponent("service.jsonl").path]
