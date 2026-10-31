@@ -77,3 +77,44 @@ updated scan option. A browser-only replay verified waiting → identifying →
 suggestion transitions while Processing. That replay made no server writes or
 hardware requests; job history was unchanged. Screenshots and assertions are in
 the private diagnostics directory above.
+
+## Follow-up: focused footer OCR and lightbox transfer fix
+
+A later saved-image retry fixed Larvesta without feeding any cards. Vision rereads
+only the region containing the printed collector number when the initial
+name/number candidates fail catalogue validation. It reads `028/159•`, preserving
+the rarity dot as punctuation. Region-relative boxes are converted back to
+whole-card coordinates. Candidate IDs must agree with the initial ranking and
+the independently reread set total; no trailing digit is removed to fit a set.
+
+All 11 B-010 fronts passed a read-only recognition regression against the expected
+printings. The new signed service then re-identified only C-002/front capture 4.
+B-010 now has the same eleven unique suggested catalogue IDs as B-009, with the
+changed order documented above. These remain suggestions requiring review.
+The previous no-match result and new request/result are retained in diagnostics.
+
+The lightbox delay included quadratic scanning in the Swift Unix-socket line
+reader: each 4 KiB receive searched the whole accumulated image reply again. The
+reader now searches only the newly received bytes, retaining framing limits and
+trailing-data checks. A bounded browser cache also retains full PNG blobs, and
+the lightbox displays the existing preview while waiting for the full original
+resolution. PNG bytes are not recompressed or replaced by JPEGs for inspection.
+
+Four uncached HTTPS requests for two B-010 cropped PNGs (1.46–1.55 MB) on this Mac
+measured 3.248, 8.662, 4.153 and 2.625 seconds before, versus 0.185, 0.149, 0.124
+and 0.121 seconds after the transport update. These are small local measurements,
+not a guarantee of another device's network speed. A Chromium browser test held
+the full-image response to verify the cached preview appeared first, checked the
+full PNG's SHA-256 in the browser, verified native-pixel 100% zoom, and reopened
+it without another image request. The preview appeared in 51 ms and reopening
+took 62 ms in that check. Mobile layout was checked at 390 × 844.
+
+Socket/HTTP/client tests passed, including large frames crossing 4 KiB boundaries,
+limits, authentication and image integrity; recognition tests included the actual
+B-010 Larvesta and all eleven fronts. Diagnostic timing samples and browser checks
+are retained under `Diagnostics/identification-repeat/`.
+The updated paired-card browser workflow passed on desktop Chromium, mobile
+Chromium and tablet WebKit (three tests), including automatic identification,
+full-resolution loading, zero-request reopening, themes and reload caching.
+A live HTTPS browser check confirmed B-010 now displays eleven suggestions,
+including Larvesta, and created no scan jobs.

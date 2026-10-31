@@ -73,3 +73,31 @@ Sources: [MLX Swift LM](https://github.com/ml-explore/mlx-swift-lm),
 [TCGdex variant fields](https://tcgdex.dev/reference/card#variants),
 [TCGplayer condition overview](https://help.tcgplayer.com/hc/en-us/articles/221430307-Card-Conditioning-Overview).
 Model outputs and screenshots are private local diagnostics, not committed data.
+
+## Next local experiments proposed after B-010
+
+These are proposed validation paths, not implemented classifiers:
+
+- **Finish:** after identifying the printing, align the scanned front with a
+  trusted reference and inspect the illustration and lower background separately.
+  A small classifier trained on physically labelled scanner images could learn
+  reverse-holo motifs for a particular layout. Do not infer foil solely from
+  colourful artwork or a catalogue's list of variants. Split evaluation by
+  physical card, not by repeat scan, to avoid testing on another scan of the same
+  training card. Measure abstentions and false positives on non-holo cards.
+- **Condition:** start with visible defects, not a whole-card grade. Inspect the
+  back border and corners for whitening/chips and both faces for candidate
+  creases. Show marked regions for review and record what was actually observed.
+  Printed white areas, rounded corners, cropping errors and reflections need
+  negative examples. No detected defect does not establish Near Mint.
+- **Additional evidence:** an optional angled-light photo of the physical card
+  could provide surface evidence absent from the flatbed scan; that photo would
+  also be analyzed locally. This is not needed to scan or identify cards. There
+  are no new hardware changes or automatic feeding experiments in this proposal.
+
+Apple supplies [image registration](https://developer.apple.com/documentation/vision/aligning-similar-images)
+and [contour detection](https://developer.apple.com/documentation/vision/vndetectcontoursrequest)
+for the proposed in-process Swift implementation. Their availability does not
+validate this classifier. [TCGplayer's defect definitions](https://help.tcgplayer.com/hc/en-us/articles/26141121045143-Understanding-Card-Condition-Imperfections-A-Comprehensive-Guide)
+provide concrete review categories including edgewear, scratches and indentation;
+physical inspection is still needed for a final selling condition.
