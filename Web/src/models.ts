@@ -55,9 +55,15 @@ export type Batch = Omit<Job, "scannerID" | "progress"> & {
   cardIdentifications?: Identification[];
 };
 export type EditedImage = {
-  request: { id: string; sequence: number };
+  request: {
+    id: string;
+    sequence: number;
+    crop: { x: number; y: number; width: number; height: number };
+    quarterTurns: number;
+  };
   image: OriginalImage;
   createdAt: string;
+  cardPreparation?: { orientationVerified: boolean; warnings: string[] };
 };
 export type JobPage = { jobs: Job[]; nextOffset?: number };
 export type Setting = {
@@ -97,6 +103,7 @@ export type DeviceStatus = {
   configuredSettings?: Settings;
 };
 export type ScanSubmission = Settings & {
+  prepareCards?: boolean;
   requestID: string;
   deviceID: string;
   profileID?: string;

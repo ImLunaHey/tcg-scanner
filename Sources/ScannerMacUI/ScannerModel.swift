@@ -28,6 +28,7 @@ import UserNotifications
     var nextOffset: Int?
     var dpi = 300
     var duplex = false
+    var prepareCards = false
     var format: OriginalFormat = .png
     var paperReady = false
     var pending: ScanRequest?
@@ -121,7 +122,7 @@ import UserNotifications
     func start() {
         guard canScan else { return }
         perform {
-            let request = self.pending ?? ScanRequest(deviceID: self.selectedDevice, dpi: self.dpi, duplex: self.duplex, format: self.format, profileID: self.selectedProfile)
+            let request = self.pending ?? ScanRequest(deviceID: self.selectedDevice, dpi: self.dpi, duplex: self.duplex, format: self.format, profileID: self.selectedProfile, prepareCards: self.prepareCards ? true : nil)
             self.pending = request
             self.defaults.set(try Wire.encoder().encode(request), forKey: "scanner.pendingScan")
             let record: ScanRecord

@@ -24,6 +24,8 @@ private struct BatchDetail: View {
     @State private var editing: EditingImage?
     @State private var identifying: EditingImage?
     @State private var compare = false
+    @State private var preparing = false
+    @State private var preparationIDs: [Int: UUID] = [:]
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -51,8 +53,9 @@ private struct BatchDetail: View {
                 if record.images.isEmpty { ContentUnavailableView("No images saved yet", systemImage: "doc.text.image", description: Text(record.state.terminal ? "This job did not produce any saved images." : "Previews appear after each original has been saved.")) }
                 LazyVGrid(columns: compare ? [GridItem(.flexible()), GridItem(.flexible())] : [GridItem(.adaptive(minimum: 220))], spacing: 18) {
                     ForEach(record.images, id: \.sequence) { image in
+                        let prepared = record.processedImages?.last(where: { $0.request.sequence == image.sequence && $0.cardPreparation != nil })
                         VStack(alignment: .leading, spacing: 8) {
-                            ScanThumbnail(model: model, job: record.id, sequence: image.sequence).frame(height: 230)
+                            ScanThumbnail(model: model, job: record.id, sequence: image.sequence, edit: prepared?.id).frame(height: 230)
                             Text("C-\(BatchNaming.number(image.sequence)) · original").font(.headline)
                             Text("\(image.width) × \(image.height) · side \(image.side)").font(.caption).foregroundStyle(.secondary)
                             if let identification = record.cardIdentifications?.first(where: { $0.request.sequence == image.sequence }),
@@ -60,6 +63,20 @@ private struct BatchDetail: View {
                                 Text(card.name + " · " + card.setName + " · " + card.localID).font(.caption)
                             }
                             Button("Identify / review card…") { identifying = EditingImage(image: image) }.disabled(!record.state.terminal)
+                            if let prepared {
+                                Button("Export prepared card…") { exportImage(record: record, image: prepared.image, editID: prepared.id, model: model) }
+                                ForEach(prepared.cardPreparation?.warnings ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
+                            } else {
+                                Button(preparing ? "Preparing…" : "Prepare card") {
+                                    let id = preparationIDs[image.sequence] ?? UUID(); preparationIDs[image.sequence] = id
+                                    preparing = true
+                                    Task {
+                                        defer { preparing = false }
+                                        do { _ = try await model.client.prepareCard(jobID: record.id, sequence: image.sequence, id: id); try await model.refresh() }
+                                        catch { model.error = error.localizedDescription }
+                                    }
+                                }.disabled(preparing || !record.state.terminal)
+                            }
                             HStack {
                                 Button("Edit…") { editing = EditingImage(image: image) }.disabled(!record.state.terminal || model.busy)
                                 Button("Export…") { exportImage(record: record, image: image, model: model) }.disabled(model.busy)
@@ -67,7 +84,7 @@ private struct BatchDetail: View {
                         }.padding(10).background(.background, in: RoundedRectangle(cornerRadius: 10))
                     }
                 }
-                if let edits = record.processedImages, !edits.isEmpty {
+                if let edits = record.processedImages?.filter({ $0.cardPreparation == nil }), !edits.isEmpty {
                     Text("Processed PNGs").font(.title2.bold())
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 220))], spacing: 18) {
                         ForEach(edits, id: \.id) { edit in

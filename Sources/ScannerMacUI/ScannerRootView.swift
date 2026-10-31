@@ -86,7 +86,8 @@ struct DashboardView: View {
                         if model.pending != nil {
                             Label("A previous request has no confirmed reply. Retry uses its original ID and settings to prevent a duplicate scan.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
                         }
-                        Toggle("I have loaded ordinary paper and the feeder is ready", isOn: $model.paperReady)
+                        Toggle("Auto-crop and orient cards", isOn: $model.prepareCards)
+                        Toggle("I have loaded suitable media and the feeder is ready", isOn: $model.paperReady)
                         Button(model.pending == nil ? "Start scan" : "Retry previous request", systemImage: "scanner.fill") { model.start() }
                             .buttonStyle(.borderedProminent).controlSize(.large).disabled(!model.canScan)
                         if model.inspection == nil && model.connected { Text(model.inspectionError ?? "Inspect the connected scanner before starting.").font(.caption) }

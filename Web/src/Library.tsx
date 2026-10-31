@@ -217,6 +217,25 @@ export function BatchDetail({ id }: { id: string }) {
   const [compareOpen, setCompareOpen] = useState(false);
   const [editing, setEditing] = useState<OriginalImage>();
   const [identifying, setIdentifying] = useState<number>();
+  const queries = useQueryClient();
+  const [preparationIDs, setPreparationIDs] = useState<Record<number, string>>(
+    {},
+  );
+  const prepare = useMutation({
+    mutationFn: ({
+      sequence,
+      requestID,
+    }: {
+      sequence: number;
+      requestID: string;
+    }) =>
+      api.send(`images/${id}:${sequence}/prepare-card`, "POST", {
+        id: requestID,
+      }),
+    onSuccess: () => {
+      void queries.invalidateQueries({ queryKey: ["batch", id] });
+    },
+  });
   const download = useMutation({
     mutationFn: async ({
       image,
@@ -231,7 +250,7 @@ export function BatchDetail({ id }: { id: string }) {
       );
       saveBlob(
         blob,
-        `${batch.data ? batchLabel(batch.data) : id}-${editID ? `edit-${editID}.png` : `${captureLabel(image.sequence)}.${batch.data?.request.format || "png"}`}`,
+        `${batch.data ? batchLabel(batch.data) : id}-${editID ? (batch.data?.processedImages?.find((edit) => edit.request.id === editID)?.cardPreparation ? `${captureLabel(image.sequence)}-card.png` : `edit-${editID}.png`) : `${captureLabel(image.sequence)}.${batch.data?.request.format || "png"}`}`,
       );
     },
   });
@@ -243,6 +262,15 @@ export function BatchDetail({ id }: { id: string }) {
   const record = batch.data;
   const finished = isTerminal(record.state);
   function tile(image: OriginalImage, edit?: EditedImage) {
+    const prepared = !edit
+      ? record.processedImages
+          ?.filter(
+            (value) =>
+              value.request.sequence === image.sequence &&
+              value.cardPreparation,
+          )
+          .at(-1)
+      : undefined;
     const identification = record.cardIdentifications?.find(
       (value) => value.request.sequence === image.sequence,
     );
@@ -254,23 +282,65 @@ export function BatchDetail({ id }: { id: string }) {
         : undefined;
     return (
       <article className="image-card" key={edit?.request.id || image.sequence}>
-        <Thumbnail id={id} image={image} editID={edit?.request.id} />
+        <Thumbnail
+          id={id}
+          image={prepared?.image || image}
+          editID={prepared?.request.id || edit?.request.id}
+        />
         <div className="image-card-body">
           <div className="section-heading">
             <h3>{captureLabel(image.sequence)}</h3>
             <span className="badge">
-              {edit
-                ? "Edited copy"
-                : image.side === "unknown"
-                  ? "Side unassigned"
-                  : image.side}
+              {prepared
+                ? "Prepared card"
+                : edit
+                  ? "Edited copy"
+                  : image.side === "unknown"
+                    ? "Side unassigned"
+                    : image.side}
             </span>
           </div>
           <p className="muted small">
-            {image.width} × {image.height} ·{" "}
-            {(image.bytes / 1024 / 1024).toFixed(1)} MB
+            {(prepared?.image || image).width} ×{" "}
+            {(prepared?.image || image).height} ·{" "}
+            {((prepared?.image || image).bytes / 1024 / 1024).toFixed(1)} MB
           </p>
           <div className="image-actions">
+            {!edit && (
+              <button
+                className="text-button"
+                disabled={!finished || prepare.isPending || !!prepared}
+                onClick={() => {
+                  const requestID = preparationIDs[image.sequence] || uuid();
+                  setPreparationIDs({
+                    ...preparationIDs,
+                    [image.sequence]: requestID,
+                  });
+                  prepare.mutate({ sequence: image.sequence, requestID });
+                }}
+              >
+                {prepare.isPending &&
+                prepare.variables.sequence === image.sequence
+                  ? "Preparing…"
+                  : prepared
+                    ? "Card prepared"
+                    : "Prepare card"}
+              </button>
+            )}
+            {prepared && (
+              <button
+                className="text-button"
+                disabled={download.isPending || archive.isPending}
+                onClick={() =>
+                  download.mutate({
+                    image: prepared.image,
+                    editID: prepared.request.id,
+                  })
+                }
+              >
+                Download card
+              </button>
+            )}
             {!edit && (
               <button
                 className="text-button"
@@ -292,7 +362,7 @@ export function BatchDetail({ id }: { id: string }) {
               }
             >
               <Download size={15} />
-              Download
+              {prepared ? "Original" : "Download"}
             </button>
             {!edit && (
               <button
@@ -305,6 +375,11 @@ export function BatchDetail({ id }: { id: string }) {
               </button>
             )}
           </div>
+          {prepared?.cardPreparation?.warnings.map((warning, index) => (
+            <p key={index} className="small muted">
+              {warning}
+            </p>
+          ))}
           {!edit && card && (
             <p className="small">
               <strong>{card.name}</strong> · {card.setName} · {card.localID}
@@ -384,7 +459,9 @@ export function BatchDetail({ id }: { id: string }) {
         </button>
         {!finished && <CancelJob id={id} />}
       </div>
-      <ErrorNote error={batch.error || download.error || archive.error} />
+      <ErrorNote
+        error={batch.error || download.error || archive.error || prepare.error}
+      />
       {record.errors.map((error, i) => (
         <ErrorNote key={i} error={error.message} />
       ))}
@@ -407,11 +484,14 @@ export function BatchDetail({ id }: { id: string }) {
             : "This batch contains no captured images."}
         </Empty>
       )}
-      {!!record.processedImages?.length && (
+      {!!record.processedImages?.filter((edit) => !edit.cardPreparation)
+        .length && (
         <>
           <h2 className="subheading">Manually edited copies</h2>
           <div className="image-grid">
-            {record.processedImages.map((edit) => tile(edit.image, edit))}
+            {record.processedImages
+              .filter((edit) => !edit.cardPreparation)
+              .map((edit) => tile(edit.image, edit))}
           </div>
         </>
       )}
@@ -488,8 +568,24 @@ function ImageEditor({
 }) {
   const { api } = useAuth();
   const queries = useQueryClient();
-  const [rotation, setRotation] = useState(0);
-  const [crop, setCrop] = useState({ x: 0, y: 0, width: 100, height: 100 });
+  const initial = queries
+    .getQueryData<Batch>(["batch", batchID])
+    ?.processedImages?.filter(
+      (edit) =>
+        edit.request.sequence === image.sequence && edit.cardPreparation,
+    )
+    .at(-1);
+  const [rotation, setRotation] = useState(initial?.request.quarterTurns || 0);
+  const [crop, setCrop] = useState(
+    initial
+      ? {
+          x: initial.request.crop.x * 100,
+          y: initial.request.crop.y * 100,
+          width: initial.request.crop.width * 100,
+          height: initial.request.crop.height * 100,
+        }
+      : { x: 0, y: 0, width: 100, height: 100 },
+  );
   const [editID] = useState(uuid);
   const valid =
     Object.values(crop).every(Number.isFinite) &&

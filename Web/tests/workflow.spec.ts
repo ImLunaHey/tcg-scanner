@@ -102,6 +102,16 @@ test("authenticated browser workflow, retry, review, export and cancellation", a
   ).toBeVisible();
   await page.getByRole("button", { name: "Close comparison" }).click();
   await page
+    .getByRole("button", { name: "Prepare card", exact: true })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Download card", exact: true }),
+  ).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: "Original", exact: true }),
+  ).toHaveCount(1);
+  await page
     .getByRole("button", { name: "Identify card", exact: true })
     .first()
     .click();
@@ -135,7 +145,13 @@ test("authenticated browser workflow, retry, review, export and cancellation", a
   expect(manifest.cardIdentifications[0].selectedCardID).toBe("swsh3-136");
   expect(manifest.cardIdentifications[0].finish).toBe("reverseHolo");
   expect(manifest.cardIdentifications[0].condition).toBe("lightlyPlayed");
-  for (const image of manifest.images) {
+  expect(manifest.processedImages[0].cardPreparation).toBeTruthy();
+  for (const image of [
+    ...manifest.images,
+    ...manifest.processedImages.map(
+      (edit: { image: { relativePath: string; sha256: string } }) => edit.image,
+    ),
+  ]) {
     const bytes =
       files[manifestPath.replace("manifest.json", image.relativePath)];
     expect(createHash("sha256").update(bytes).digest("hex")).toBe(image.sha256);

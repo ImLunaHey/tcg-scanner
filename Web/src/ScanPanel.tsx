@@ -34,6 +34,7 @@ export function ScanPanel({ onStarted }: { onStarted: (id: string) => void }) {
   const [chosenDPI, setDPI] = useState(300);
   const [format, setFormat] = useState<Format>("png");
   const [duplex, setDuplex] = useState(false);
+  const [prepareCards, setPrepareCards] = useState(false);
   const [ready, setReady] = useState(false);
   const [pending, setPending] = useState(loadPending);
   const sending = useRef(false);
@@ -129,6 +130,7 @@ export function ScanPanel({ onStarted }: { onStarted: (id: string) => void }) {
       deviceID,
       dpi,
       duplex: useDuplex,
+      ...(prepareCards ? { prepareCards: true } : {}),
       format: selectedFormat,
       ...(profileID ? { profileID } : {}),
     };
@@ -227,6 +229,21 @@ export function ScanPanel({ onStarted }: { onStarted: (id: string) => void }) {
             onChange={(e) => setDuplex(e.target.checked)}
           />
         </label>
+        <label className="toggle-row">
+          <span>
+            <strong>Auto-crop and orient cards</strong>
+            <small>
+              Black-background captures · preserves originals · inspect
+              uncertain orientation
+            </small>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={prepareCards}
+            onChange={(e) => setPrepareCards(e.target.checked)}
+          />
+        </label>
         <p className="muted small">
           Current capture settings: A4 · RGB colour · 8-bit. Card feeding and
           front/back pairing still need validation.
@@ -238,7 +255,7 @@ export function ScanPanel({ onStarted }: { onStarted: (id: string) => void }) {
             onChange={(e) => setReady(e.target.checked)}
           />
           <span>
-            I have checked the feeder setup and loaded ordinary paper for this
+            I have checked the feeder setup and loaded suitable media for this
             scan.
           </span>
         </label>
