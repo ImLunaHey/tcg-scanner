@@ -12,6 +12,8 @@ import type { Batch } from "./models";
 export type ConditionCheck = {
   state: "checked" | "unsupported" | "inconclusive";
   method: string;
+  backRecognition?: string;
+  coverage?: string[];
   findings: {
     kind: string;
     region: { x: number; y: number; width: number; height: number };
@@ -21,11 +23,20 @@ export type ConditionCheck = {
 };
 export function conditionSummary(check?: ConditionCheck): string {
   if (!check) return "Visible marks: not checked";
-  if (check.state !== "checked")
-    return "Visible marks: needs manual inspection";
+  if (check.state === "unsupported") return "Visible marks: not assessed";
+  if (check.state === "inconclusive")
+    return "Visible marks: analysis inconclusive";
   return check.findings.length
     ? `Visible marks: ${check.findings.length} candidate area${check.findings.length === 1 ? "" : "s"}`
     : "No border marks flagged · not a grade";
+}
+export function conditionDetail(check?: ConditionCheck): string {
+  if (!check) return "Automatic checks run after card preparation.";
+  if (check.state !== "checked")
+    return `${check.limitations[0] || "This image could not be assessed reliably."} No red boxes to show.`;
+  return check.findings.length
+    ? "Back border checked automatically. Red boxes mark candidate defects for review."
+    : "Back border checked automatically; no candidate marks found. There are no red boxes to show.";
 }
 export function ConditionReview({
   batch,
@@ -164,6 +175,7 @@ export function ConditionReview({
         ) : (
           <>
             <p role="status">{conditionSummary(check)}</p>
+            <p className="small muted">{conditionDetail(check)}</p>
             <button
               className="button secondary"
               disabled={

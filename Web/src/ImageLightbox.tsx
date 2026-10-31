@@ -4,7 +4,11 @@ import { Modal } from "./Modal";
 import { useAuth } from "./auth";
 import { cachedImageBlob, imageBlob } from "./api";
 import { ErrorNote } from "./ui";
-import { conditionSummary, type ConditionCheck } from "./ConditionReview";
+import {
+  conditionSummary,
+  conditionDetail,
+  type ConditionCheck,
+} from "./ConditionReview";
 
 export type LightboxImage = {
   sequence: number;
@@ -206,6 +210,9 @@ export function ImageLightbox({
         {current.conditionCheck && (
           <div className="lightbox-condition">
             <p>{conditionSummary(current.conditionCheck)}</p>
+            <p className="small muted">
+              {conditionDetail(current.conditionCheck)}
+            </p>
             {findings.length > 0 && (
               <div className="lightbox-mark-links" aria-label="Candidate marks">
                 {findings.map((finding, index) => (

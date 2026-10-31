@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { conditionSummary, type ConditionCheck } from "./ConditionReview";
+import {
+  conditionSummary,
+  conditionDetail,
+  type ConditionCheck,
+} from "./ConditionReview";
 const check: ConditionCheck = {
   state: "checked",
   findings: [],
@@ -14,10 +18,10 @@ describe("visible condition observations", () => {
   it("distinguishes an unavailable check from no marks", () => {
     expect(conditionSummary()).toBe("Visible marks: not checked");
     expect(conditionSummary({ ...check, state: "unsupported" })).toBe(
-      "Visible marks: needs manual inspection",
+      "Visible marks: not assessed",
     );
     expect(conditionSummary({ ...check, state: "inconclusive" })).toBe(
-      "Visible marks: needs manual inspection",
+      "Visible marks: analysis inconclusive",
     );
   });
   it("labels observations as candidates", () =>
@@ -33,4 +37,24 @@ describe("visible condition observations", () => {
         ],
       }),
     ).toBe("Visible marks: 1 candidate area"));
+});
+
+it("explains why an assessed or skipped image has no red boxes", () => {
+  expect(conditionDetail(check)).toContain(
+    "checked automatically; no candidate marks",
+  );
+  expect(
+    conditionDetail({
+      ...check,
+      state: "unsupported",
+      limitations: ["Front images are outside scope."],
+    }),
+  ).toContain("Front images are outside scope. No red boxes");
+  expect(
+    conditionDetail({
+      ...check,
+      state: "inconclusive",
+      limitations: ["Image too small."],
+    }),
+  ).toContain("Image too small.");
 });

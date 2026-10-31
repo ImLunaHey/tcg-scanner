@@ -23,6 +23,7 @@ struct ConditionReviewView: View {
             Text("Candidate marks in the blue back border. Inspect the physical card; this does not assign a selling grade.").foregroundStyle(.secondary)
             if let error { Text(error).foregroundStyle(.red) }
             Text(result?.conditionCheck?.summary ?? "Visible marks: not checked").font(.headline)
+            if let check = result?.conditionCheck { Text(check.detail).font(.callout).foregroundStyle(.secondary) }
             Button(busy ? "Checking…" : "Check visible marks locally") { check() }.disabled(busy || result == nil || result?.state == .processing)
             ScrollView {
                 HStack(alignment: .top, spacing: 20) {
@@ -74,8 +75,13 @@ struct ConditionReviewView: View {
 }
 
 extension ConditionCheck {
+    var detail: String {
+        if state != .checked { return (limitations.first ?? "This image could not be assessed reliably.") + " No red boxes to show." }
+        return findings.isEmpty ? "Back border checked automatically; no candidate marks found. There are no red boxes to show." : "Back border checked automatically. Red boxes mark candidate defects for review."
+    }
     var summary: String {
-        guard state == .checked else { return "Visible marks: needs manual inspection" }
+        if state == .unsupported { return "Visible marks: not assessed" }
+        if state == .inconclusive { return "Visible marks: analysis inconclusive" }
         return findings.isEmpty ? "No border marks flagged · not a grade" : "Visible marks: \(findings.count) candidate areas"
     }
 }
