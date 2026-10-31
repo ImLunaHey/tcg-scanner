@@ -89,7 +89,7 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
         #expect(try await client.execute(uri: "/api/v1/profiles/\(profileID)", method: .patch, headers: headers, body: buffer(.object(["name": .string("Paper updated")]))).status.code == 200)
         let requestID = UUID()
         var jobHeaders = headers; jobHeaders[HTTPField.Name("Idempotency-Key")!] = requestID.uuidString
-        let jobBody = try buffer(.object(["profileID": .string(profileID.uuidString)]))
+        let jobBody = try buffer(.object(["profileID": .string(profileID.uuidString), "requestID": .string(requestID.uuidString.lowercased())]))
         let stableHeaders = jobHeaders
         // Independent HTTP connections share service idempotency and exclusive hardware ownership.
         try await withThrowingTaskGroup(of: Void.self) { group in

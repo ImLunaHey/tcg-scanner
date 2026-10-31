@@ -50,7 +50,11 @@ extension ScannerGateway {
                 try only(body, ["requestID", "deviceID", "profileID", "useDeviceSettings", "dpi", "duplex", "format"])
                 if let key = request.headers[HTTPField.Name("Idempotency-Key")!] {
                     let id = try uuid(key)
-                    if let supplied = body["requestID"], supplied != .string(id) && supplied != .string(key) { throw GatewayError(400, "invalidParams", "Idempotency-Key and requestID must match.") }
+                    if let supplied = body["requestID"] {
+                        guard case .string(let rawID) = supplied, try uuid(rawID) == id else {
+                            throw GatewayError(400, "invalidParams", "Idempotency-Key and requestID must match.")
+                        }
+                    }
                     params["requestID"] = .string(id)
                 }
                 guard case .string(let id) = params["requestID"] else { throw GatewayError(400, "invalidParams", "Provide requestID or Idempotency-Key as a UUID.") }
