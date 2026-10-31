@@ -75,7 +75,8 @@ public enum CardProcessor {
                 throw ScannerError("cardNotFound", "More than one substantial object found. Crop manually to avoid losing a card.")
             }
         }
-        let margin = max(3, min(w, h) * 0.02)
+        // One analysis pixel protects the detected edge without the previous 2% black frame.
+        let margin = 1.0
         let x = max(0, Double(card.minX) - margin), y = max(0, Double(card.minY) - margin)
         let right = min(Double(width), Double(card.maxX + 1) + margin), bottom = min(Double(height), Double(card.maxY + 1) + margin)
         return ImageCrop(x: x / Double(width), y: y / Double(height), width: (right - x) / Double(width), height: (bottom - y) / Double(height))

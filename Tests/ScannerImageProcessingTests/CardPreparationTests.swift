@@ -12,8 +12,8 @@ import ScannerAPI
         pixels[i] = 100; pixels[i + 1] = 150; pixels[i + 2] = 200; pixels[i + 3] = 255
     } }
     let crop = try CardProcessor.foregroundCrop(rgba: pixels, width: width, height: height)
-    #expect(crop.x < 0.30 && crop.y < 0.10)
-    #expect(crop.x + crop.width > 0.73 && crop.y + crop.height > 0.40)
+    #expect(abs(crop.x - 0.29) < 0.000001 && abs(crop.y - 0.095) < 0.000001)
+    #expect(abs(crop.width - 0.45) < 0.000001 && abs(crop.height - 0.31) < 0.000001)
     for y in 120..<180 { for x in 30..<73 {
         let i = (y * width + x) * 4
         pixels[i] = 200; pixels[i + 1] = 150; pixels[i + 2] = 100; pixels[i + 3] = 255
