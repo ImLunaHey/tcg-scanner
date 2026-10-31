@@ -42,6 +42,22 @@ with open(target, 'xb') as file: plistlib.dump(value, file)
 os.chmod(target, 0o600)
 PY
 plutil -lint "$scanner_backup/updated.plist"
+# bootout returns before launchd finishes removing the job. A bounded retry also
+# covers rollback, so an unload race cannot leave the gateway stopped.
+scanner_bootstrap_http() {
+    python3 - "$scanner_domain" "$scanner_plist" <<'PY'
+import subprocess, sys, time
+deadline = time.monotonic() + 10
+while True:
+    result = subprocess.run(['launchctl', 'bootstrap', sys.argv[1], sys.argv[2]], capture_output=True, text=True)
+    if result.returncode == 0:
+        break
+    if result.returncode != 5 or time.monotonic() >= deadline:
+        sys.stderr.write(result.stdout + result.stderr)
+        sys.exit(result.returncode)
+    time.sleep(0.25)
+PY
+}
 scanner_was_loaded=false
 if launchctl print "$scanner_domain/local.scanner.http" >/dev/null 2>&1; then
     scanner_was_loaded=true
@@ -54,13 +70,18 @@ scanner_rollback() {
     mv "$scanner_http.rollback" "$scanner_http"
     cp "$scanner_backup/http.plist" "$scanner_plist.rollback"
     mv "$scanner_plist.rollback" "$scanner_plist"
-    if [[ "$scanner_was_loaded" == true ]]; then launchctl bootstrap "$scanner_domain" "$scanner_plist"; fi
+    if [[ "$scanner_was_loaded" == true ]]; then
+        if ! scanner_bootstrap_http; then
+            echo 'Previous files restored, but the HTTP agent could not restart. Inspect launchd before retrying.' >&2
+            return 1
+        fi
+    fi
     echo 'HTTP update failed; previous binary and configuration restored.' >&2
 }
 trap scanner_rollback ERR
 mv "$scanner_http.new" "$scanner_http"
 cp "$scanner_backup/updated.plist" "$scanner_plist.new"
 mv "$scanner_plist.new" "$scanner_plist"
-launchctl bootstrap "$scanner_domain" "$scanner_plist"
+scanner_bootstrap_http
 trap - ERR
 printf 'Web dashboard installed. Existing HTTP address and authentication preserved.\nAssets: %s\nBackup: %s\n' "$scanner_web" "$scanner_backup"
