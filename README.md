@@ -7,8 +7,8 @@ the service exclusively. No graphical application is required for scanning.
 The [remote web workspace](Docs/web-app.md) provides responsive scanning controls,
 live events and a batch library; see [web validation](Docs/milestone-7-validation.md).
 [Card feeding validation](Docs/card-test-readiness.md)
-now includes an explicitly authorized single-card test with clean feeding and no
-new damage reported. [Whole-card preparation](Docs/card-preparation.md) preserves
+now includes an explicitly authorized single-card test and an 11-card duplex
+batch with clean feeding and no new damage reported. [Whole-card preparation](Docs/card-preparation.md) preserves
 originals while adding cropped and oriented PNG copies. Bulk feeding is not yet validated.
 Optional [English card identification](Docs/card-identification.md) now uses local
 Apple Vision OCR and TCGdex to suggest a card and set. Finish and condition are
@@ -26,8 +26,10 @@ diagnostics never request a scan.
 
 This installation saves scans to `smb://lake/scans` at `/Volumes/scans`.
 Each batch has one folder with image files directly inside; no `originals/` or
-`processed/` folders are used. New scans default to PNG without application image
-processing. Folders use permanent numbers (`B-001`) and dates stay in metadata.
+`processed/` folders are used. New scans default to PNG. Web/native controls
+enable automatic cropped card copies; disable that option for documents. Original
+captures remain unchanged. Folders use permanent numbers (`B-001`) and dates stay
+in metadata.
 Current unpaired captures use `C-001.png`; `C-001-front.png`/`C-001-back.png`
 will require verified card pairing. See [storage configuration and migration](Docs/storage.md).
 

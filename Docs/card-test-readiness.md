@@ -8,6 +8,11 @@ Two cards are unaccounted for in the saved batch. See
 [physical test results](card-preparation.md). This is not complete batch-count,
 order or bulk-feeding validation.
 
+The separately authorized full 11-card retry B-009 completed with 22 originals
+and 22 automatically prepared copies, no driver errors, and no new damage
+reported by the user. Count and automatic processing passed for this run;
+physical correspondence and prolonged bulk operation still need validation.
+
 The user reports removing the “main roller”; the video and precise assembly remain
 unidentified. No removal of a plastic part was confirmed. The feeder remains
 modified. The user subsequently authorized a controlled single-card test despite

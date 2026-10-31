@@ -57,13 +57,17 @@ using local OCR and TCGdex suggestions, with separate manual finish and conditio
   never starts a scan.
 - Profiles: create, edit, duplicate and delete, shared with native/CLI/MCP clients.
 - Library: paginated history, live capture thumbnails, original/edited downloads,
-  selected-image comparison, complete JSON manifests and batch ZIP export.
+  selected-image comparison, complete JSON manifests and batch ZIP export. Duplex
+  card jobs group adjacent captures into a card with both sides and one identity
+  summary; missing sides and interrupted batches remain flagged.
 - Optional manual copies: percentage crop coordinates and clockwise rotation,
   processed by the existing native image service; originals remain untouched.
-- Optional [card preparation](card-preparation.md): enable **Auto-crop and orient
-  cards** before scanning, or use **Prepare card** on an existing capture.
+- [Card preparation](card-preparation.md): **Auto-crop and orient cards** starts
+  enabled in the scan controls; disable it for documents. Use **Prepare card**
+  on an existing capture.
   **Download card** exports the prepared PNG; **Original** retains the capture.
-  The default workflow remains scan-only.
+  Unique identity suggestions show their name, set and collector number directly
+  on the capture tile, clearly distinguished from confirmed identities.
 - Scanner details: capability values, ranges, defaults, evidence, vendor fields,
   unknowns and read-only status; report download. Unsupported driver fields remain
   inspection-only rather than pretending the engine can configure them.

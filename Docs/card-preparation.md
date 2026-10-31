@@ -1,9 +1,10 @@
 # Whole-card cropping and orientation
 
 Enable **Auto-crop and orient cards** in the scan controls to create prepared PNGs
-during the job's processing stage. This is optional and off by default for general
-documents. Existing captures have a **Prepare card** action. Neither operation
-discards or overwrites the driver's original image.
+during the job's processing stage. The web and native scan controls now enable
+this by default for the card workflow; turn it off for general documents. CLI/API
+requests still opt in explicitly. Existing captures have a **Prepare card**
+action. Neither operation discards or overwrites the driver's original image.
 
 The web/native library shows the latest prepared card in place of the full-page
 preview. **Download card** exports the prepared PNG; **Original** retrieves the
@@ -17,8 +18,10 @@ per-card filenames remain separate work.
 
 The first algorithm targets one trading card on the fi-8170's black scan
 background. It finds connected foreground bounds, checks the card's aspect ratio,
-rejects separate substantial objects and keeps a small margin (about 2% of the
-short edge). It includes the card border instead of detecting only the artwork.
+rejects separate substantial objects and keeps one analysis-pixel of padding
+(about three full-resolution pixels on the current 300 DPI A4 scans). The v2
+method replaces the original 2% padding to reduce visible black margins. It
+includes the card border instead of detecting only the artwork.
 Analysis uses a bounded preview; final PNG rendering uses the original resolution.
 It does not synthesize edges, remove the background, sharpen or grade the card.
 
@@ -56,7 +59,11 @@ data. A cancelled processing job also retains captured originals.
 quarter turns, orientation verification flag, method and warnings. Existing edits
 without this optional property remain ordinary manual copies. Identification
 prefers the latest prepared card and records `sourceEditID` and its SHA-256.
-Previously saved identification results are not silently replaced: reject stale
+Library tiles show a unique candidate's name, set and collector number as
+**Suggested · review required**, without requiring the review dialog. Multiple
+candidates and no-match/failed states are shown explicitly. Suggestions never
+automatically confirm identity, finish or condition. Previously saved
+identification results are not silently replaced: reject stale
 suggestions and request a fresh identification when needed.
 
 ## First physical card test — B-007
@@ -149,4 +156,77 @@ No further physical scan was initiated.
 - Release binaries built and installed with persistent certificate-backed signing.
 - B-008 verifies saved-image processing after cancellation, not uninterrupted
   hardware scanning followed by automatic processing; that path has mock tests
-  and still needs a separately authorized hardware run.
+  and needed the separately authorized hardware run recorded below.
+
+## Full-batch retry — B-009
+
+The user explicitly reloaded and authorized all 11 cards for one full retry.
+Job `C4FAD134-D129-4DE4-A542-EFC6E9BEE95E` completed normally at 300 DPI, duplex PNG,
+with 22 originals and 22 automatically cropped/oriented copies. The session closed
+and no driver errors were reported. All 22 original checksums were verified.
+The user confirmed all 11 fed cleanly with no new marks or damage.
+
+This run used `black-background-card-v2`, whose smaller margin produces copies
+750–765 pixels wide and 1041–1047 pixels high. All 11 even-numbered fronts were
+turned upright by 180 degrees; back orientation remains unverified by the
+algorithm. Representative front images were visually inspected, including the
+full-art Salamence ex and Dunsparce. The existing scan-boundary warning remains.
+
+OCR was requested on the 11 saved fronts after completion. Nine returned unique
+Journey Together candidates: Larvesta, Pangoro, Virizion, Iris's Fighting Spirit,
+Lokix, Cubone, Lechonk, Impidimp and Dunsparce. Basic Fire Energy returned no match.
+Salamence ex returned ambiguous name-only candidates for other printings this time;
+these are not a verified match. Nothing was automatically confirmed. OCR accuracy
+is not established by the successful image count.
+
+Raw requests, scan results and recognition evidence are ignored under
+`Diagnostics/card-full-retry/`. B-008 remains cancelled and its original files
+are retained separately; the retry did not overwrite or complete that older job.
+
+### Paired web library
+
+Duplex jobs requested with card preparation show consecutive captures together
+under one card heading. For the fi-8170's observed ordering, the even capture is
+shown as Front and the odd capture as Back, with the front displayed first. Other
+scanner models use Side 1/Side 2. The pair shares one identity summary, including
+catalogue category and elemental types when available. [TCGdex card fields](https://tcgdex.dev/rest/card) are
+catalogue attributes of the suggestion, not proof of a physical printing. Phone and
+tablet layouts keep the two previews side by side.
+
+This is a presentation grouping by immutable capture sequence, not persisted
+hardware side metadata or a universal correspondence guarantee. Missing sequence
+slots remain empty rather than shifting later pairs; incomplete groups and
+interrupted batches are labelled. Original capture filenames, IDs and manifest
+side fields stay unchanged. Card loading direction and interrupted feed still
+require correspondence review before treating pair labels as inventory IDs.
+
+### Follow-up validation and deployment
+
+The v2 crop tests passed against saved B-007 files without feeding. The Swift
+suite passed with SMB integration enabled (74 reported tests, three opt-in
+fixtures skipped). Five web unit tests passed. Existing browser workflows passed
+on desktop Chromium, phone Chromium and tablet WebKit. The new paired-layout
+checks passed on all three, including category/type visibility, a single identity
+summary and side-by-side previews. The first pairing check used a five-second
+completion deadline and timed out during legitimate image processing; a bounded
+15-second deadline passed without changing the application behavior.
+
+The signed update was installed. The HTTP gateway's prior process took longer than
+the installer's ten-second restart window to exit; bootstrap succeeded once it
+finished. The installer now allows 45 seconds for that graceful shutdown. No
+scanner restart or additional feed was used to resolve the HTTP deployment.
+
+Production browser verification through Tailscale confirmed 11 groups, 22 image
+previews, Larvesta's name/set/number/Pokémon–Fire metadata, a prepared download's
+SHA-256, a mobile layout with both sides together, and unchanged job history.
+B-009's unconfirmed identification requests were refreshed to add catalogue
+category/types; no user-confirmed identity was replaced. Nine unique matches,
+one ambiguous result and one no-match remained. Native inspection confirmed the
+new catalogue fields and cropped-image labels as well.
+
+Cropping is automatic when enabled. Identification is still a separate service
+operation; the B-009 requests were initiated after capture by the test operator.
+For another batch, use **Identify card** on its front image to start OCR; results
+then appear directly on the pair. Confirmation, foil finish and condition remain
+manual. Grouping does not rename the original files or establish permanent
+physical-side metadata.
