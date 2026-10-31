@@ -9,7 +9,9 @@ let package = Package(
         .executable(name: "scanner", targets: ["ScannerCLI"]),
         .executable(name: "scanner-service", targets: ["ScannerService"]),
         .executable(name: "scanner-mcp", targets: ["ScannerMCP"]),
-        .executable(name: "scanner-http", targets: ["ScannerHTTP"])
+        .executable(name: "scanner-http", targets: ["ScannerHTTP"]),
+        .library(name: "ScannerMacUI", targets: ["ScannerMacUI"]),
+        .executable(name: "ScannerMac", targets: ["ScannerMac"])
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.7.0"),
@@ -19,6 +21,9 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-http-types.git", from: "1.8.0")
     ],
     targets: [
+        .testTarget(name: "ScannerMacTests", dependencies: ["ScannerMacUI", "ScannerClient", "ScannerAPI", "ScannerCore", "ScannerServiceSupport"]),
+        .target(name: "ScannerMacUI", dependencies: ["ScannerAPI", "ScannerClient"]),
+        .executableTarget(name: "ScannerMac", dependencies: ["ScannerMacUI"], path: "Apps/ScannerMac", exclude: ["Info.plist", "ScannerMac.xcodeproj"]),
         .target(name: "ScannerImageProcessing", dependencies: ["ScannerAPI"]),
         .target(name: "ScannerClient", dependencies: ["ScannerAPI", "ScannerTransport"]),
         .testTarget(name: "ScannerImageProcessingTests", dependencies: ["ScannerImageProcessing", "ScannerCore", "ScannerAPI"]),
