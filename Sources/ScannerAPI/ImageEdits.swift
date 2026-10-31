@@ -31,6 +31,7 @@ public struct ProcessedImage: Codable, Sendable {
     public var createdAt: Date
     public var sourceSHA256: String
     public var image: OriginalImage
+    public var cardPreparation: CardPreparation?
     public init(request: ImageEditRequest, sourceSHA256: String, image: OriginalImage) {
         self.request = request; self.createdAt = Date(timeIntervalSince1970: Date().timeIntervalSince1970.rounded(.down)); self.sourceSHA256 = sourceSHA256; self.image = image
     }

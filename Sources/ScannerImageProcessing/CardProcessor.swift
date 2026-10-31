@@ -1,0 +1,104 @@
+import CoreGraphics
+import Foundation
+import ImageIO
+import ScannerAPI
+import Vision
+
+/// Conservative bounding crop for individual cards against the scanner's black background.
+/// Connected foreground includes the card border, unlike an artwork-only rectangle detector.
+public enum CardProcessor {
+    public static func analyze(_ data: Data) throws -> CardPreparation {
+        guard data.count <= 32 * 1024 * 1024,
+              let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+              CGImageSourceGetCount(source) == 1,
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let fullWidth = properties[kCGImagePropertyPixelWidth] as? Int,
+              let fullHeight = properties[kCGImagePropertyPixelHeight] as? Int,
+              fullWidth > 0, fullHeight > 0, fullWidth <= 20000, fullHeight <= 20000, fullWidth * fullHeight <= 40_000_000,
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 1200] as CFDictionary) else {
+            throw ScannerError("image", "Card preparation requires one image up to 32 MiB and 40 megapixels.")
+        }
+        let width = image.width, height = image.height
+        var rgba = [UInt8](repeating: 0, count: width * height * 4)
+        guard let context = CGContext(data: &rgba, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue) else {
+            throw ScannerError("image", "Cannot inspect card boundaries.")
+        }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let crop = try foregroundCrop(rgba: rgba, width: width, height: height)
+        let request = ImageEditRequest(jobID: UUID(), sequence: 1, crop: crop)
+        let cropped = try ImageProcessor.render(data, request: request)
+        let orientation = try uprightRotation(cropped.data)
+        var warnings = orientation.verified ? [] : ["Orientation is uncertain (including symmetric card backs). Inspect the prepared image and rotate manually if needed."]
+        if crop.x == 0 || crop.y == 0 || crop.x + crop.width >= 0.999999 || crop.y + crop.height >= 0.999999 {
+            warnings.append("Card is close to a scan boundary. Check that the original captured the entire edge; cropping cannot restore missing pixels.")
+        }
+        return CardPreparation(crop: crop, quarterTurns: orientation.turns, orientationVerified: orientation.verified, warnings: warnings)
+    }
+
+    struct Component { var count: Int; var minX: Int; var maxX: Int; var minY: Int; var maxY: Int }
+    static func foregroundCrop(rgba: [UInt8], width: Int, height: Int) throws -> ImageCrop {
+        var mask = [UInt8](repeating: 0, count: width * height)
+        for pixel in mask.indices {
+            let i = pixel * 4
+            if max(rgba[i], rgba[i + 1], rgba[i + 2]) > 50 && Int(rgba[i]) + Int(rgba[i + 1]) + Int(rgba[i + 2]) > 70 { mask[pixel] = 1 }
+        }
+        var components: [Component] = []
+        var queue: [Int] = []; queue.reserveCapacity(width * height / 4)
+        for start in mask.indices where mask[start] == 1 {
+            queue.removeAll(keepingCapacity: true); queue.append(start); mask[start] = 0
+            var c = Component(count: 0, minX: width, maxX: 0, minY: height, maxY: 0)
+            var head = 0
+            while head < queue.count {
+                let p = queue[head]; head += 1
+                let x = p % width, y = p / width
+                c.count += 1; c.minX = min(c.minX, x); c.maxX = max(c.maxX, x); c.minY = min(c.minY, y); c.maxY = max(c.maxY, y)
+                for dy in -1...1 { for dx in -1...1 {
+                    let nx = x + dx, ny = y + dy
+                    guard nx >= 0, nx < width, ny >= 0, ny < height else { continue }
+                    let n = ny * width + nx
+                    if mask[n] == 1 { mask[n] = 0; queue.append(n) }
+                } }
+            }
+            if c.count > width * height / 500 { components.append(c) }
+        }
+        guard let card = components.max(by: { $0.count < $1.count }) else { throw ScannerError("cardNotFound", "No clear card boundary found against a black background. Original retained.") }
+        let w = Double(card.maxX - card.minX + 1), h = Double(card.maxY - card.minY + 1)
+        let ratio = min(w, h) / max(w, h)
+        guard (0.60...0.83).contains(ratio), w * h >= Double(width * height) * 0.015 else {
+            throw ScannerError("cardNotFound", "Detected shape does not have a supported card aspect ratio. Use manual cropping; original retained.")
+        }
+        for other in components where other.count > card.count / 5 {
+            if other.maxX < card.minX || other.minX > card.maxX || other.maxY < card.minY || other.minY > card.maxY {
+                throw ScannerError("cardNotFound", "More than one substantial object found. Crop manually to avoid losing a card.")
+            }
+        }
+        let margin = max(3, min(w, h) * 0.02)
+        let x = max(0, Double(card.minX) - margin), y = max(0, Double(card.minY) - margin)
+        let right = min(Double(width), Double(card.maxX + 1) + margin), bottom = min(Double(height), Double(card.maxY + 1) + margin)
+        return ImageCrop(x: x / Double(width), y: y / Double(height), width: (right - x) / Double(width), height: (bottom - y) / Double(height))
+    }
+
+    private static func uprightRotation(_ data: Data) throws -> (turns: Int, verified: Bool) {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate; request.recognitionLanguages = ["en-US"]; request.usesLanguageCorrection = false
+        try VNImageRequestHandler(data: data).perform([request])
+        var votes = [Double](repeating: 0, count: 4)
+        var lines = [Int](repeating: 0, count: 4)
+        for observation in request.results ?? [] {
+            guard let candidate = observation.topCandidates(1).first, candidate.confidence >= 0.5,
+                  candidate.string.count >= 4 else { continue }
+            let dx = observation.topRight.x - observation.topLeft.x, dy = observation.topRight.y - observation.topLeft.y
+            let angle = atan2(dy, dx)
+            let turns = (Int((angle / (.pi / 2)).rounded()) + 4) % 4
+            votes[turns] += Double(candidate.confidence) * Double(min(candidate.string.count, 24)); lines[turns] += 1
+        }
+        let best = (0..<4).max { votes[$0] < votes[$1] }!
+        let total = votes.reduce(0, +)
+        if lines[best] >= 4 && votes[best] >= 20 && votes[best] >= total * 0.8 { return (best, true) }
+        // Symmetric Pokémon-back logos do not establish which end is the top.
+        return (0, false)
+    }
+}
