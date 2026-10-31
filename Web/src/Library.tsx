@@ -63,6 +63,7 @@ export function Thumbnail({
       api,
       imagePath(id, image.sequence, true, editID),
       controller.signal,
+      image.sha256,
     )
       .then((blob) => {
         if (!controller.signal.aborted) {

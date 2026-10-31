@@ -1,3 +1,5 @@
+import { ImageRequests } from "./ImageRequests";
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -101,16 +103,22 @@ export function saveJSON(value: unknown, name: string) {
   );
 }
 
-// Single image request at a time per tab respects the gateway's global download limit.
-let imageQueue: Promise<unknown> = Promise.resolve();
+// Weakly scoped to the authenticated API instance; signing out drops its cache.
+const imageRequests = new WeakMap<Api, ImageRequests>();
 export function imageBlob(
   api: Api,
   path: string,
   signal?: AbortSignal,
+  sourceSHA256 = "",
 ): Promise<Blob> {
-  const request = imageQueue
-    .catch(() => {})
-    .then(async () => {
+  let loader = imageRequests.get(api);
+  if (!loader) {
+    loader = new ImageRequests();
+    imageRequests.set(api, loader);
+  }
+  return loader.load(
+    path + ":" + sourceSHA256,
+    async () => {
       for (let attempt = 0; ; attempt++) {
         signal?.throwIfAborted();
         try {
@@ -123,11 +131,12 @@ export function imageBlob(
           )
             throw error;
           await new Promise((resolve) =>
-            setTimeout(resolve, 1500 * (attempt + 1)),
+            setTimeout(resolve, 500 * (attempt + 1)),
           );
         }
       }
-    });
-  imageQueue = request;
-  return request;
+    },
+    signal,
+    path.includes("/thumbnail"),
+  );
 }

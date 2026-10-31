@@ -28,6 +28,7 @@ public actor ScannerCoordinator {
     var persistenceError: ScannerError?
     var eventWaiters = 0
     var thumbnailWorkers = 0
+    var thumbnailCache = ThumbnailCache()
     var editingJobs: Set<UUID> = []
     var preparingCardJobs: Set<UUID> = []
     var identificationTasks: [UUID: Task<Void, Never>] = [:]

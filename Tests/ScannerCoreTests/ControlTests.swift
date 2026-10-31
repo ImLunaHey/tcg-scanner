@@ -61,6 +61,12 @@ private actor ControlBackend: ScannerBackend {
     #expect(thumbnail.width <= 512 && thumbnail.height <= 512)
     #expect(Data(base64Encoded: thumbnail.base64)?.starts(with: [137, 80, 78, 71]) == true)
     #expect(try Data(contentsOf: file) == bytes)
+    #expect(try await service.thumbnail(jobID: record.id, sequence: 1).base64 == thumbnail.base64)
+    var corrupt = bytes; corrupt[corrupt.count - 1] ^= 1
+    try corrupt.write(to: file)
+    await #expect(throws: ScannerError.self) { try await service.thumbnail(jobID: record.id, sequence: 1) }
+    try bytes.write(to: file)
+    #expect(try await service.thumbnail(jobID: record.id, sequence: 1).base64 == thumbnail.base64)
     _ = try await service.cancelScan(record.id)
     await service.shutdownScans()
     // Replace only a temporary fixture with a link; arbitrary paths cannot be read.

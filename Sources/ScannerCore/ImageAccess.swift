@@ -29,7 +29,12 @@ extension ScannerCoordinator {
             throw ScannerError("resourceLimit", "Thumbnail source exceeds 32 MiB or 100 megapixels; download the original instead.")
         }
         let root = storageRoot
-        return try await Task.detached(priority: .utility) {
+        let fingerprint = try await Task.detached(priority: .utility) {
+            try OriginalReader.fingerprint(root: root, record: record, image: image)
+        }.value
+        let key = "\(jobID):\(sequence):\(editID?.uuidString ?? "original"):\(image.sha256)"
+        if let cached = thumbnailCache.value(key: key, fingerprint: fingerprint) { return cached }
+        let thumbnail = try await Task.detached(priority: .utility) {
             let chunk = try OriginalReader.read(root: root, record: record, image: image, offset: 0, length: image.bytes)
             guard chunk.chunkSHA256 == image.sha256, let data = Data(base64Encoded: chunk.base64),
                   let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
@@ -52,6 +57,8 @@ extension ScannerCoordinator {
             return ImageThumbnail(data: bytes, sha256: SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined(),
                                   width: preview.width, height: preview.height)
         }.value
+        thumbnailCache.insert(thumbnail, key: key, fingerprint: fingerprint)
+        return thumbnail
     }
     public func readImage(jobID: UUID, sequence: Int, offset: Int, length: Int, editID: UUID? = nil) async throws -> ImageChunk {
         guard (0...512 * 1024 * 1024).contains(offset), (1...262_144).contains(length) else {
@@ -69,7 +76,31 @@ extension ScannerCoordinator {
 /// Opens each component relative to a pinned directory descriptor, rejecting symlinks.
 /// The caller supplies only job ID and image sequence, never a filesystem path.
 enum OriginalReader {
+    static func fingerprint(root: URL, record: ScanRecord, image: OriginalImage) throws -> String {
+        try withImage(root: root, record: record, image: image) { _, info in
+            "\(info.st_dev):\(info.st_ino):\(info.st_size):\(info.st_mtimespec.tv_sec):\(info.st_mtimespec.tv_nsec):\(info.st_ctimespec.tv_sec):\(info.st_ctimespec.tv_nsec)"
+        }
+    }
     static func read(root: URL, record: ScanRecord, image: OriginalImage, offset: Int, length: Int) throws -> ImageChunk {
+        guard offset >= 0, offset <= image.bytes else { throw ScannerError("invalidParams", "Invalid image offset.") }
+        return try withImage(root: root, record: record, image: image) { fd, _ in
+            let count = min(length, image.bytes - offset)
+            var bytes = [UInt8](repeating: 0, count: count)
+            var consumed = 0
+            while consumed < count {
+                let read = bytes.withUnsafeMutableBytes { buffer in
+                    pread(fd, buffer.baseAddress!.advanced(by: consumed), count - consumed, off_t(offset + consumed))
+                }
+                if read < 0 && errno == EINTR { continue }
+                guard read > 0 else { throw ScannerError("storage", "Could not read the recorded original bytes.") }
+                consumed += read
+            }
+            let data = Data(bytes)
+            return ImageChunk(metadata: ImageMetadata(jobID: record.id, image: image), offset: offset, data: data,
+                              sha256: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined())
+        }
+    }
+    private static func withImage<T>(root: URL, record: ScanRecord, image: OriginalImage, body: (Int32, stat) throws -> T) throws -> T {
         let root = root.standardizedFileURL.resolvingSymlinksInPath()
         let directory = URL(fileURLWithPath: record.outputDirectory).standardizedFileURL
         var expected = BatchNaming.originalName(sequence: image.sequence, format: record.request.format)
@@ -79,7 +110,7 @@ enum OriginalReader {
             expected = "edit-\(edit.id.uuidString.lowercased()).png"
             if image.relativePath == "processed/\(edit.id.uuidString.lowercased()).png" { expected = image.relativePath }
         }
-        guard directory.path.hasPrefix(root.path + "/"), image.relativePath == expected, offset <= image.bytes else {
+        guard directory.path.hasPrefix(root.path + "/"), image.relativePath == expected else {
             throw ScannerError("accessDenied", "Image is outside configured storage or has invalid metadata/offset.")
         }
         let components = Array(directory.pathComponents.dropFirst(root.pathComponents.count)) + expected.split(separator: "/").map(String.init)
@@ -98,19 +129,6 @@ enum OriginalReader {
               info.st_size == image.bytes, info.st_size <= 512 * 1024 * 1024 else {
             throw ScannerError("storage", "Saved original is not a regular file with the recorded size.")
         }
-        let count = min(length, image.bytes - offset)
-        var bytes = [UInt8](repeating: 0, count: count)
-        var consumed = 0
-        while consumed < count {
-            let read = bytes.withUnsafeMutableBytes { buffer in
-                pread(fd, buffer.baseAddress!.advanced(by: consumed), count - consumed, off_t(offset + consumed))
-            }
-            if read < 0 && errno == EINTR { continue }
-            guard read > 0 else { throw ScannerError("storage", "Could not read the recorded original bytes.") }
-            consumed += read
-        }
-        let data = Data(bytes)
-        return ImageChunk(metadata: ImageMetadata(jobID: record.id, image: image), offset: offset, data: data,
-                          sha256: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined())
+        return try body(fd, info)
     }
 }
