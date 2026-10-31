@@ -1,0 +1,6 @@
+Inspect this single FRONT image of a Pokemon card. Focus only on the printed background of the lower text panel BELOW the illustration, not the artwork itself. Ignore the attack names, numbers and energy-cost icons next to attacks.
+Describe what is actually visible; never invent details. Output only JSON with these keys:
+"background": "plain", "repeatingPictograms", "otherPattern", or "unclear";
+"pictograms": a short string naming repeated background pictograms if present, otherwise "none";
+"evidence": one short sentence describing the background and colours.
+Do not classify finish, condition, rarity or value. Do not discuss the card back.
