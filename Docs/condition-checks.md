@@ -113,3 +113,36 @@ separate intercepted browser-only fixture verified numbered overlay coordinates
 and explanations for a positive mark; it did not save fabricated findings or
 change production data. Native compilation and signed installation passed; the
 native sheet was not visually exercised during this run.
+
+## Automatic result links and lightbox
+
+The gallery's visible-marks result is now a clickable link to the existing
+zoom/pan lightbox. The inspected source is selected from its saved edit ID and
+checksum; mismatched/missing sources never receive an overlay. Numbered **red**
+boxes move and scale with the image. Opening a result with findings focuses the
+first mark; **Mark 1**, **Mark 2**, etc. jump to each candidate region. Clear and
+unsupported results still show their scope and never imply a grade. The detailed
+review panel also links its image and individual explanations to this lightbox.
+The native summary opens its review panel and uses red boxes too.
+
+Condition analysis was already part of automatic card processing. An additional
+fixture-backed mock scan now verifies that a standard blue back receives and
+persists a condition check without any explicit client check request, including
+when the catalogue recognizer fails. These tests feed saved bytes through the
+mock pipeline and do not operate the physical scanner.
+
+Missing observations were backfilled for 146 eligible saved identification
+sources across B-007–B-014. Every field other than `conditionCheck` was preserved;
+no hardware scan or image rewrite was performed. Eligibility requires an existing
+identification tied to a prepared image, so this is not a claim that every old
+capture was assessed. B-013/C-001's back has one candidate light patch near its
+top edge; this is an unconfirmed observation, not a physical damage label.
+
+The 103-test Swift run included saved-back mock scans with and without catalogue
+availability. Twenty-one web tests passed, including source-provenance guards.
+Signed service/CLI/MCP/native and HTTP/web builds were installed. Production
+browser checks verified the live result links, ordinary image lightboxes, the
+B-013 candidate's red box, all fourteen updated B-015 normal finish summaries,
+mark-to-mark focus, fixed-size number labels and phone/dark-mode layout. Positive
+multi-mark tests used isolated browser fixtures and did not alter production data.
+Evidence is retained under ignored `Diagnostics/condition-lightbox/`.

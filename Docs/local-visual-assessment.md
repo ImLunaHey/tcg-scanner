@@ -268,3 +268,23 @@ whitening and elongated marks for image/physical review. It runs automatically
 with card processing and can be refreshed on saved sources. Automatic condition
 grading remains disabled; a clean result is not a Near Mint assessment. See the
 linked scope and B-015 validation limits before interpreting these observations.
+
+### Tiny set-code OCR retry — v3
+
+Volcarona in B-015 was uncertain because OCR read `TGEN`/`IGEN` instead of the full
+printed `JTG EN`. If the strict code cannot be located by ordinary/footer OCR,
+`modern-set-code-polarity-v3` re-reads enlarged local pixels, capped at 2× and a
+2400-pixel maximum dimension. It retains the three-character-plus-English-marker
+requirement, location bounds and ambiguity rejection. It does not insert a missing
+letter, use the card name to force a finish, change contrast thresholds or use the
+user's supplied finish as an inference input. Contrast is measured on the saved
+source using the recovered normalized coordinates.
+
+Saved-image regression checks across B-009, B-013, B-014 and B-015 preserve the
+physically checked normal/holo/reverse-holo examples. The retry resolves Volcarona
+as normal and also reads the previously uncertain Rust Syndicate Grunt marker.
+B-015's fourteen live estimates were refreshed to v3 normal, preserving every
+non-estimate field and all 56 original/prepared file hashes. No new physical scan
+was started. These cards are now development/regression examples, not independent
+validation of v3; catalogue limitations and the need for physical review remain.
+Private before/after records are under ignored `Diagnostics/finish-estimator-v3/`.
