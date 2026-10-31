@@ -72,6 +72,7 @@ private func completed(_ coordinator: ScannerCoordinator, job: UUID) async throw
     #expect(result.finish == .unverified && result.condition == .unassessed)
     #expect(await stub.calls == 1)
     #expect(result.finishEstimate?.state == .uncertain)
+    #expect(result.conditionCheck?.state == .unsupported)
     await #expect(throws: ScannerError.self) { try await service.reviewCard(jobID: record.id, sequence: 1, identificationID: request.id, cardID: "invented", finish: .holo, condition: .nearMint) }
     let reviewed = try await service.reviewCard(jobID: record.id, sequence: 1, identificationID: request.id, cardID: "swsh3-136", finish: .reverseHolo, condition: .lightlyPlayed)
     #expect(reviewed.state == .confirmed && reviewed.condition == .lightlyPlayed)
@@ -84,8 +85,16 @@ private func completed(_ coordinator: ScannerCoordinator, job: UUID) async throw
     #expect(repeated.finishEstimate == estimated.finishEstimate)
     await #expect(throws: ScannerError.self) { try await service.estimateFinish(jobID: record.id, sequence: 1, identificationID: UUID()) }
 
+    let checked = try await service.checkCondition(jobID: record.id, sequence: 1, identificationID: request.id)
+    #expect(checked.conditionCheck?.state == .unsupported && checked.condition == .lightlyPlayed && checked.finish == .reverseHolo)
+    #expect(checked.reviewedAt == savedReview.reviewedAt && checked.sourceSHA256 == reviewed.sourceSHA256)
+    #expect(checked.finishEstimate == estimated.finishEstimate)
+    let repeatedCheck = try await service.checkCondition(jobID: record.id, sequence: 1, identificationID: request.id)
+    #expect(repeatedCheck.conditionCheck == checked.conditionCheck)
+    await #expect(throws: ScannerError.self) { try await service.checkCondition(jobID: record.id, sequence: 1, identificationID: UUID()) }
     let restarted = try ScannerCoordinator(backend: NoHardware(), storageRoot: root, database: database, cardRecognizer: stub)
     #expect(try await restarted.cardIdentification(jobID: record.id, sequence: 1)?.selectedCardID == "swsh3-136")
+    #expect(try await restarted.cardIdentification(jobID: record.id, sequence: 1)?.conditionCheck == checked.conditionCheck)
     let manifest = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: record.outputDirectory).appendingPathComponent("manifest.json")))
     #expect(manifest.cardIdentifications?.first?.finish == .reverseHolo)
     #expect(manifest.processedImages?.first?.id == edit.id)
@@ -104,7 +113,10 @@ private func completed(_ coordinator: ScannerCoordinator, job: UUID) async throw
     let stub = RecognitionStub(fail: true)
     let service = try ScannerCoordinator(backend: NoHardware(), storageRoot: root, database: database, cardRecognizer: stub)
     _ = try await service.identifyCard(IdentificationRequest(jobID: record.id, sequence: 1))
-    #expect(try await completed(service, job: record.id).state == .failed)
+    let failed = try await completed(service, job: record.id)
+    #expect(failed.state == .failed && failed.conditionCheck?.state == .unsupported)
+    let condition = try await service.checkCondition(jobID: record.id, sequence: 1, identificationID: failed.request.id)
+    #expect(condition.state == .failed && condition.conditionCheck?.state == .unsupported)
     #expect(try await service.scanStatus(record.id).state == .completed)
     record.cardIdentifications = [CardIdentification(request: IdentificationRequest(jobID: record.id, sequence: 1), sourceSHA256: record.images[0].sha256)]
     try database.save(record) // Simulate process death after accepting identification.
@@ -136,5 +148,25 @@ private func completed(_ coordinator: ScannerCoordinator, job: UUID) async throw
     #expect(await router.respond(to: try Wire.encoder().encode(request)).error?.code == -32602)
     request.params = .object(["jobID": .string(record.id.uuidString), "sequence": .number(1), "id": .string(UUID().uuidString), "language": .string("ja")])
     #expect(await router.respond(to: try Wire.encoder().encode(request)).error?.data?.kind == "invalidParams")
+    await service.shutdownScans()
+}
+
+
+@Test func conditionChecksAllowNoMatchBacksAndPreserveIdentity() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let database = try ScannerDatabase()
+    var record = try savedBatch(root: root, database: database)
+    var identity = CardIdentification(request: IdentificationRequest(jobID: record.id, sequence: 1), sourceSHA256: record.images[0].sha256)
+    identity.state = .noMatch; identity.evidence = RecognitionEvidence(lines: [], candidates: [])
+    record.cardIdentifications = [identity]; try database.save(record)
+    let service = try ScannerCoordinator(backend: NoHardware(), storageRoot: root, database: database)
+    let checked = try await service.checkCondition(jobID: record.id, sequence: 1, identificationID: identity.request.id)
+    #expect(checked.state == .noMatch && checked.selectedCardID == nil && checked.condition == .unassessed)
+    #expect(checked.conditionCheck?.state == .unsupported)
+    var request = RPCRequest(method: "v1.images.checkCondition")
+    request.params = .object(["jobID": .string(record.id.uuidString), "sequence": .number(1), "identificationID": .string(identity.request.id.uuidString), "path": .string("/etc/passwd")])
+    let router = DiagnosticRouter(coordinator: service)
+    #expect(await router.respond(to: try Wire.encoder().encode(request)).error?.code == -32602)
     await service.shutdownScans()
 }

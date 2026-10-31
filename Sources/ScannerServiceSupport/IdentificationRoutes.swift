@@ -3,13 +3,16 @@ import ScannerAPI
 
 extension DiagnosticRouter {
     func identificationResponse(_ request: RPCRequest) async throws -> RPCResponse? {
-        guard ["v1.images.identify", "v1.images.identification", "v1.images.review", "v1.images.prepareCard", "v1.images.estimateFinish"].contains(request.method) else { return nil }
+        guard ["v1.images.identify", "v1.images.identification", "v1.images.review", "v1.images.prepareCard", "v1.images.estimateFinish", "v1.images.checkCondition"].contains(request.method) else { return nil }
         guard case .object(let params) = request.params else { throw RPCFailure(code: -32602, message: "Expected object parameters.") }
         let jobID = try uuid(params, "jobID")
         let sequence = try integer(params, "sequence", default: 0, range: 1...100)
         guard sequence > 0 else { throw RPCFailure(code: -32602, message: "sequence is required.") }
         let result: JSONValue
         switch request.method {
+        case "v1.images.checkCondition":
+            try only(params, keys: ["jobID", "sequence", "identificationID"])
+            result = try .wrapping(await coordinator.checkCondition(jobID: jobID, sequence: sequence, identificationID: uuid(params, "identificationID")))
         case "v1.images.estimateFinish":
             try only(params, keys: ["jobID", "sequence", "identificationID"])
             result = try .wrapping(await coordinator.estimateFinish(jobID: jobID, sequence: sequence, identificationID: uuid(params, "identificationID")))

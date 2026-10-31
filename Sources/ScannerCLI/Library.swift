@@ -48,7 +48,7 @@ struct Batches: ParsableCommand {
     }
 }
 struct Images: ParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "Inspect, identify or download a saved original by job ID and page sequence.", subcommands: [Metadata.self, Download.self, Identify.self, Identification.self, Review.self, PrepareCard.self, EstimateFinish.self])
+    static let configuration = CommandConfiguration(abstract: "Inspect, identify or download a saved original by job ID and page sequence.", subcommands: [Metadata.self, Download.self, Identify.self, Identification.self, Review.self, PrepareCard.self, EstimateFinish.self, CheckCondition.self])
     struct Metadata: ParsableCommand {
         @OptionGroup var options: ClientOptions
         @Argument var jobID: String

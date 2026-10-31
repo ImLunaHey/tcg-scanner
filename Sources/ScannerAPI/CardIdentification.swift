@@ -76,6 +76,7 @@ public struct CardIdentification: Codable, Sendable {
     public var error: ScannerError?
     public var method = "apple-vision-tcgdex-text-v1"
     public var finishEstimate: FinishEstimate?
+    public var conditionCheck: ConditionCheck?
     public var finish: CardFinish = .unverified
     public var condition: CardCondition = .unassessed
     public var assessmentSource = "manual-review"

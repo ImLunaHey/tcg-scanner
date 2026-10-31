@@ -1,6 +1,7 @@
 import Foundation
 import ScannerAPI
 import ScannerRecognition
+import ScannerImageProcessing
 
 extension ScannerCoordinator {
     public func identifyCard(_ request: IdentificationRequest) async throws -> CardIdentification {
@@ -100,6 +101,10 @@ extension ScannerCoordinator {
                 return data
             }
             let data = try await withTaskCancellationHandler { try await sourceTask.value } onCancel: { sourceTask.cancel() }
+            try Task.checkCancellation()
+            let preparation = snapshot.processedImages?.first { $0.id == pending.sourceEditID }?.cardPreparation
+            let check = Task.detached(priority: .utility) { ConditionInspector.check(data, preparation: preparation) }
+            result.conditionCheck = await withTaskCancellationHandler { await check.value } onCancel: { check.cancel() }
             try Task.checkCancellation()
             result.evidence = try await cardRecognizer.recognize(data)
             if let evidence = result.evidence, evidence.candidates.count == 1 {
