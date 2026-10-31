@@ -2,20 +2,21 @@ import Foundation
 
 public enum OriginalFormat: String, Codable, Sendable { case tiff, png }
 public enum ScanState: String, Codable, Sendable {
-    case preparing, scanning, completed, failed, cancelled
+    case queued, preparing, scanning, processing, completed, failed, cancelled
     public var terminal: Bool { self == .completed || self == .failed || self == .cancelled }
 }
 public struct ScanRequest: Codable, Sendable, Equatable {
     public var requestID: UUID
     public var deviceID: String?
     public var outputDirectory: String?
+    public var profileID: UUID?
     public var dpi: Int
     public var duplex: Bool
     public var format: OriginalFormat
     public init(requestID: UUID = UUID(), deviceID: String? = nil, outputDirectory: String? = nil,
-                dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .tiff) {
+                dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .tiff, profileID: UUID? = nil) {
         self.requestID = requestID; self.deviceID = deviceID; self.outputDirectory = outputDirectory
-        self.dpi = dpi; self.duplex = duplex; self.format = format
+        self.dpi = dpi; self.duplex = duplex; self.format = format; self.profileID = profileID
     }
     public func validate() throws {
         guard (150...600).contains(dpi) else { throw ScannerError("invalidSettings", "DPI must be between 150 and 600 and supported by the scanner.") }
@@ -50,7 +51,11 @@ public struct ScanRecord: Codable, Sendable {
     public var request: ScanRequest
     public var state: ScanState = .preparing
     public var createdAt = Date()
+    public var startedAt: Date?
     public var completedAt: Date?
+    public var profile: ScanProfile?
+    public var batchID: UUID { id }
+    public var progress: ScanProgress { ScanProgress(imagesSaved: images.count) }
     public var outputDirectory: String
     public var images: [OriginalImage] = []
     public var errors: [ScannerError] = []
