@@ -13,7 +13,7 @@ public actor ScanStorage {
     private let validateStorage: @Sendable () throws -> Void
     private let persist: @Sendable (ScanRecord) throws -> Void
 
-    public init(root: URL, device: Device, request: ScanRequest, queued: Bool = false, profile: ScanProfile? = nil,
+    public init(root: URL, device: Device, request: ScanRequest, batchNumber: Int? = nil, queued: Bool = false, profile: ScanProfile? = nil,
                 validateStorage: @escaping @Sendable () throws -> Void = {},
                 persist: @escaping @Sendable (ScanRecord) throws -> Void = { _ in }) throws {
         self.persist = persist; self.validateStorage = validateStorage
@@ -31,13 +31,16 @@ public actor ScanStorage {
         }
         try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         guard parent.resolvingSymlinksInPath().path == parent.path else { throw ScannerError("storage", "Output path changed during creation.") }
-        directory = parent.appendingPathComponent("batch-" + request.requestID.uuidString.lowercased(), isDirectory: true)
+        guard batchNumber == nil || batchNumber! > 0 else { throw ScannerError("invalidSettings", "Batch number must be positive.") }
+        let createdAt = Date()
+        directory = parent.appendingPathComponent(batchNumber.map(BatchNaming.batchFolder) ?? "batch-" + request.requestID.uuidString.lowercased(), isDirectory: true)
         guard mkdir(directory.path, 0o700) == 0 else {
             throw ScannerError("storage", "Cannot create unique batch directory; existing batches are never overwritten (\(String(cString: strerror(errno)))).")
         }
         incomingDirectory = directory.appendingPathComponent(".incoming", isDirectory: true)
         try FileManager.default.createDirectory(at: incomingDirectory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
         record = ScanRecord(device: device, request: request, outputDirectory: directory.path)
+        record.createdAt = createdAt; record.batchNumber = batchNumber
         record.profile = profile
         if queued { record.state = .queued }
         initialRecord = record
@@ -81,7 +84,7 @@ public actor ScanStorage {
         let expectedUTI = record.request.format == .tiff ? "public.tiff" : "public.png"
         guard uti == expectedUTI else { throw ScannerError("image", "Driver returned \(uti), expected \(expectedUTI); retained in incoming.") }
         let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
-        let relative = String(format: "page-%06d.%@", sequence, record.request.format.rawValue)
+        let relative = BatchNaming.originalName(sequence: sequence, format: record.request.format)
         let destination = directory.appendingPathComponent(relative)
         // copyItem refuses an existing destination. Keep incoming too, including on any error.
         try FileManager.default.copyItem(at: url, to: destination)

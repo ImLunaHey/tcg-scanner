@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 import ScannerAPI
-import ScannerPersistence
+@testable import ScannerPersistence
 
 @Test func durableJobsProfilesIdempotencyAndEvents() throws {
     let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString)
@@ -86,4 +86,29 @@ import ScannerPersistence
     #expect(try String(contentsOf: sentinel, encoding: .utf8) == "preserve me")
     #expect(try FileManager.default.destinationOfSymbolicLink(atPath: manifest.path) == sentinel.path)
     #expect(try database.job(record.id)?.state == .failed)
+}
+
+@Test func batchNumberMigrationSeedsHistoricalJobsOldestFirst() throws {
+    let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let path = root.appendingPathComponent("state.sqlite").path
+    var oldest = ScanRecord(device: Device(id: "mock", name: "Mock"), request: ScanRequest(), outputDirectory: root.path)
+    oldest.createdAt = Date(timeIntervalSince1970: 100)
+    var newest = ScanRecord(device: oldest.device, request: ScanRequest(), outputDirectory: root.path)
+    newest.createdAt = Date(timeIntervalSince1970: 200)
+    do {
+        let database = try ScannerDatabase(path: path)
+        try database.insert(newest, submission: newest.request)
+        try database.insert(oldest, submission: oldest.request)
+        // Model a v2 ledger containing jobs before the numbering migration existed.
+        try database.queue.write { db in
+            try db.execute(sql: "DROP TABLE batchNumbers")
+            try db.execute(sql: "DELETE FROM grdb_migrations WHERE identifier = 'v3-batch-numbers'")
+        }
+    }
+    let reopened = try ScannerDatabase(path: path)
+    #expect(try reopened.reserveBatchNumber(for: oldest.id) == 1)
+    #expect(try reopened.reserveBatchNumber(for: newest.id) == 2)
+    #expect(try reopened.reserveBatchNumber(for: UUID()) == 3)
+    #expect(try reopened.submission(oldest.id) == oldest.request)
 }

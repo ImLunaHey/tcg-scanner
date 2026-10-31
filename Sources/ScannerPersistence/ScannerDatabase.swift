@@ -50,7 +50,22 @@ public final class ScannerDatabase: Sendable {
         migrator.registerMigration("v2-device-settings") { db in
             try db.execute(sql: "CREATE TABLE deviceSettings (deviceID TEXT PRIMARY KEY, record BLOB NOT NULL)")
         }
+        migrator.registerMigration("v3-batch-numbers") { db in
+            // Reservations survive failures and are never recycled. Historical IDs are
+            // allocated oldest-first; filesystem relocation is a separate maintenance step.
+            try db.execute(sql: "CREATE TABLE batchNumbers (number INTEGER PRIMARY KEY AUTOINCREMENT, jobID TEXT NOT NULL UNIQUE)")
+            for id in try String.fetchAll(db, sql: "SELECT id FROM jobs ORDER BY created, id") {
+                try db.execute(sql: "INSERT INTO batchNumbers(jobID) VALUES (?)", arguments: [id])
+            }
+        }
         try migrator.migrate(queue)
+    }
+    public func reserveBatchNumber(for id: UUID) throws -> Int {
+        try queue.write { db in
+            if let number = try Int.fetchOne(db, sql: "SELECT number FROM batchNumbers WHERE jobID = ?", arguments: [id.uuidString]) { return number }
+            try db.execute(sql: "INSERT INTO batchNumbers(jobID) VALUES (?)", arguments: [id.uuidString])
+            return Int(db.lastInsertedRowID)
+        }
     }
     public func insert(_ record: ScanRecord, submission: ScanRequest) throws {
         try queue.write { db in

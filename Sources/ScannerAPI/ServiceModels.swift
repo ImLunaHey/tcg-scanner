@@ -26,6 +26,7 @@ public struct JobSummary: Codable, Sendable {
     public var scannerID: String
     public var profileID: UUID?
     public var batchID: UUID
+    public var batchNumber: Int?
     public var createdAt: Date
     public var startedAt: Date?
     public var completedAt: Date?
@@ -34,7 +35,7 @@ public struct JobSummary: Codable, Sendable {
     public var outputDirectory: String
     public var errors: [ScannerError]
     public init(_ record: ScanRecord) {
-        id = record.id; scannerID = record.device.id; profileID = record.profile?.id; batchID = record.batchID
+        id = record.id; scannerID = record.device.id; profileID = record.profile?.id; batchID = record.batchID; batchNumber = record.batchNumber
         createdAt = record.createdAt; startedAt = record.startedAt; completedAt = record.completedAt
         state = record.state; progress = record.progress; outputDirectory = record.outputDirectory; errors = record.errors
     }

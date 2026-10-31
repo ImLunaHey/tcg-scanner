@@ -21,7 +21,9 @@ extension ScannerCoordinator {
             request.dpi = settings.dpi; request.duplex = settings.duplex; request.format = settings.format
         }
         let database = self.database
-        let store = try ScanStorage(root: storageRoot, device: device, request: request, queued: true, profile: profile, validateStorage: validateStorage, persist: database.save)
+        try validateStorage()
+        let number = try database.reserveBatchNumber(for: request.requestID)
+        let store = try ScanStorage(root: storageRoot, device: device, request: request, batchNumber: number, queued: true, profile: profile, validateStorage: validateStorage, persist: database.save)
         let record = store.initialRecord
         // Reserve submission before another actor turn can observe a missing row.
         // No other operation can access this store until insertion completes.

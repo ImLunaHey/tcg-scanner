@@ -122,7 +122,7 @@ struct JobRow: View {
             Image(systemName: job.state == .completed ? "checkmark.circle" : "doc.text.image").font(.title2).foregroundStyle(job.state == .failed ? .red : .accentColor)
             VStack(alignment: .leading) {
                 Text(job.createdAt, format: .dateTime.month().day().hour().minute()).fontWeight(.medium)
-                Text("\(job.progress.imagesSaved) images · \(job.id.uuidString.prefix(8))").font(.caption).foregroundStyle(.secondary)
+                Text("\(job.progress.imagesSaved) images · \(job.batchNumber.map(BatchNaming.batchFolder) ?? String(job.id.uuidString.prefix(8)))").font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             Text(job.state.rawValue.capitalized).font(.caption).padding(6).background(.quaternary, in: Capsule())

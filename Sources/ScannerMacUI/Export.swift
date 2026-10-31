@@ -31,13 +31,13 @@ import UniformTypeIdentifiers
     panel.begin { response in
         guard response == .OK, let parent = panel.url else { return }
         model.perform {
-            let root = parent.appendingPathComponent("batch-\(record.id.uuidString.lowercased())")
+            let root = parent.appendingPathComponent(BatchNaming.exportDirectory(record))
             guard !FileManager.default.fileExists(atPath: root.path) else { throw ScannerError("conflict", "An export already exists here. Choose a different folder.") }
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
             do {
                 for image in record.images {
                     // Construct names locally; never interpret server paths as export paths.
-                    let name = String(format: "page-%06d.%@", image.sequence, record.request.format.rawValue)
+                    let name = BatchNaming.originalName(sequence: image.sequence, format: record.request.format)
                     try await model.client.export(jobID: record.id, sequence: image.sequence, to: root.appendingPathComponent(name))
                 }
                 for edit in record.processedImages ?? [] {
@@ -45,7 +45,7 @@ import UniformTypeIdentifiers
                         to: root.appendingPathComponent("edit-" + edit.id.uuidString.lowercased() + ".png"))
                 }
                 var manifest = record
-                for index in manifest.images.indices { manifest.images[index].relativePath = String(format: "page-%06d.%@", manifest.images[index].sequence, record.request.format.rawValue) }
+                for index in manifest.images.indices { manifest.images[index].relativePath = BatchNaming.originalName(sequence: manifest.images[index].sequence, format: record.request.format) }
                 if let edits = manifest.processedImages {
                     manifest.processedImages = edits.map { edit in var copy = edit; copy.image.relativePath = "edit-" + edit.id.uuidString.lowercased() + ".png"; return copy }
                 }

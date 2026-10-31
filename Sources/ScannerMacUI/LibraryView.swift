@@ -28,7 +28,8 @@ private struct BatchDetail: View {
             VStack(alignment: .leading, spacing: 20) {
                 HStack {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(record.createdAt, format: .dateTime.month().day().hour().minute()).font(.title.bold())
+                        if let number = record.batchNumber { Text(BatchNaming.batchFolder(number)).font(.title.bold()) }
+                        Text(record.createdAt, format: .dateTime.month().day().hour().minute()).font(record.batchNumber == nil ? .title : .callout)
                         Text("\(record.state.rawValue.capitalized) · \(record.images.count) saved images · \(record.request.dpi) DPI").foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -51,7 +52,7 @@ private struct BatchDetail: View {
                     ForEach(record.images, id: \.sequence) { image in
                         VStack(alignment: .leading, spacing: 8) {
                             ScanThumbnail(model: model, job: record.id, sequence: image.sequence).frame(height: 230)
-                            Text("Image \(image.sequence) · original").font(.headline)
+                            Text("C-\(BatchNaming.number(image.sequence)) · original").font(.headline)
                             Text("\(image.width) × \(image.height) · side \(image.side)").font(.caption).foregroundStyle(.secondary)
                             HStack {
                                 Button("Edit…") { editing = EditingImage(image: image) }.disabled(!record.state.terminal || model.busy)
@@ -66,7 +67,7 @@ private struct BatchDetail: View {
                         ForEach(edits, id: \.id) { edit in
                             VStack(alignment: .leading, spacing: 8) {
                                 ScanThumbnail(model: model, job: record.id, sequence: edit.request.sequence, edit: edit.id).frame(height: 230)
-                                Text("Image \(edit.request.sequence) · edited").font(.headline)
+                                Text("C-\(BatchNaming.number(edit.request.sequence)) · edited").font(.headline)
                                 Text("\(edit.image.width) × \(edit.image.height) · \(edit.createdAt.formatted(date: .omitted, time: .shortened))").font(.caption)
                                 Button("Export PNG…") { exportImage(record: record, image: edit.image, editID: edit.id, model: model) }.disabled(model.busy)
                             }.padding(10)

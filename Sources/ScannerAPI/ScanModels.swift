@@ -56,6 +56,7 @@ public struct ScanRecord: Codable, Sendable {
     public var startedAt: Date?
     public var completedAt: Date?
     public var profile: ScanProfile?
+    public var batchNumber: Int?
     public var batchID: UUID { id }
     public var progress: ScanProgress { ScanProgress(imagesSaved: images.count) }
     public var outputDirectory: String
