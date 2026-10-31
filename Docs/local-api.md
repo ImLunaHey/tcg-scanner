@@ -1,8 +1,8 @@
-# Local diagnostic API v1
+# Local API v1 — diagnostics and basic scanning
 
 Newline-delimited UTF-8 JSON-RPC 2.0 requests over a Unix domain socket. One request
 and response per connection. `id` must be a string or number and is echoed back.
-This diagnostic subset does not implement notifications, batches or subscriptions.
+This subset does not implement notifications, JSON-RPC batches or subscriptions.
 Clients should use monotonically unique request IDs or UUIDs.
 
 ```json
@@ -20,9 +20,9 @@ Methods:
   it returns a warning without opening a session. Multiple devices require an ID
   to include an inspection.
 
-An absent ID selects the only scanner; zero or multiple devices cause an explicit
+An absent device ID selects the only scanner; zero or multiple devices cause an explicit
 error for capabilities/settings. Unknown parameter keys and setting-write requests
-are rejected. No scan method exists. Queries other than discovery may briefly open
+are rejected by diagnostic methods. Queries other than discovery may briefly open
 an exclusive diagnostic session; another inspection gets `busy` instead of
 waiting in an unbounded queue. Discovery remains available during inspection.
 
@@ -54,6 +54,51 @@ replaced only after acquiring the lock.
 
 Access is same-user only (`getpeereid` on both sides, directory 0700, socket 0600).
 There is no network listener or authentication/session cookie. This is not the
-future remote HTTP API. A separate `--socket` creates a separate diagnostic service;
+future remote HTTP API. A separate `--socket` creates a separate service instance;
 production clients should all use the default instance. ICA prevents concurrent
 hardware sessions even across separate applications.
+
+## Basic scan methods (milestone 2)
+
+`v1.scan.start` accepts this parameter object:
+
+```json
+{
+  "requestID": "b627ee02-f78a-4dbe-b2d0-3f3b33cfa8a0",
+  "dpi": 300,
+  "duplex": false,
+  "format": "tiff"
+}
+```
+
+Optional keys: `deviceID` (a discovered scanner ID), `outputDirectory` (an absolute
+path inside the configured storage root, or a relative subdirectory). All other
+keys are rejected. A4 RGB 8-bit scanning is explicit in this milestone; there are
+no arbitrary driver writes or shell options. The start call validates input,
+reserves the scanner and creates a unique batch before returning a `ScanRecord`.
+Hardware preparation/capture runs asynchronously. A successful start response is
+not proof the hardware scan succeeded; read the eventual terminal state.
+
+`v1.scan.status` and `v1.scan.cancel` each accept only:
+
+```json
+{"scanID":"b627ee02-f78a-4dbe-b2d0-3f3b33cfa8a0"}
+```
+
+States: preparing, scanning, completed, failed, cancelled. Cancellation requests
+return the current record; clients must poll until terminal to confirm completion.
+Originals are retained on failure/cancellation. Runtime failures appear in the
+record's `errors` array, including driver domains/codes when supplied. Partial
+capture does not become a successful result merely because one image exists.
+
+The request UUID is also the scan ID. Repeating an identical start request returns
+its existing record in the current process, without another feed. Changing settings
+under the same UUID is a conflict. IDs/history are bounded to 100 records and are
+not restored after restart yet. On-disk batch directories refuse reuse, but this is
+not durable cross-output-directory idempotency. Never retry with a new request ID
+unless another physical scan is intended.
+
+Only one inspection or scan can own hardware at a time. Discovery and scan status
+remain available. SIGTERM/SIGINT stop accepting clients, cancel any active scan,
+wait for cleanup and keep endpoint ownership until shutdown drains. No automatic
+scan is triggered by discovery, diagnostics, scanner-button events or startup.
