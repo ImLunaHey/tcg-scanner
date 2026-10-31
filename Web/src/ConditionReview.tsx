@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { useAuth } from "./auth";
 import { imageBlob } from "./api";
 import { Modal } from "./Modal";
+import { ImageLightbox } from "./ImageLightbox";
 import { ErrorNote, Loading } from "./ui";
 import type { Identification } from "./Identification";
 import type { Batch } from "./models";
@@ -40,6 +41,7 @@ export function ConditionReview({
   const { api } = useAuth();
   const queries = useQueryClient();
   const [sequence, setSequence] = useState(initial);
+  const [lightbox, setLightbox] = useState<{ finding?: number }>();
   const key = ["identification", batch.id, sequence];
   const current = useQuery({
     queryKey: key,
@@ -100,6 +102,23 @@ export function ConditionReview({
     source?.sha256,
     validSource,
   ]);
+  if (lightbox && source && identity && validSource)
+    return (
+      <ImageLightbox
+        batchID={batch.id}
+        images={[
+          {
+            ...source,
+            editID: identity.sourceEditID,
+            label: `${sides.find((s) => s.sequence === sequence)?.label || "Card"} · condition check`,
+            conditionCheck: check,
+          },
+        ]}
+        initial={0}
+        initialFinding={lightbox.finding}
+        close={() => setLightbox(undefined)}
+      />
+    );
   return (
     <Modal close={close}>
       <section
@@ -166,6 +185,13 @@ export function ConditionReview({
                 this side.
               </p>
             )}
+            <button
+              className="text-button"
+              disabled={!url}
+              onClick={() => setLightbox({})}
+            >
+              Open marked image in lightbox
+            </button>
             <div className="condition-content">
               <div>
                 {url ? (
@@ -207,7 +233,14 @@ export function ConditionReview({
                 {check?.findings.length ? (
                   <ol className="condition-findings">
                     {check.findings.map((f, i) => (
-                      <li key={i}>{f.explanation}</li>
+                      <li key={i}>
+                        <button
+                          className="text-button"
+                          onClick={() => setLightbox({ finding: i })}
+                        >
+                          {f.explanation}
+                        </button>
+                      </li>
                     ))}
                   </ol>
                 ) : null}

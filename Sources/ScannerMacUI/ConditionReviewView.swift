@@ -33,7 +33,7 @@ struct ConditionReviewView: View {
                                 GeometryReader { geometry in
                                     ForEach(Array((result?.conditionCheck?.findings ?? []).enumerated()), id: \.offset) { index, finding in
                                         let r = finding.region
-                                        Rectangle().stroke(.orange, lineWidth: 2).background(.orange.opacity(0.15))
+                                        Rectangle().stroke(.red, lineWidth: 2).background(.red.opacity(0.15))
                                             .frame(width: geometry.size.width * r.width, height: geometry.size.height * r.height)
                                             .position(x: geometry.size.width * (r.x + r.width / 2), y: geometry.size.height * (r.y + r.height / 2))
                                         Text("\(index + 1)").font(.caption.bold()).foregroundStyle(.white).padding(2).background(.black)

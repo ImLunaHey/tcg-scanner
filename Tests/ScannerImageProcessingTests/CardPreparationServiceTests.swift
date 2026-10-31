@@ -64,6 +64,7 @@ private func waitForCard(_ coordinator: ScannerCoordinator, id: UUID) async thro
     #expect(identity.state == .reviewRequired && identity.selectedCardID == nil)
     #expect(identity.sourceEditID == prepared.id && identity.sourceSHA256 == prepared.image.sha256)
     #expect(identity.finish == .unverified && identity.condition == .unassessed)
+    #expect(identity.conditionCheck != nil) // Published automatically, without a client check request.
     #expect(prepared.cardPreparation != nil && prepared.image.width < 220 && prepared.image.height < 290)
     let original = try Data(contentsOf: URL(fileURLWithPath: record.outputDirectory).appendingPathComponent("C-001.png"))
     let id = UUID()
@@ -155,5 +156,39 @@ private func waitForCard(_ coordinator: ScannerCoordinator, id: UUID) async thro
     #expect((180...187).contains(copy.image.width) && (250...257).contains(copy.image.height))
     #expect(record.images[0].width == 400 && record.images[0].height == 600)
     #expect(record.cardIdentifications?.first?.sourceSHA256 == copy.image.sha256)
+    await coordinator.shutdownScans()
+}
+
+private actor SavedConditionPaper: ScannerBackend {
+    let bytes: Data
+    init(bytes: Data) { self.bytes = bytes }
+    func devices() -> [Device] { [Device(id: "mock", name: "Saved back fixture")] }
+    func inspect(deviceID: String) -> Inspection { Inspection(device: devices()[0]) }
+    func capture(deviceID: String, request: ScanRequest, store: ScanStorage) async throws -> CaptureOutcome {
+        try await store.markScanning(settings: [:])
+        let url = store.incomingDirectory.appendingPathComponent("back.png")
+        try bytes.write(to: url); try await store.preserve(url, sequence: 1)
+        return CaptureOutcome()
+    }
+}
+@Test(.enabled(if: ProcessInfo.processInfo.environment["SCANNER_CONDITION_FIXTURE"] != nil), arguments: [false, true])
+func conditionChecksRunAutomaticallyWithoutClientRequest(catalogueFails: Bool) async throws {
+    let path = try #require(ProcessInfo.processInfo.environment["SCANNER_CONDITION_FIXTURE"])
+    let saved = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+    let source = try #require(saved.images.first { $0.sequence == 1 })
+    let bytes = try Data(contentsOf: URL(fileURLWithPath: saved.outputDirectory).appendingPathComponent(source.relativePath))
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let coordinator = try ScannerCoordinator(backend: SavedConditionPaper(bytes: bytes), storageRoot: root,
+        cardRecognizer: AutomaticRecognition(fail: catalogueFails))
+    let job = try await coordinator.startScan(ScanRequest(prepareCards: true))
+    let done = try await waitForCard(coordinator, id: job.id)
+    let identity = try #require(done.cardIdentifications?.first)
+    #expect(done.state == .completed)
+    #expect(identity.conditionCheck?.state == .checked)
+    #expect(identity.condition == .unassessed)
+    #expect(identity.state == (catalogueFails ? .failed : .reviewRequired))
+    let manifest = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: done.outputDirectory).appendingPathComponent("manifest.json")))
+    #expect(manifest.cardIdentifications?.first?.conditionCheck == identity.conditionCheck)
     await coordinator.shutdownScans()
 }

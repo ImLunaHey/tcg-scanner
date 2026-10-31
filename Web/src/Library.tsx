@@ -19,6 +19,7 @@ import { Modal } from "./Modal";
 import { ImageLightbox, type LightboxImage } from "./ImageLightbox";
 import { IdentificationReview, IdentitySummary } from "./Identification";
 import { ConditionReview, conditionSummary } from "./ConditionReview";
+import { conditionImages } from "./conditionLightbox";
 import { imageBlob, saveBlob, saveJSON, type Api } from "./api";
 import {
   batchLabel,
@@ -535,6 +536,20 @@ export function BatchDetail({ id }: { id: string }) {
                 editID: view.prepared?.request.id,
                 label: `${captureLabel(pair.number)} · ${view.label}`,
               }));
+            const conditionViews = conditionImages(
+              record,
+              sides
+                .filter((s) => s.image)
+                .map((s) => ({ sequence: s.image!.sequence, label: s.label })),
+            );
+            const conditionStart = Math.max(
+              0,
+              conditionViews.findIndex(
+                (v) =>
+                  v.sequence ===
+                  sides.find((s) => s.label === "Back")?.image?.sequence,
+              ),
+            );
             const reviewImage =
               sides.find(
                 (side) => side.image?.sequence === identity?.request.sequence,
@@ -597,16 +612,24 @@ export function BatchDetail({ id }: { id: string }) {
                     identification={identity}
                     pending={!finished && record.request.prepareCards === true}
                   />
-                  <p className="small muted">
-                    {conditionSummary(
-                      record.cardIdentifications?.find(
-                        (i) =>
-                          i.request.sequence ===
-                          sides.find((s) => s.label === "Back")?.image
-                            ?.sequence,
-                      )?.conditionCheck,
-                    )}
-                  </p>
+                  <button
+                    className="text-button condition-result-link"
+                    disabled={!conditionViews.length}
+                    onClick={() =>
+                      setLightbox({
+                        images: conditionViews,
+                        initial: conditionStart,
+                      })
+                    }
+                  >
+                    {conditionViews.length
+                      ? conditionSummary(
+                          conditionViews[conditionStart].conditionCheck,
+                        )
+                      : finished
+                        ? "Visible marks: not checked"
+                        : "Visible marks: automatic check pending"}
+                  </button>
                   {sideWarning && <p className="small muted">{sideWarning}</p>}
                   {record.state !== "completed" && (
                     <p className="small muted">
@@ -636,7 +659,7 @@ export function BatchDetail({ id }: { id: string }) {
                         });
                       }}
                     >
-                      Check condition
+                      Review / refresh checks
                     </button>
                     {reviewImage && (
                       <button

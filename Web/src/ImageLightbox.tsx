@@ -4,6 +4,7 @@ import { Modal } from "./Modal";
 import { useAuth } from "./auth";
 import { cachedImageBlob, imageBlob } from "./api";
 import { ErrorNote } from "./ui";
+import { conditionSummary, type ConditionCheck } from "./ConditionReview";
 
 export type LightboxImage = {
   sequence: number;
@@ -12,21 +13,29 @@ export type LightboxImage = {
   label: string;
   width: number;
   height: number;
+  conditionCheck?: ConditionCheck;
 };
 export function ImageLightbox({
   batchID,
   images,
   initial,
+  initialFinding,
   close,
 }: {
   batchID: string;
   images: LightboxImage[];
   initial: number;
+  initialFinding?: number;
   close: () => void;
 }) {
   const { api } = useAuth();
   const [selected, setSelected] = useState(initial);
   const [zoom, setZoom] = useState(1);
+  const [focusedFinding, setFocusedFinding] = useState<number>();
+  const [focusSerial, setFocusSerial] = useState(0);
+  const pendingFocus = useRef<
+    ConditionCheck["findings"][number]["region"] | null
+  >(null);
   const [display, setDisplay] = useState<{
     key: string;
     url: string;
@@ -50,6 +59,40 @@ export function ImageLightbox({
     size.height / current.height,
     1,
   );
+  const findings = current.conditionCheck?.findings || [];
+  function focusFinding(index: number) {
+    const region = findings[index]?.region;
+    if (!region) return;
+    setFocusedFinding(index);
+    pendingFocus.current = region;
+    setZoom(
+      Math.max(1, Math.min(8, 0.55 / Math.max(region.width, region.height))),
+    );
+    setFocusSerial((value) => value + 1);
+  }
+  useEffect(() => {
+    const region = pendingFocus.current;
+    if (!region || !visible || !viewport.current) return;
+    const width = current.width * fit * zoom,
+      height = current.height * fit * zoom;
+    viewport.current.scrollTo({
+      left: Math.max(0, width * (region.x + region.width / 2) - size.width / 2),
+      top: Math.max(
+        0,
+        height * (region.y + region.height / 2) - size.height / 2,
+      ),
+    });
+    pendingFocus.current = null;
+  }, [
+    focusSerial,
+    zoom,
+    visible,
+    current.width,
+    current.height,
+    fit,
+    size.width,
+    size.height,
+  ]);
   useEffect(() => {
     const element = viewport.current!;
     const observer = new ResizeObserver(() =>
@@ -76,6 +119,10 @@ export function ImageLightbox({
     if (full || preview) show((full || preview)!, !!full);
     setError(undefined);
     setZoom(1);
+    setFocusedFinding(undefined);
+    pendingFocus.current = null;
+    if (findings.length)
+      focusFinding(selected === initial ? (initialFinding ?? 0) : 0);
     if (viewport.current) viewport.current.scrollTo(0, 0);
     void imageBlob(api, path, controller.signal, current.sha256)
       .then((blob) => {
@@ -156,6 +203,37 @@ export function ImageLightbox({
           </div>
         </header>
         <ErrorNote error={error} />
+        {current.conditionCheck && (
+          <div className="lightbox-condition">
+            <p>{conditionSummary(current.conditionCheck)}</p>
+            {findings.length > 0 && (
+              <div className="lightbox-mark-links" aria-label="Candidate marks">
+                {findings.map((finding, index) => (
+                  <button
+                    key={index}
+                    className="text-button"
+                    aria-pressed={focusedFinding === index}
+                    onClick={() => focusFinding(index)}
+                    title={finding.explanation}
+                  >
+                    Mark {index + 1}
+                  </button>
+                ))}
+              </div>
+            )}
+            {focusedFinding !== undefined && findings[focusedFinding] && (
+              <p className="small">{findings[focusedFinding].explanation}</p>
+            )}
+            <details>
+              <summary>Scope and limitations</summary>
+              <ul>
+                {current.conditionCheck.limitations.map((text, index) => (
+                  <li key={index}>{text}</li>
+                ))}
+              </ul>
+            </details>
+          </div>
+        )}
         {visible && !visible.full && !error && (
           <p className="small muted" role="status">
             Preview · loading full-resolution PNG…
@@ -192,22 +270,59 @@ export function ImageLightbox({
           }}
         >
           {visible ? (
-            <img
-              src={visible.url}
-              alt={current.label}
-              draggable={false}
+            <div
+              className="lightbox-canvas"
               style={{
                 width: current.width * fit * zoom,
                 height: current.height * fit * zoom,
               }}
-              onError={() =>
-                setError(
-                  new Error(
-                    "This image could not be displayed. Download the original or prepare a PNG copy.",
-                  ),
-                )
-              }
-            />
+            >
+              <img
+                src={visible.url}
+                alt={current.label}
+                draggable={false}
+                style={{
+                  width: current.width * fit * zoom,
+                  height: current.height * fit * zoom,
+                }}
+                onError={() =>
+                  setError(
+                    new Error(
+                      "This image could not be displayed. Download the original or prepare a PNG copy.",
+                    ),
+                  )
+                }
+              />
+              {current.conditionCheck && (
+                <svg
+                  className="lightbox-mark-overlay"
+                  viewBox="0 0 1 1"
+                  preserveAspectRatio="none"
+                  aria-label="Candidate condition mark locations"
+                >
+                  {findings.map((finding, index) => (
+                    <g key={index}>
+                      <rect
+                        x={finding.region.x}
+                        y={finding.region.y}
+                        width={finding.region.width}
+                        height={finding.region.height}
+                        vectorEffect="non-scaling-stroke"
+                        className={
+                          index === focusedFinding ? "focused" : undefined
+                        }
+                      />
+                      <text
+                        x={Math.min(0.95, finding.region.x + 0.005)}
+                        y={Math.max(0.025, finding.region.y)}
+                      >
+                        {index + 1}
+                      </text>
+                    </g>
+                  ))}
+                </svg>
+              )}
+            </div>
           ) : (
             !error && <p role="status">Loading full-resolution image…</p>
           )}

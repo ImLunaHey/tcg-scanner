@@ -61,7 +61,7 @@ private struct BatchDetail: View {
                             Text("\(prepared?.image.width ?? image.width) × \(prepared?.image.height ?? image.height) · side \(image.side)").font(.caption).foregroundStyle(.secondary)
                             if let identification = record.cardIdentifications?.first(where: { $0.request.sequence == image.sequence }) {
                                 CardIdentitySummary(identification: identification)
-                                if let check = identification.conditionCheck { Text(check.summary).font(.caption).foregroundStyle(.secondary) }
+                                if let check = identification.conditionCheck { Button(check.summary) { checkingCondition = EditingImage(image: image) }.font(.caption).buttonStyle(.link) }
                             }
                             Button("Check condition…") { checkingCondition = EditingImage(image: image) }.disabled(!record.state.terminal)
                             Button("Identify / review card…") { identifying = EditingImage(image: image) }.disabled(!record.state.terminal)
