@@ -1,6 +1,8 @@
 # Card identification and manual assessment
 
-Identification is an optional operation on an already saved original. It never
+Card scans with `prepareCards: true` automatically identify saved images during
+post-capture processing. Identification is also available as an explicit operation
+on an already saved original. It never
 starts the scanner, changes the original bytes or renames B/C labels. English is
 the first supported language. This feature was separately requested after the
 initial scanner milestones; inventory creation, pricing and selling integration
@@ -8,8 +10,14 @@ remain out of scope.
 
 ## Use it
 
-In the web batch library, choose **Identify card** beneath the front image, then
-**Identify this image**. In the native app, use **Identify / review card…**.
+Enable **Auto-crop, orient and identify cards** when starting a card scan.
+After capture, each image is cropped/oriented and identified in sequence; results
+appear incrementally while the job is Processing. Both sides are analyzed so the
+service does not assume that capture parity identifies the front. Backs normally
+produce no match. General document scans with this option off do not run OCR.
+
+For an older scan or an explicit retry, choose **Identify card** beneath the front
+image in the web batch library, then **Identify this image**. In the native app, use **Identify / review card…**.
 Identification runs in ScannerService; either interface may close while it works.
 
 Review the proposed name, set and collector number. No candidate is selected or
@@ -60,7 +68,12 @@ is not a general accuracy benchmark.
 ## Service contracts
 
 Identification is asynchronous and limited to one worker per service. Jobs must
-have finished before identification starts. A stable UUID makes a repeated start
+have finished before explicit identification or review requests. The automatic
+processing pipeline publishes pending and completed identification records through
+the same job API and manifest. It shares one recognizer with manual requests.
+Cancellation stops processing while retaining images and partial results; OCR or
+catalogue failures are recorded per image without failing a successful capture.
+Interrupted work is marked by restart recovery and can be explicitly retried. A stable UUID makes a repeated start
 request return the same result without another OCR operation. One latest result
 is retained per image. Use a new UUID only for an explicit retry of a failed,
 unmatched or rejected result. A review supplies the identification UUID so stale

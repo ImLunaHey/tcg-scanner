@@ -27,6 +27,11 @@ extension ScannerCoordinator {
     }
 
     func prepareCapturedCards(_ store: ScanStorage) async {
+        // Reserve the recognizer before awaiting an existing manual request. This
+        // keeps automatic and manual OCR serialized without dropping either job.
+        automaticallyIdentifyingCards = true
+        defer { automaticallyIdentifyingCards = false }
+        for worker in Array(identificationTasks.values) { await worker.value }
         let snapshot = await store.snapshot()
         for image in snapshot.images {
             if Task.isCancelled { break }
@@ -35,6 +40,19 @@ extension ScannerCoordinator {
                 try await store.addPreparedImage(edit)
             } catch {
                 try? await store.addPreparationWarning("Card preparation failed for image \(image.sequence): \(error.localizedDescription). Original retained; use manual review.")
+            }
+            if Task.isCancelled { break }
+            do {
+                let current = await store.snapshot()
+                let prepared = current.processedImages?.last { $0.request.sequence == image.sequence && $0.cardPreparation != nil }
+                let source = prepared?.image ?? image
+                var pending = CardIdentification(request: IdentificationRequest(jobID: current.id, sequence: image.sequence), sourceSHA256: source.sha256)
+                pending.sourceEditID = prepared?.id
+                try await store.saveIdentification(pending)
+                let result = await recognizeCard(pending, record: current, image: source)
+                try await store.saveIdentification(result)
+            } catch {
+                try? await store.addPreparationWarning("Identification could not be saved for image \(image.sequence): \(error.localizedDescription). Original retained; retry from review.")
             }
         }
     }

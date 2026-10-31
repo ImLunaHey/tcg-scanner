@@ -59,6 +59,12 @@ public actor ScanStorage {
         record.processedImages = (record.processedImages ?? []) + [image]
         try save()
     }
+    public func saveIdentification(_ identification: CardIdentification) throws {
+        record.cardIdentifications = (record.cardIdentifications ?? []).filter {
+            $0.request.sequence != identification.request.sequence
+        } + [identification]
+        try save()
+    }
     public func addPreparationWarning(_ warning: String) throws {
         record.warnings.append(warning)
         try save()

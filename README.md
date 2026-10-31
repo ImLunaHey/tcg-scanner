@@ -11,7 +11,8 @@ now includes an explicitly authorized single-card test and an 11-card duplex
 batch with clean feeding and no new damage reported. [Whole-card preparation](Docs/card-preparation.md) preserves
 originals while adding cropped and oriented PNG copies. Bulk feeding is not yet validated.
 Optional [English card identification](Docs/card-identification.md) now uses local
-Apple Vision OCR and TCGdex to suggest a card and set. Finish and condition are
+Apple Vision OCR and TCGdex to suggest a card and set. Card-preparation scans
+run identification automatically during processing. Finish and condition are
 recorded through manual review; no automatic foil detection or grading is claimed.
 See [native app installation and workflow](Docs/native-app.md) and
 [milestone 6 validation](Docs/milestone-6-validation.md).

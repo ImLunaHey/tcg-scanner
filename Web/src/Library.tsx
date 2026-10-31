@@ -406,7 +406,10 @@ export function BatchDetail({ id }: { id: string }) {
             </p>
           ))}
           {!edit && !side && (
-            <IdentitySummary identification={identification} />
+            <IdentitySummary
+              identification={identification}
+              pending={!finished && record.request.prepareCards === true}
+            />
           )}
           {!edit && (
             <label className="compare-check">
@@ -594,12 +597,17 @@ export function BatchDetail({ id }: { id: string }) {
                       <span className="badge">Incomplete pair</span>
                     )}
                   </div>
-                  <IdentitySummary identification={identity} />
+                  <IdentitySummary
+                    identification={identity}
+                    pending={!finished && record.request.prepareCards === true}
+                  />
                   {record.state !== "completed" && (
                     <p className="small muted">
                       {finished
                         ? "Interrupted batch · check card count"
-                        : "Scanning…"}
+                        : record.state === "processing"
+                          ? "Processing cards…"
+                          : "Scanning…"}
                     </p>
                   )}
                   <div className="paired-actions">

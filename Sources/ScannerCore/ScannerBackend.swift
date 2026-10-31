@@ -31,6 +31,7 @@ public actor ScannerCoordinator {
     var thumbnailCache = ThumbnailCache()
     var editingJobs: Set<UUID> = []
     var preparingCardJobs: Set<UUID> = []
+    var automaticallyIdentifyingCards = false
     var identificationTasks: [UUID: Task<Void, Never>] = [:]
     let cardRecognizer: any CardRecognizing
     let database: ScannerDatabase

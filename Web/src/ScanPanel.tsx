@@ -231,10 +231,10 @@ export function ScanPanel({ onStarted }: { onStarted: (id: string) => void }) {
         </label>
         <label className="toggle-row">
           <span>
-            <strong>Auto-crop and orient cards</strong>
+            <strong>Auto-crop, orient and identify cards</strong>
             <small>
-              Black-background captures · preserves originals · inspect
-              uncertain orientation
+              Preserves originals · local OCR with TCGdex catalogue matches ·
+              review suggestions
             </small>
           </span>
           <input

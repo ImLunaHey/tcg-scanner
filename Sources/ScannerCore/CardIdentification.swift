@@ -18,7 +18,7 @@ extension ScannerCoordinator {
            ![IdentificationState.failed, .noMatch, .rejected].contains(existing.state) {
             throw ScannerError("conflict", "This image already has an identification. Review or reject it before trying again.")
         }
-        guard identificationTasks.isEmpty else { throw ScannerError("busy", "Another identification is running; retry when it finishes.") }
+        guard identificationTasks.isEmpty, !automaticallyIdentifyingCards else { throw ScannerError("busy", "Another identification is running; retry when it finishes.") }
         let prepared = record.processedImages?.last(where: { $0.request.sequence == request.sequence && $0.cardPreparation != nil })
         let image = prepared?.image ?? original
         guard image.bytes <= 32 * 1024 * 1024 else { throw ScannerError("resourceLimit", "OCR source exceeds 32 MiB.") }
@@ -47,6 +47,7 @@ extension ScannerCoordinator {
         guard !stopping else { throw ScannerError("busy", "Service is shutting down.") }
         try validateStorage()
         var record = try await scanStatus(jobID)
+        guard record.state.terminal, scans[jobID] == nil else { throw ScannerError("busy", "Wait for card processing to finish before reviewing.") }
         guard var result = record.cardIdentifications?.first(where: { $0.request.sequence == sequence && $0.request.id == identificationID }) else {
             throw ScannerError("conflict", "Identification changed or is missing. Refresh before reviewing.")
         }
@@ -69,8 +70,25 @@ extension ScannerCoordinator {
 
     private func runIdentification(_ pending: CardIdentification, record snapshot: ScanRecord, image: OriginalImage) async {
         defer { identificationTasks[pending.request.id] = nil }
+        let result = await recognizeCard(pending, record: snapshot, image: image)
+        do {
+            guard var record = try database.job(pending.request.jobID) else { return }
+            replaceIdentification(result, in: &record)
+            try database.save(record)
+            do { try validateStorage(); try BatchFiles.writeManifest(record, root: storageRoot) }
+            catch {
+                record.warnings.append("Identification is saved locally, but the on-disk manifest could not be updated. Retry the same identification request after restoring storage.")
+                try database.save(record)
+            }
+        } catch { persistenceError = ScannerError("storage", error: error) }
+    }
+
+    // Both the scan pipeline and explicit retries use the same bounded recognizer.
+    func recognizeCard(_ pending: CardIdentification, record snapshot: ScanRecord, image: OriginalImage) async -> CardIdentification {
         var result = pending
         do {
+            guard image.bytes <= 32 * 1024 * 1024 else { throw ScannerError("resourceLimit", "OCR source exceeds 32 MiB.") }
+            try validateStorage()
             let root = storageRoot
             let sourceTask = Task.detached(priority: .utility) {
                 try Task.checkCancellation()
@@ -90,16 +108,7 @@ extension ScannerCoordinator {
             result.error = error is CancellationError ? ScannerError("interrupted", "Identification stopped; retry explicitly.") : ScannerError("recognition", error: error)
         }
         result.completedAt = Date()
-        do {
-            guard var record = try database.job(pending.request.jobID) else { return }
-            replaceIdentification(result, in: &record)
-            try database.save(record)
-            do { try validateStorage(); try BatchFiles.writeManifest(record, root: storageRoot) }
-            catch {
-                record.warnings.append("Identification is saved locally, but the on-disk manifest could not be updated. Retry the same identification request after restoring storage.")
-                try database.save(record)
-            }
-        } catch { persistenceError = ScannerError("storage", error: error) }
+        return result
     }
     private func replaceIdentification(_ result: CardIdentification, in record: inout ScanRecord) {
         record.cardIdentifications = (record.cardIdentifications ?? []).filter { $0.request.sequence != result.request.sequence } + [result]

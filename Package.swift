@@ -28,7 +28,7 @@ let package = Package(
         .target(name: "ScannerRecognition", dependencies: ["ScannerAPI"]),
         .testTarget(name: "ScannerRecognitionTests", dependencies: ["ScannerRecognition", "ScannerAPI", "ScannerCore", "ScannerPersistence", "ScannerServiceSupport"]),
         .target(name: "ScannerClient", dependencies: ["ScannerAPI", "ScannerTransport"]),
-        .testTarget(name: "ScannerImageProcessingTests", dependencies: ["ScannerImageProcessing", "ScannerCore", "ScannerAPI", "ScannerPersistence"]),
+        .testTarget(name: "ScannerImageProcessingTests", dependencies: ["ScannerImageProcessing", "ScannerCore", "ScannerAPI", "ScannerPersistence", "ScannerRecognition"]),
         .testTarget(name: "ScannerClientTests", dependencies: ["ScannerClient", "ScannerCore", "ScannerServiceSupport", "ScannerTransport", "ScannerAPI"]),
         .executableTarget(name: "ScannerHTTP", dependencies: [.product(name: "HummingbirdCore", package: "hummingbird"), "ScannerHTTPSupport", "ScannerAPI", "ScannerTransport", .product(name: "ArgumentParser", package: "swift-argument-parser"), .product(name: "Hummingbird", package: "hummingbird")]),
         .target(name: "ScannerHTTPSupport", dependencies: ["ScannerAPI", "ScannerTransport", .product(name: "HTTPTypes", package: "swift-http-types"), .product(name: "Hummingbird", package: "hummingbird")]),

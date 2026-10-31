@@ -317,10 +317,19 @@ export function IdentificationReview({
 
 export function IdentitySummary({
   identification,
+  pending = false,
 }: {
   identification?: Identification;
+  pending?: boolean;
 }) {
-  if (!identification) return <p className="small muted">Not identified yet</p>;
+  if (!identification)
+    return (
+      <p className="small muted">
+        {pending
+          ? "Waiting for automatic identification…"
+          : "Not identified yet"}
+      </p>
+    );
   const card =
     identification.state === "confirmed"
       ? identification.evidence?.candidates.find(

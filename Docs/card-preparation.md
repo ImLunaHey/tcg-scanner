@@ -47,7 +47,8 @@ data. A cancelled processing job also retains captured originals.
 ## API and automation
 
 - Set `prepareCards: true` in a scan request (REST, JSON-RPC or MCP). This controls
-  software processing only; it does not change feeder or multifeed settings.
+  cropping, orientation and automatic English card identification during processing;
+  it does not change feeder or multifeed settings. See [identification](card-identification.md).
 - `POST /api/v1/images/{jobID}:{sequence}/prepare-card` with `{ "id": "UUID" }`
   creates a prepared copy for a finished capture. Reuse the UUID on retry.
 - JSON-RPC: `v1.images.prepareCard`, parameters `jobID`, `sequence`, `id`.
