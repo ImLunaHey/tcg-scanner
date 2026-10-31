@@ -274,3 +274,40 @@ image downloads were found to consume the same admission slots as image
 metadata/identification controls. Only binary GETs now use the two download
 slots; the normal authenticated request limit still covers controls. All nine
 HTTP tests passed, including a regression with both download slots occupied.
+
+## Mixed-orientation validation — B-012, 2026-10-31
+
+The user mixed the eleven cards' orientations, loaded them and authorized one
+additional scan after the B-011 checks. Read-only inspection found the ADF loaded
+and the service idle. Job `9D3E61D1-21F5-47DA-8338-971EDB02529B` completed using
+300 DPI duplex PNG and card preparation, with unchanged feeder safety settings.
+It saved 22 originals and 22 prepared images, closed the hardware session and
+reported no job errors. The user confirmed all eleven fed cleanly with no new
+damage. Size and SHA-256 verification passed for all 44 saved PNG files.
+
+Each consecutive pair has exactly one recognized front. The eleven suggested
+printing IDs equal the B-010 baseline, with no missing or duplicate printings.
+In pair order: Fire Energy, Virizion, Larvesta, Pangoro, Iris's Fighting Spirit,
+Lokix, Cubone, Salamence ex, Lechonk, Impidimp and Dunsparce. The first three
+fronts required 180-degree correction; the remaining eight required none.
+All eleven fronts had text-supported orientation and appeared upright in the
+prepared gallery. The front captures in this run are all even-numbered: it
+validates mixed upright/upside-down loading, while B-011 separately validates
+fronts arriving on the other scanner side. Neither test establishes arbitrary
+sideways physical feeding or every possible mixed-front/back stack.
+
+Read-only Chromium validation over the production Tailscale HTTPS address
+checked all eleven pair summaries, front downloads and identity dialogs. Every
+download matched that pair's prepared front PNG checksum, and every dialog
+targeted that front's actual capture sequence. Desktop and 390-pixel phone
+layouts were checked, with no horizontal phone overflow, page errors or job
+history changes. Recognition remains a suggestion requiring review; no finish
+or condition estimates were added by this test.
+
+Remaining limitations: backs have uncertain orientation and may remain rotated;
+automatic upright back correction is not implemented. Scan-boundary crop warnings
+remain visible where a card reaches the scan area's edge; cropping cannot restore
+uncaptured pixels. The original PNGs are preserved. Private requests, final job
+records, physical confirmation, file verification and browser-check evidence are
+under `Diagnostics/mixed-orientation/` (ignored by Git). No further scan was
+started after B-012.
