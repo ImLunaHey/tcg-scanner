@@ -35,7 +35,7 @@ describe("image request scheduling", () => {
     releases.get("c")!();
     await Promise.all([c, full]);
   });
-  it("caches only previews, evicts by byte limit, and isolates sessions", async () => {
+  it("caches previews and full images, evicts by byte limit, and isolates sessions", async () => {
     const queue = new ImageRequests(4);
     let reads = 0;
     const fetch = async () => {
@@ -50,6 +50,10 @@ describe("image request scheduling", () => {
     await queue.load("b", fetch, undefined, true);
     expect(reads).toBe(4);
     await queue.load("b", fetch);
+    expect(reads).toBe(4);
+    expect(queue.cached("b")).toBeInstanceOf(Blob);
+    await queue.load("full", fetch);
+    await queue.load("full", fetch);
     expect(reads).toBe(5);
     await new ImageRequests().load("b", fetch, undefined, true);
     expect(reads).toBe(6);

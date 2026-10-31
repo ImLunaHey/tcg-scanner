@@ -105,6 +105,13 @@ export function saveJSON(value: unknown, name: string) {
 
 // Weakly scoped to the authenticated API instance; signing out drops its cache.
 const imageRequests = new WeakMap<Api, ImageRequests>();
+export function cachedImageBlob(
+  api: Api,
+  path: string,
+  sourceSHA256 = "",
+): Blob | undefined {
+  return imageRequests.get(api)?.cached(path + ":" + sourceSHA256);
+}
 export function imageBlob(
   api: Api,
   path: string,

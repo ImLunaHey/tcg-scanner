@@ -1,10 +1,19 @@
-/** Per-session, bounded preview cache. Clicked full-size images take priority. */
+/** Per-session, bounded image cache. Clicked full-size images take priority. */
 export class ImageRequests {
   private active = 0;
   private pending: { priority: number; run: () => Promise<void> }[] = [];
   private cache = new Map<string, Blob>();
   private bytes = 0;
   constructor(private readonly cacheLimit = 24 * 1024 * 1024) {}
+
+  cached(key: string): Blob | undefined {
+    const value = this.cache.get(key);
+    if (value) {
+      this.cache.delete(key);
+      this.cache.set(key, value);
+    }
+    return value;
+  }
 
   load(
     key: string,
@@ -13,7 +22,7 @@ export class ImageRequests {
     preview = false,
   ): Promise<Blob> {
     signal?.throwIfAborted();
-    const cached = preview ? this.cache.get(key) : undefined;
+    const cached = this.cached(key);
     if (cached) {
       this.cache.delete(key);
       this.cache.set(key, cached);
@@ -27,7 +36,7 @@ export class ImageRequests {
             signal?.throwIfAborted();
             const blob = await fetch();
             signal?.throwIfAborted();
-            if (preview && blob.size <= this.cacheLimit) {
+            if (blob.size <= this.cacheLimit) {
               const previous = this.cache.get(key);
               if (previous) {
                 this.bytes -= previous.size;

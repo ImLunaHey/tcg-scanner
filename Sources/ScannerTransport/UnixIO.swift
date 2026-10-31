@@ -60,9 +60,13 @@ enum UnixIO {
             let count = recv(fd, &buffer, buffer.count, 0)
             if count < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) { continue }
             guard count > 0 else { throw ScannerError("transport", "Peer closed the connection before a complete message arrived.") }
+            let start = data.count
             data.append(contentsOf: buffer.prefix(count))
             guard data.count <= limit else { throw ScannerError("resourceLimit", "Local API message exceeds size limit.") }
-            if let newline = data.firstIndex(of: 10) {
+            // Previously received bytes have already been checked. Rescanning
+            // the growing Data for every recv made large image replies quadratic.
+            if let index = buffer.prefix(count).firstIndex(of: 10) {
+                let newline = start + index
                 guard data.suffix(from: data.index(after: newline)).allSatisfy({ $0 == 10 || $0 == 13 || $0 == 32 }) else {
                     throw ScannerError("transport", "Only one request per connection is supported.")
                 }

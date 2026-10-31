@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { X, ZoomIn, ZoomOut } from "lucide-react";
 import { Modal } from "./Modal";
 import { useAuth } from "./auth";
-import { imageBlob } from "./api";
+import { cachedImageBlob, imageBlob } from "./api";
 import { ErrorNote } from "./ui";
 
 export type LightboxImage = {
   sequence: number;
+  sha256: string;
   editID?: string;
   label: string;
   width: number;
@@ -26,7 +27,11 @@ export function ImageLightbox({
   const { api } = useAuth();
   const [selected, setSelected] = useState(initial);
   const [zoom, setZoom] = useState(1);
-  const [url, setURL] = useState("");
+  const [display, setDisplay] = useState<{
+    key: string;
+    url: string;
+    full: boolean;
+  }>();
   const [error, setError] = useState<unknown>();
   const [size, setSize] = useState({ width: 800, height: 600 });
   const viewport = useRef<HTMLDivElement>(null);
@@ -37,6 +42,9 @@ export function ImageLightbox({
     top: number;
   } | null>(null);
   const current = images[selected];
+  const path = `images/${batchID}:${current.sequence}${current.editID ? `?editID=${current.editID}` : ""}`;
+  const key = `${path}:${current.sha256}`;
+  const visible = display?.key === key ? display : undefined;
   const fit = Math.min(
     size.width / current.width,
     size.height / current.height,
@@ -52,20 +60,27 @@ export function ImageLightbox({
   }, []);
   useEffect(() => {
     const controller = new AbortController();
-    let objectURL = "";
-    setURL("");
+    const objectURLs: string[] = [];
+    const show = (blob: Blob, full: boolean) => {
+      const url = URL.createObjectURL(blob);
+      objectURLs.push(url);
+      setDisplay({ key, url, full });
+    };
+    setDisplay(undefined);
+    const full = cachedImageBlob(api, path, current.sha256);
+    const preview = cachedImageBlob(
+      api,
+      `images/${batchID}:${current.sequence}/thumbnail?format=jpeg${current.editID ? `&editID=${current.editID}` : ""}`,
+      current.sha256,
+    );
+    if (full || preview) show((full || preview)!, !!full);
     setError(undefined);
     setZoom(1);
     if (viewport.current) viewport.current.scrollTo(0, 0);
-    void imageBlob(
-      api,
-      `images/${batchID}:${current.sequence}${current.editID ? `?editID=${current.editID}` : ""}`,
-      controller.signal,
-    )
+    void imageBlob(api, path, controller.signal, current.sha256)
       .then((blob) => {
         if (!controller.signal.aborted) {
-          objectURL = URL.createObjectURL(blob);
-          setURL(objectURL);
+          show(blob, true);
         }
       })
       .catch((error) => {
@@ -73,9 +88,17 @@ export function ImageLightbox({
       });
     return () => {
       controller.abort();
-      if (objectURL) URL.revokeObjectURL(objectURL);
+      objectURLs.forEach(URL.revokeObjectURL);
     };
-  }, [api, batchID, current.sequence, current.editID]);
+  }, [
+    api,
+    batchID,
+    current.sequence,
+    current.editID,
+    current.sha256,
+    path,
+    key,
+  ]);
   const resize = (value: number) =>
     setZoom(Math.max(0.5, Math.min(Math.max(8, 1 / fit), value)));
   return (
@@ -133,6 +156,11 @@ export function ImageLightbox({
           </div>
         </header>
         <ErrorNote error={error} />
+        {visible && !visible.full && !error && (
+          <p className="small muted" role="status">
+            Preview · loading full-resolution PNG…
+          </p>
+        )}
         <div
           ref={viewport}
           className="lightbox-viewport"
@@ -163,9 +191,9 @@ export function ImageLightbox({
             drag.current = null;
           }}
         >
-          {url ? (
+          {visible ? (
             <img
-              src={url}
+              src={visible.url}
               alt={current.label}
               draggable={false}
               style={{
