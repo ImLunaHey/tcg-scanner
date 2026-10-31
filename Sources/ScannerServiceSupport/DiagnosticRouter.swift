@@ -20,6 +20,9 @@ public struct DiagnosticRouter: Sendable {
             return RPCResponse(id: request.id, error: RPCFailure(code: -32600, message: "Expected JSON-RPC 2.0 and a string or numeric ID."))
         }
         do {
+            if request.method.hasPrefix("v1.scan.") {
+                return try await scanResponse(request)
+            }
             let deviceID = try parseParams(request.params)
             let result: JSONValue
             switch request.method {
@@ -62,5 +65,29 @@ public struct DiagnosticRouter: Sendable {
             throw RPCFailure(code: -32602, message: "deviceID must be a nonempty string of at most 512 bytes.")
         }
         return id
+    }
+}
+
+private extension DiagnosticRouter {
+    func scanResponse(_ request: RPCRequest) async throws -> RPCResponse {
+        guard case .object(let params) = request.params else { throw RPCFailure(code: -32602, message: "Scan parameters must be an object.") }
+        let record: ScanRecord
+        switch request.method {
+        case "v1.scan.start":
+            let allowed: Set<String> = ["requestID", "deviceID", "outputDirectory", "dpi", "duplex", "format"]
+            guard params.keys.allSatisfy(allowed.contains) else { throw RPCFailure(code: -32602, message: "Unknown scan parameter.") }
+            let options: ScanRequest
+            do { options = try JSONValue.object(params).decode(ScanRequest.self) }
+            catch { throw RPCFailure(code: -32602, message: "Expected requestID (UUID), dpi (integer), duplex (boolean), format (tiff/png), optional deviceID/outputDirectory.") }
+            record = try await coordinator.startScan(options)
+        case "v1.scan.status", "v1.scan.cancel":
+            guard params.count == 1, case .string(let value) = params["scanID"], let id = UUID(uuidString: value) else {
+                throw RPCFailure(code: -32602, message: "Expected only scanID (UUID string).")
+            }
+            if request.method == "v1.scan.cancel" { record = try await coordinator.cancelScan(id) }
+            else { record = try await coordinator.scanStatus(id) }
+        default: throw RPCFailure(code: -32601, message: "Unknown scan method.")
+        }
+        return RPCResponse(id: request.id, result: try .wrapping(record))
     }
 }

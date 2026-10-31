@@ -11,7 +11,11 @@ import ScannerAPI
     #expect(caps.options.device == "abc")
     #expect(try Scanner.parseAsRoot(["settings"]) is Settings)
     #expect(try Scanner.parseAsRoot(["diagnostics"]) is DiagnosticsCommand)
-    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["scan"]) }
+    let scan = try Scanner.parseAsRoot(["scan", "--duplex", "--format", "png", "--dpi", "300"]) as! Scan
+    #expect(scan.duplex)
+    #expect(scan.format == "png")
+    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["scan", "--format", "jpeg"]) }
+    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["scan", "--dpi", "-1"]) }
     #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["settings", "--duplex"]) }
 }
 @Test func stableExitCodesAndPartialInspectionErrors() {

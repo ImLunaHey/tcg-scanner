@@ -11,6 +11,7 @@ public final class UnixServer {
     private let handler: @Sendable (Data) async -> RPCResponse
     private let log: @Sendable (String) -> Void
     private var active = 0
+    private var retainShutdownLock = false
     public var activeConnections: Int { active }
 
     public init(path: String, log: @escaping @Sendable (String) -> Void = { _ in },
@@ -62,15 +63,20 @@ public final class UnixServer {
         source.resume()
         success = true
     }
-    public func stopAccepting() {
+    public func stopAccepting(releaseLockWhenDrained: Bool = true) {
+        retainShutdownLock = !releaseLockWhenDrained
         guard let source else { return }
         self.source = nil
         unlink(path)
         source.cancel()
         releaseLockIfDrained()
     }
+    public func releaseShutdownLock() {
+        retainShutdownLock = false
+        releaseLockIfDrained()
+    }
     private func releaseLockIfDrained() {
-        if source == nil && active == 0 && lockFD >= 0 {
+        if !retainShutdownLock && source == nil && active == 0 && lockFD >= 0 {
             Darwin.close(lockFD)
             lockFD = -1
         }
