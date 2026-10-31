@@ -20,6 +20,9 @@ import ScannerAPI
             let response = try await client.execute(uri: route, method: .get)
             #expect(response.status.code == 200)
             #expect(response.headers[HTTPField.Name("Content-Security-Policy")!]?.contains("script-src 'self'") == true)
+            let policy = response.headers[HTTPField.Name("Content-Security-Policy")!] ?? ""
+            #expect(policy.split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }.contains("script-src 'self'"))
+            #expect(!policy.contains("unsafe-eval"))
             #expect(response.headers[.cacheControl] == "no-store")
         }
         #expect(try await client.execute(uri: "/", method: .post).status.code == 405)

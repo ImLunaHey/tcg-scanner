@@ -3,7 +3,8 @@
 `scanner-http` is a Swift 6.2+ [Hummingbird 2.27.1](https://github.com/hummingbird-project/hummingbird/releases/tag/2.27.1) gateway. It communicates exclusively
 with ScannerService over the private Unix socket. No HTTP process opens a scanner,
 executes a shell command, reads an arbitrary file, or schedules hardware itself.
-SwiftUI and web applications are not needed. The browser UI is a later milestone.
+SwiftUI and web applications are not needed for headless operation. The optional
+[browser UI](web-app.md) is served by this gateway using `--web-root`.
 
 ## Installation
 
@@ -16,7 +17,8 @@ Scripts/install-http-agent.sh
 ```
 
 Updating an existing gateway requires `Scripts/uninstall-http-agent.sh` first.
-The default is **127.0.0.1:8170**, with authentication required on every route.
+The default is **127.0.0.1:8170**, with authentication required on every API route.
+When web assets are configured, only the static login shell/assets are public.
 The HTTP LaunchAgent is `local.scanner.http`; the executable is installed beside
 `scanner`, under `~/Library/Application Support/Scanner/bin/`. Automatic startup
 runs in the logged-in user session. ScannerService must also be running.
@@ -38,7 +40,7 @@ arguments. Protect the root credential as scanner-control access.
 
 ## Authentication and sessions
 
-Every request needs `Authorization: Bearer TOKEN`. Cookies and URL tokens are not
+Every API request needs `Authorization: Bearer TOKEN`. Cookies and URL tokens are not
 accepted. The root credential can call APIs directly or create an expiring session:
 
 | Route | Behavior |
@@ -53,11 +55,13 @@ old credential to a private backup or remove it deliberately, initialize a new o
 and restart. All clients must then authenticate again. The root has no automatic
 expiry. There are no user accounts or separate read/write roles in this milestone.
 
-Browser clients should obtain a session over HTTPS, keep its token in memory,
-and send the Authorization header on fetch requests with `credentials: "omit"`. No cookie session means
+Browser clients should obtain a session over HTTPS or the configured encrypted
+Tailscale connection. The shipped UI keeps its expiring token in tab sessionStorage
+to support reloads; it never stores the root credential. Clients
+send the Authorization header on fetch requests with `credentials: "omit"`. No cookie session means
 state-changing requests do not rely on ambient browser credentials. The server
 also rejects mismatched Origin and Host/authority values. CORS is not enabled;
-use one origin for the future UI and API. Forwarded headers and Tailscale identity
+use one origin for the UI and API. Forwarded headers and Tailscale identity
 headers never bypass authentication or change the configured origin.
 
 A local diagnostic request can read the token without putting it in process
@@ -102,6 +106,7 @@ requests are rejected. All HTTP profile IDs are UUIDs; resolve names through the
 | `GET /api/v1/images/{jobUUID}:{sequence}` | Original image bytes, download disposition, content type, ETag and X-Image-SHA256 |
 | `GET /api/v1/images/{jobUUID}:{sequence}/metadata` | ImageMetadata |
 | `GET /api/v1/images/{jobUUID}:{sequence}/thumbnail` | Service-generated PNG, maximum 512 pixels on longest side |
+| `POST /api/v1/images/{jobUUID}:{sequence}/edits` | `id` UUID, `quarterTurns` 0–3, and normalized `crop` (`x`, `y`, `width`, `height`); creates a separate PNG via ScannerService, preserving the original. |
 | `GET /api/v1/events` | Server-Sent Events; see below |
 | `GET /api/v1/diagnostics` | Diagnostics; optional deviceID query |
 | `GET /api/v1/status` | ServiceStatus |
@@ -109,6 +114,10 @@ requests are rejected. All HTTP profile IDs are UUIDs; resolve names through the
 Image IDs combine the persisted job UUID and sequence 1–100; they are stable across
 restarts and do not require renaming originals or a new metadata table. Sequence
 preserves callback order; physical front/back identity remains unknown.
+The three image GET routes accept an optional `editID` UUID query parameter to
+retrieve a retained manual copy belonging to that job and source sequence.
+Omitting it always selects the original. Editing is idempotent by the supplied
+edit UUID and delegates validation/processing to ScannerService.
 
 ## Creating jobs safely
 
