@@ -176,3 +176,28 @@ Paired cards provide front/back switching in that same dialog. Use zoom buttons,
 Close with the close button or Escape. Keyboard focus stays in the dialog and
 returns to the opening preview afterward. Closing/switching revokes temporary
 image URLs. This is a view operation; it does not modify saved images.
+
+### Preview loading — 2026-10-31
+
+The tab now runs at most two image requests concurrently, prioritizing clicked
+full-resolution images over queued thumbnails. A per-session 24 MiB thumbnail
+cache avoids repeat downloads when returning to a batch. Originals/full-size
+images are not cached there. Logout discards that API instance and its cache;
+image URLs are revoked when views close. Competing clients retain bounded retries
+for the gateway's existing global download limit.
+
+ScannerService keeps a 32 MiB derived-thumbnail cache. Every cache lookup still
+opens and validates the original's safe path, file type, size and filesystem
+fingerprint; changed files invalidate previews. Original downloads retain their
+existing checksums. Cache eviction never removes saved files.
+
+On this Mac, B-009's 22 sequential preview requests previously took 8.8 seconds.
+With the service cache warm, the updated browser displayed all 22 in 3.9 seconds;
+returning to that batch in the same tab took 14 ms and made zero thumbnail requests.
+These are local Tailscale measurements, not a guarantee for other network links.
+
+Validation: 25 core/HTTP tests, eight frontend unit tests, TypeScript/Vite build,
+Chromium desktop/phone and WebKit tablet workflows. Saved-batch HTTPS checks
+verified 11 pairs, 22 previews, full-resolution 100% zoom, system themes, a
+checksum-matching prepared download and unchanged job history. No scanner job
+was started for these checks. Generated logs/screenshots remain ignored.

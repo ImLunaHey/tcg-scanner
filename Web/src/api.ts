@@ -127,11 +127,14 @@ export function imageBlob(
           if (
             !(error instanceof ApiError) ||
             error.status !== 429 ||
-            attempt >= 2
+            attempt >= 6
           )
             throw error;
           await new Promise((resolve) =>
-            setTimeout(resolve, 500 * (attempt + 1)),
+            setTimeout(
+              resolve,
+              500 * 2 ** Math.min(attempt, 3) + Math.random() * 250,
+            ),
           );
         }
       }
