@@ -57,12 +57,17 @@ private actor ControlBackend: ScannerBackend {
     let file = URL(fileURLWithPath: record.outputDirectory).appendingPathComponent(metadata.image.relativePath)
     #expect(try bytes == Data(contentsOf: file))
     await #expect(throws: ScannerError.self) { try await service.readImage(jobID: record.id, sequence: 1, offset: 0, length: 262145) }
+    let thumbnail = try await service.thumbnail(jobID: record.id, sequence: 1)
+    #expect(thumbnail.width <= 512 && thumbnail.height <= 512)
+    #expect(Data(base64Encoded: thumbnail.base64)?.starts(with: [137, 80, 78, 71]) == true)
+    #expect(try Data(contentsOf: file) == bytes)
     _ = try await service.cancelScan(record.id)
     await service.shutdownScans()
     // Replace only a temporary fixture with a link; arbitrary paths cannot be read.
     try FileManager.default.removeItem(at: file)
     try FileManager.default.createSymbolicLink(at: file, withDestinationURL: URL(fileURLWithPath: "/etc/passwd"))
     await #expect(throws: ScannerError.self) { try await service.readImage(jobID: record.id, sequence: 1, offset: 0, length: 50) }
+    await #expect(throws: ScannerError.self) { try await service.thumbnail(jobID: record.id, sequence: 1) }
     let restarted = try ScannerCoordinator(backend: backend, storageRoot: root, database: db)
     _ = try await restarted.setSettings(deviceID: nil, settings: ScanSettings(dpi: 300, format: .png))
     #expect(try await restarted.startScan(request).request.dpi == 600)

@@ -3,7 +3,7 @@ import ScannerAPI
 
 extension DiagnosticRouter {
     func controlResponse(_ request: RPCRequest) async throws -> RPCResponse? {
-        let methods: Set<String> = ["v1.device.get", "v1.settings.set", "v1.profiles.create", "v1.profiles.update", "v1.images.get", "v1.images.read"]
+        let methods: Set<String> = ["v1.device.get", "v1.settings.set", "v1.profiles.create", "v1.profiles.update", "v1.images.get", "v1.images.read", "v1.images.thumbnail"]
         guard methods.contains(request.method) else { return nil }
         guard case .object(let params) = request.params ?? .object([:]) else { throw RPCFailure(code: -32602, message: "Expected object parameters.") }
         let result: JSONValue
@@ -31,12 +31,13 @@ extension DiagnosticRouter {
             do { patch = try JSONValue.object(params.filter { $0.key != "id" }).decode(ProfilePatch.self) }
             catch { throw RPCFailure(code: -32602, message: "Invalid profile update fields.") }
             result = try .wrapping(await coordinator.updateProfile(id, patch: patch))
-        case "v1.images.get", "v1.images.read":
-            try only(params, keys: request.method == "v1.images.get" ? ["jobID", "sequence"] : ["jobID", "sequence", "offset", "length"])
+        case "v1.images.get", "v1.images.read", "v1.images.thumbnail":
+            try only(params, keys: request.method != "v1.images.read" ? ["jobID", "sequence"] : ["jobID", "sequence", "offset", "length"])
             let id = try uuid(params, "jobID")
             let sequence = try integer(params, "sequence", default: 0, range: 1...100)
             guard sequence > 0 else { throw RPCFailure(code: -32602, message: "sequence is required.") }
             if request.method == "v1.images.get" { result = try .wrapping(await coordinator.imageMetadata(jobID: id, sequence: sequence)) }
+            else if request.method == "v1.images.thumbnail" { result = try .wrapping(await coordinator.thumbnail(jobID: id, sequence: sequence)) }
             else {
                 result = try .wrapping(await coordinator.readImage(jobID: id, sequence: sequence,
                     offset: integer(params, "offset", default: 0, range: 0...512 * 1024 * 1024),

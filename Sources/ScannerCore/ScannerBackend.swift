@@ -26,6 +26,7 @@ public actor ScannerCoordinator {
     var requiresRestart = false
     var persistenceError: ScannerError?
     var eventWaiters = 0
+    var thumbnailWorkers = 0
     let database: ScannerDatabase
     var scanTask: Task<Void, Never>?
     var activeScanID: UUID?

@@ -1,6 +1,7 @@
 import CryptoKit
 import Darwin
 import Foundation
+import ImageIO
 import ScannerAPI
 
 extension ScannerCoordinator {
@@ -8,6 +9,41 @@ extension ScannerCoordinator {
         let record = try await scanStatus(jobID)
         guard let image = record.images.first(where: { $0.sequence == sequence }) else { throw ScannerError("imageNotFound", "No saved original with this sequence.") }
         return ImageMetadata(jobID: jobID, image: image)
+    }
+    public func thumbnail(jobID: UUID, sequence: Int) async throws -> ImageThumbnail {
+        guard thumbnailWorkers < 2 else { throw ScannerError("resourceLimit", "At most two thumbnails may be generated concurrently.") }
+        thumbnailWorkers += 1
+        defer { thumbnailWorkers -= 1 }
+        let record = try await scanStatus(jobID)
+        guard let image = record.images.first(where: { $0.sequence == sequence }) else { throw ScannerError("imageNotFound", "Unknown saved image.") }
+        guard image.bytes <= 32 * 1024 * 1024, image.width > 0, image.height > 0,
+              image.width <= 20000, image.height <= 20000, image.width * image.height <= 100_000_000 else {
+            throw ScannerError("resourceLimit", "Thumbnail source exceeds 32 MiB or 100 megapixels; download the original instead.")
+        }
+        let root = storageRoot
+        return try await Task.detached(priority: .utility) {
+            let chunk = try OriginalReader.read(root: root, record: record, image: image, offset: 0, length: image.bytes)
+            guard chunk.chunkSHA256 == image.sha256, let data = Data(base64Encoded: chunk.base64),
+                  let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+                  let preview = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceCreateThumbnailWithTransform: true,
+                    kCGImageSourceShouldCacheImmediately: false,
+                    kCGImageSourceThumbnailMaxPixelSize: 512] as CFDictionary) else {
+                throw ScannerError("storage", "Could not verify or decode thumbnail source.")
+            }
+            let result = NSMutableData()
+            guard let destination = CGImageDestinationCreateWithData(result, "public.png" as CFString, 1, nil) else {
+                throw ScannerError("storage", "Cannot encode thumbnail.")
+            }
+            CGImageDestinationAddImage(destination, preview, nil)
+            guard CGImageDestinationFinalize(destination), result.length <= 2 * 1024 * 1024 else {
+                throw ScannerError("storage", "Thumbnail encoding failed or exceeded size limit.")
+            }
+            let bytes = result as Data
+            return ImageThumbnail(data: bytes, sha256: SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined(),
+                                  width: preview.width, height: preview.height)
+        }.value
     }
     public func readImage(jobID: UUID, sequence: Int, offset: Int, length: Int) async throws -> ImageChunk {
         guard (0...512 * 1024 * 1024).contains(offset), (1...262_144).contains(length) else {
