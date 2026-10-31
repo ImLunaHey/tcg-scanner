@@ -47,3 +47,12 @@ func recognizeKnownCatalogueImage() async throws {
     #expect(result.candidates.first?.evidence.contains("Collector number 136") == true)
     #expect(result.candidates.first?.evidence.contains("Printed set total 189") == true)
 }
+
+@Test func catalogueCategoryAndTypesAreOptionalForExistingMetadata() throws {
+    let json = #"{"id":"sv09-028","localId":"028","name":"Larvesta","set":{"id":"sv09","name":"Journey Together"},"category":"Pokemon","types":["Fire"]}"#
+    let detail = try JSONDecoder().decode(CatalogueDetail.self, from: Data(json.utf8))
+    #expect(detail.category == "Pokemon" && detail.types == ["Fire"])
+    let legacy = #"{"id":"sv09-028","name":"Larvesta","localID":"028","setID":"sv09","setName":"Journey Together","evidence":[],"availableFinishes":[]}"#
+    let candidate = try JSONDecoder().decode(CardCandidate.self, from: Data(legacy.utf8))
+    #expect(candidate.category == nil && candidate.types == nil)
+}

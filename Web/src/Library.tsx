@@ -16,10 +16,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "./auth";
 import { Modal } from "./Modal";
-import { IdentificationReview, finishes, conditions } from "./Identification";
+import { IdentificationReview, IdentitySummary } from "./Identification";
 import { imageBlob, saveBlob, saveJSON, type Api } from "./api";
 import {
   batchLabel,
+  groupCardCaptures,
   captureLabel,
   dateLabel,
   isTerminal,
@@ -261,7 +262,9 @@ export function BatchDetail({ id }: { id: string }) {
   if (!batch.data) return <ErrorNote error={batch.error} />;
   const record = batch.data;
   const finished = isTerminal(record.state);
-  function tile(image: OriginalImage, edit?: EditedImage) {
+  const grouped = record.request.duplex && record.request.prepareCards === true;
+  const ricohOrder = /fi[- ]?8170/i.test(record.device.name);
+  function tile(image: OriginalImage, edit?: EditedImage, side?: string) {
     const prepared = !edit
       ? record.processedImages
           ?.filter(
@@ -274,15 +277,6 @@ export function BatchDetail({ id }: { id: string }) {
     const identification = record.cardIdentifications?.find(
       (value) => value.request.sequence === image.sequence,
     );
-    const card =
-      identification?.state === "confirmed"
-        ? identification.evidence?.candidates.find(
-            (value) => value.id === identification.selectedCardID,
-          )
-        : identification?.state === "reviewRequired" &&
-            identification.evidence?.candidates.length === 1
-          ? identification.evidence.candidates[0]
-          : undefined;
     return (
       <article className="image-card" key={edit?.request.id || image.sequence}>
         <Thumbnail
@@ -292,7 +286,7 @@ export function BatchDetail({ id }: { id: string }) {
         />
         <div className="image-card-body">
           <div className="section-heading">
-            <h3>{captureLabel(image.sequence)}</h3>
+            <h3>{side || captureLabel(image.sequence)}</h3>
             <span className="badge">
               {prepared
                 ? "Prepared card"
@@ -304,6 +298,7 @@ export function BatchDetail({ id }: { id: string }) {
             </span>
           </div>
           <p className="muted small">
+            {side ? `Capture ${captureLabel(image.sequence)} · ` : ""}
             {(prepared?.image || image).width} ×{" "}
             {(prepared?.image || image).height} ·{" "}
             {((prepared?.image || image).bytes / 1024 / 1024).toFixed(1)} MB
@@ -383,35 +378,8 @@ export function BatchDetail({ id }: { id: string }) {
               {warning}
             </p>
           ))}
-          {!edit && card && (
-            <p className="small">
-              <span>
-                {identification!.state === "confirmed"
-                  ? "Confirmed"
-                  : "Suggested · review required"}
-              </span>
-              <br />
-              <strong>{card.name}</strong> · {card.setName} · {card.localID}
-              {card.officialSetCount ? `/${card.officialSetCount}` : ""}
-              <br />
-              {finishes[identification!.finish]} ·{" "}
-              {conditions[identification!.condition]} (manual)
-            </p>
-          )}
-          {!edit && !card && identification && (
-            <p className="small muted">
-              {identification.state === "processing"
-                ? "Identifying card…"
-                : identification.state === "reviewRequired"
-                  ? `${identification.evidence?.candidates.length || 0} possible matches · review identity`
-                  : identification.state === "noMatch"
-                    ? "No card match found"
-                    : identification.state === "failed"
-                      ? "Identification failed · retry in review"
-                      : identification.state === "rejected"
-                        ? "Suggestions rejected"
-                        : "Identity unavailable"}
-            </p>
+          {!edit && !side && (
+            <IdentitySummary identification={identification} />
           )}
           {!edit && (
             <label className="compare-check">
@@ -447,6 +415,9 @@ export function BatchDetail({ id }: { id: string }) {
           <p className="eyebrow">{dateLabel(record.createdAt)}</p>
           <h1>{batchLabel(record)}</h1>
           <p>
+            {grouped
+              ? `${groupCardCaptures(record.images).length} cards · `
+              : ""}
             {record.images.length} images · {record.request.dpi} DPI ·{" "}
             {record.request.format.toUpperCase()} · {record.device.name}
           </p>
@@ -491,17 +462,75 @@ export function BatchDetail({ id }: { id: string }) {
         <ErrorNote key={i} error={error.message} />
       ))}
       <p className="library-note">
-        Original captures are kept exactly as delivered. Side labels remain
-        unassigned until front/back pairing is validated.
+        {grouped
+          ? "Each card groups two consecutive captures. Front/back labels use the observed fi-8170 feed order; check correspondence before exporting. Originals remain unchanged."
+          : "Original captures are kept exactly as delivered. Side labels remain unassigned until front/back pairing is validated."}
       </p>
       {!finished && (
         <Loading
           label={`${record.state} · ${record.images.length} images saved. Total count is unknown until feeding finishes.`}
         />
       )}
-      <div className="image-grid">
-        {record.images.map((image) => tile(image))}
-      </div>
+      {grouped ? (
+        <div className="card-pair-list">
+          {groupCardCaptures(record.images).map((pair) => {
+            const sequences = [pair.second?.sequence, pair.first?.sequence];
+            const identity = sequences
+              .map((sequence) =>
+                record.cardIdentifications?.find(
+                  (value) => value.request.sequence === sequence,
+                ),
+              )
+              .find(Boolean);
+            const sides = ricohOrder
+              ? [
+                  { image: pair.second, label: "Front" },
+                  { image: pair.first, label: "Back" },
+                ]
+              : [
+                  { image: pair.first, label: "Side 1" },
+                  { image: pair.second, label: "Side 2" },
+                ];
+            return (
+              <section
+                className="card-pair panel"
+                key={pair.number}
+                aria-label={`Card ${captureLabel(pair.number)}`}
+              >
+                <div className="section-heading">
+                  <h2>{captureLabel(pair.number)}</h2>
+                  <span className="badge">
+                    {pair.first && pair.second ? "2 sides" : "Incomplete pair"}
+                  </span>
+                </div>
+                <IdentitySummary identification={identity} />
+                {record.state !== "completed" && (
+                  <p className="small muted">
+                    {finished
+                      ? "Interrupted batch · check pairing and card count"
+                      : "Capture in progress · pairing pending"}
+                  </p>
+                )}
+                <div className="card-pair-sides">
+                  {sides.map(({ image, label }) =>
+                    image ? (
+                      tile(image, undefined, label)
+                    ) : (
+                      <div className="empty" key={label}>
+                        {label} image not received
+                      </div>
+                    ),
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="image-grid">
+          {record.images.map((image) => tile(image))}
+        </div>
+      )}
       {finished && !record.images.length && (
         <Empty title="No images saved">
           {record.state === "failed"

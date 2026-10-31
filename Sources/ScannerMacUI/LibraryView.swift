@@ -119,6 +119,7 @@ private struct CardIdentitySummary: View {
             if let card {
                 Text(identification.state == .confirmed ? "Confirmed" : "Suggested · review required").foregroundStyle(.secondary)
                 Text(card.name).bold()
+                Text(([card.category == "Pokemon" ? "Pokémon" : card.category].compactMap { $0 } + (card.types ?? [])).joined(separator: " · "))
                 Text(card.setName + " · " + card.localID + (card.officialSetCount.map { "/\($0)" } ?? ""))
             } else {
                 switch identification.state {

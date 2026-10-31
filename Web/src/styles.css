@@ -1322,3 +1322,41 @@
   background: #e4efdf;
   color: #244a31;
 }
+
+.card-pair-list {
+  display: grid;
+  gap: 24px;
+  margin: 20px 0 30px;
+}
+.card-pair {
+  min-width: 0;
+}
+.card-pair-sides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.card-pair-sides .thumbnail {
+  height: 350px;
+  padding: 8px;
+}
+@media (max-width: 700px) {
+  .card-pair-sides {
+    gap: 8px;
+  }
+  .card-pair-sides .thumbnail {
+    height: 205px;
+    padding: 4px;
+  }
+  .card-pair-sides .image-card-body {
+    padding: 8px;
+  }
+  .card-pair-sides .section-heading {
+    flex-wrap: wrap;
+  }
+  .card-pair-sides .image-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { batchLabel, controls, uuid, type Inspection } from "./models";
+import {
+  batchLabel,
+  controls,
+  uuid,
+  groupCardCaptures,
+  type OriginalImage,
+  type Inspection,
+} from "./models";
 import { parseSSE } from "./events";
 
 describe("shared contracts", () => {
@@ -39,4 +46,20 @@ describe("shared contracts", () => {
       parseSSE("id: 42\nevent: scanner\ndata: first\ndata: second"),
     ).toEqual({ id: "42", event: "scanner", data: "first\nsecond" });
   });
+});
+
+it("keeps missing duplex sides in their sequence slots", () => {
+  const image = (sequence: number) => ({ sequence }) as OriginalImage;
+  const groups = groupCardCaptures([image(6), image(1), image(2), image(4)]);
+  expect(
+    groups.map((pair) => [
+      pair.number,
+      pair.first?.sequence,
+      pair.second?.sequence,
+    ]),
+  ).toEqual([
+    [1, 1, 2],
+    [2, undefined, 4],
+    [3, undefined, 6],
+  ]);
 });

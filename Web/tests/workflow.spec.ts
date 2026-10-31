@@ -243,3 +243,58 @@ test("recovers connection loss and clears a revoked session", async ({
     await page.evaluate(() => sessionStorage.getItem("scanner.session.v1")),
   ).toBeNull();
 });
+
+test("card batch groups consecutive captures and shows identity once", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByLabel("Access key", { exact: true }).fill(key);
+  await page.getByRole("button", { name: "Open workspace" }).click();
+  await page.getByLabel("Resolution", { exact: true }).selectOption("300");
+  await page.getByLabel("Scan both sides").check();
+  await expect(page.getByLabel("Auto-crop and orient cards")).toBeChecked();
+  await page.getByLabel("I have checked the feeder setup").check();
+  await page.getByRole("button", { name: "Start scan", exact: true }).click();
+  await expect(page.locator(".page-heading .state-completed")).toBeVisible({
+    timeout: 15000,
+  });
+  const card = page.getByRole("region", { name: "Card C-001", exact: true });
+  await expect(card).toBeVisible();
+  await expect(page.locator(".card-pair")).toHaveCount(1);
+  await expect(card.locator(".thumbnail img")).toHaveCount(2);
+  await expect(
+    card.getByRole("heading", { name: "Side 1", exact: true }),
+  ).toBeVisible();
+  await expect(
+    card.getByRole("heading", { name: "Side 2", exact: true }),
+  ).toBeVisible();
+  await expect(
+    card.getByRole("button", { name: "Download card", exact: true }),
+  ).toHaveCount(2);
+  await card
+    .getByRole("button", { name: "Identify card", exact: true })
+    .nth(1)
+    .click();
+  await page
+    .getByRole("button", { name: "Identify this image", exact: true })
+    .click();
+  await expect(page.getByRole("radio")).toHaveCount(1);
+  await page.getByRole("button", { name: "Close identification" }).click();
+  await expect(card.getByText("Furret", { exact: true })).toHaveCount(1);
+  await expect(card).toContainText("Suggested · review required");
+  await expect(card).toContainText("Pokémon · Colorless");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBeTruthy();
+  const boxes = await card.locator(".thumbnail").evaluateAll((elements) =>
+    elements.map((e) => {
+      const r = e.getBoundingClientRect();
+      return { top: r.top, left: r.left };
+    }),
+  );
+  expect(Math.abs(boxes[0].top - boxes[1].top)).toBeLessThan(2);
+  expect(boxes[1].left).toBeGreaterThan(boxes[0].left);
+  await page.getByRole("button", { name: "Sign out" }).click();
+});

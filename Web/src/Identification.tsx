@@ -15,6 +15,8 @@ export type CardCandidate = {
   officialSetCount?: number;
   evidence: string[];
   availableFinishes: string[];
+  category?: string;
+  types?: string[];
 };
 export type Identification = {
   request: { id: string; sequence: number; language: string };
@@ -212,6 +214,16 @@ export function IdentificationReview({
                     />
                     <span>
                       <strong>{candidate.name}</strong>
+                      <span>
+                        {[
+                          candidate.category === "Pokemon"
+                            ? "Pokémon"
+                            : candidate.category,
+                          ...(candidate.types || []),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
                       <span className="candidate-set">
                         {candidate.setName} · {candidate.localID}
                         {candidate.officialSetCount
@@ -300,5 +312,60 @@ export function IdentificationReview({
         )}
       </section>
     </Modal>
+  );
+}
+
+export function IdentitySummary({
+  identification,
+}: {
+  identification?: Identification;
+}) {
+  if (!identification) return <p className="small muted">Not identified yet</p>;
+  const card =
+    identification.state === "confirmed"
+      ? identification.evidence?.candidates.find(
+          (value) => value.id === identification.selectedCardID,
+        )
+      : identification.state === "reviewRequired" &&
+          identification.evidence?.candidates.length === 1
+        ? identification.evidence.candidates[0]
+        : undefined;
+  if (card)
+    return (
+      <p className="small">
+        <span>
+          {identification.state === "confirmed"
+            ? "Confirmed"
+            : "Suggested · review required"}
+        </span>
+        <br />
+        <strong>{card.name}</strong> · {card.setName} · {card.localID}
+        {card.officialSetCount ? `/${card.officialSetCount}` : ""}
+        <br />
+        {[
+          card.category === "Pokemon" ? "Pokémon" : card.category,
+          ...(card.types || []),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+        <br />
+        Finish: {finishes[identification.finish]} · Condition:{" "}
+        {conditions[identification.condition]} (manual)
+      </p>
+    );
+  return (
+    <p className="small muted">
+      {identification.state === "processing"
+        ? "Identifying card…"
+        : identification.state === "reviewRequired"
+          ? `${identification.evidence?.candidates.length || 0} possible matches · review identity`
+          : identification.state === "noMatch"
+            ? "No card match found"
+            : identification.state === "failed"
+              ? "Identification failed · retry in review"
+              : identification.state === "rejected"
+                ? "Suggestions rejected"
+                : "Identity unavailable"}
+    </p>
   );
 }

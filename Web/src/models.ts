@@ -49,7 +49,7 @@ export type OriginalImage = {
 export type Batch = Omit<Job, "scannerID" | "progress"> & {
   device: Device;
   images: OriginalImage[];
-  request: Settings;
+  request: Settings & { prepareCards?: boolean };
   warnings: string[];
   processedImages?: EditedImage[];
   cardIdentifications?: Identification[];
@@ -149,4 +149,21 @@ export function uuid() {
   bytes[8] = (bytes[8] & 63) | 128;
   const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+// Presentation groups only: never rewrite capture IDs, metadata or physical side labels.
+// Sequence slots preserve gaps instead of shifting every subsequent card after a missing image.
+export function groupCardCaptures(images: OriginalImage[]) {
+  const groups = new Map<
+    number,
+    { number: number; first?: OriginalImage; second?: OriginalImage }
+  >();
+  for (const image of images) {
+    const number = Math.floor((image.sequence - 1) / 2) + 1;
+    const group = groups.get(number) || { number };
+    if (image.sequence % 2) group.first = image;
+    else group.second = image;
+    groups.set(number, group);
+  }
+  return [...groups.values()].sort((a, b) => a.number - b.number);
 }

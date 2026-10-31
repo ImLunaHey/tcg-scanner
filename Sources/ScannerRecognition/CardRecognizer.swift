@@ -33,7 +33,7 @@ public actor CardRecognizer: CardRecognizing {
             let finishes: [CardFinish] = [("normal", CardFinish.normal), ("holo", .holo), ("reverse", .reverseHolo)]
                 .filter { detail.variants?[$0.0] == true }.map(\.1)
             candidates.append(CardCandidate(id: detail.id, name: detail.name, localID: detail.localId,
-                setID: detail.set.id, setName: detail.set.name, officialSetCount: total, evidence: evidence, availableFinishes: finishes))
+                setID: detail.set.id, setName: detail.set.name, officialSetCount: total, evidence: evidence, availableFinishes: finishes, category: detail.category, types: detail.types))
             if candidates.count == 5 { break }
         }
         var warnings = ["Suggestions require manual confirmation. Foil, reverse holo, edition and condition are not identified."]

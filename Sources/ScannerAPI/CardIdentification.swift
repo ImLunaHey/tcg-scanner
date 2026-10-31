@@ -42,11 +42,13 @@ public struct CardCandidate: Codable, Sendable, Equatable {
     public var setName: String
     public var officialSetCount: Int?
     public var evidence: [String]
+    public var category: String?
+    public var types: [String]?
     public var availableFinishes: [CardFinish]
-    public init(id: String, name: String, localID: String, setID: String, setName: String, officialSetCount: Int? = nil, evidence: [String], availableFinishes: [CardFinish] = []) {
+    public init(id: String, name: String, localID: String, setID: String, setName: String, officialSetCount: Int? = nil, evidence: [String], availableFinishes: [CardFinish] = [], category: String? = nil, types: [String]? = nil) {
         self.id = id; self.name = name; self.localID = localID; self.setID = setID; self.setName = setName
         self.officialSetCount = officialSetCount; self.evidence = evidence
-        self.availableFinishes = availableFinishes
+        self.availableFinishes = availableFinishes; self.category = category; self.types = types
     }
 }
 

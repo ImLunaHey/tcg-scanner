@@ -15,7 +15,7 @@ struct HTTPRecognitionMock: CardRecognizing {
         try await Task.sleep(for: .milliseconds(200))
         return RecognitionEvidence(lines: [RecognizedLine(text: "Furret", y: 0.9), RecognizedLine(text: "136/189", y: 0.01)], candidates: [
             CardCandidate(id: "swsh3-136", name: "Furret", localID: "136", setID: "swsh3", setName: "Darkness Ablaze", officialSetCount: 189,
-                          evidence: ["Fixture name", "Fixture collector number"], availableFinishes: [.normal, .reverseHolo])])
+                          evidence: ["Fixture name", "Fixture collector number"], availableFinishes: [.normal, .reverseHolo], category: "Pokemon", types: ["Colorless"])])
     }
 }
 

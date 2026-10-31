@@ -14,6 +14,8 @@ struct CatalogueDetail: Decodable, Sendable {
     }
     var id: String; var localId: String; var name: String; var set: CardSet
     var variants: [String: Bool]?
+    var category: String?
+    var types: [String]?
 }
 
 /// Only catalogue GETs to the fixed TCGdex HTTPS host. No scan or OCR text is uploaded.
@@ -48,7 +50,9 @@ actor TCGdexClient {
         }
         let detail = try JSONDecoder().decode(CatalogueDetail.self, from: await get(path: "cards/" + id, limit: 256 * 1024))
         guard detail.id == id, detail.localId.utf8.count <= 32, detail.name.utf8.count <= 128,
-              detail.set.id.utf8.count <= 100, detail.set.name.utf8.count <= 256 else {
+              detail.set.id.utf8.count <= 100, detail.set.name.utf8.count <= 256,
+              (detail.category?.utf8.count ?? 0) <= 64, (detail.types?.count ?? 0) <= 8,
+              detail.types?.allSatisfy({ $0.utf8.count <= 64 }) != false else {
             throw ScannerError("catalogue", "Invalid or oversized card metadata.")
         }
         return detail
