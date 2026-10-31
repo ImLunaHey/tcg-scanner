@@ -7,10 +7,14 @@ import ScannerAPI
 /// Owns one unique batch. Driver output and partial files are retained on failure.
 public actor ScanStorage {
     public nonisolated let incomingDirectory: URL
+    public nonisolated let initialRecord: ScanRecord
     private let directory: URL
     private var record: ScanRecord
+    private let persist: @Sendable (ScanRecord) throws -> Void
 
-    public init(root: URL, device: Device, request: ScanRequest) throws {
+    public init(root: URL, device: Device, request: ScanRequest, queued: Bool = false, profile: ScanProfile? = nil,
+                persist: @escaping @Sendable (ScanRecord) throws -> Void = { _ in }) throws {
+        self.persist = persist
         try request.validate()
         let root = root.standardizedFileURL.resolvingSymlinksInPath()
         let proposed = request.outputDirectory.map { value in
@@ -32,9 +36,20 @@ public actor ScanStorage {
         try FileManager.default.createDirectory(at: incomingDirectory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
         try FileManager.default.createDirectory(at: directory.appendingPathComponent("originals"), withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
         record = ScanRecord(device: device, request: request, outputDirectory: directory.path)
+        record.profile = profile
+        if queued { record.state = .queued }
+        initialRecord = record
         try Wire.encoder().encode(record).write(to: directory.appendingPathComponent("manifest.json"), options: .atomic)
     }
     public func snapshot() -> ScanRecord { record }
+    public func markPreparing() throws {
+        record.state = .preparing; record.startedAt = Date()
+        try save()
+    }
+    public func markProcessing() throws {
+        record.state = .processing
+        try save()
+    }
     public func markScanning(settings: [String: JSONValue]) throws {
         record.state = .scanning; record.appliedSettings = settings
         try save()
@@ -94,5 +109,6 @@ public actor ScanStorage {
     }
     private func save() throws {
         try Wire.encoder().encode(record).write(to: directory.appendingPathComponent("manifest.json"), options: .atomic)
+        try persist(record)
     }
 }

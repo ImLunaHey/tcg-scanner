@@ -15,7 +15,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(name: "ScannerCLI", dependencies: ["ScannerAPI", "ScannerTransport", .product(name: "ArgumentParser", package: "swift-argument-parser")]),
-        .executableTarget(name: "ScannerService", dependencies: ["ScannerAPI", "ScannerCore", "ScannerTransport", "ScannerServiceSupport", .product(name: "ArgumentParser", package: "swift-argument-parser")]),
+        .executableTarget(name: "ScannerService", dependencies: ["ScannerAPI", "ScannerCore", "ScannerPersistence", "ScannerTransport", "ScannerServiceSupport", .product(name: "ArgumentParser", package: "swift-argument-parser")]),
         .target(name: "ScannerAPI"),
         .target(name: "ScannerCore", dependencies: ["ScannerAPI", "ScannerPersistence"]),
         .target(name: "ScannerPersistence", dependencies: ["ScannerAPI", .product(name: "GRDB", package: "GRDB.swift")]),

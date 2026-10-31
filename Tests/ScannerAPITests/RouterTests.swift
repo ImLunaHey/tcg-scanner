@@ -17,12 +17,12 @@ private actor Mock: ScannerBackend {
         return r
     }
 }
-private func router() -> DiagnosticRouter { DiagnosticRouter(coordinator: ScannerCoordinator(backend: Mock()), backendName: "mock") }
+private func router() throws -> DiagnosticRouter { DiagnosticRouter(coordinator: try ScannerCoordinator(backend: Mock()), backendName: "mock") }
 
 @Test func routesAllReadOnlyMethods() async throws {
     for method in ["v1.devices", "v1.capabilities", "v1.settings", "v1.diagnostics"] {
         let request = RPCRequest(method: method)
-        let response = await router().respond(to: try Wire.encoder().encode(request))
+        let response = try await router().respond(to: try Wire.encoder().encode(request))
         #expect(response.id == request.id)
         #expect(response.result != nil)
         #expect(response.error == nil)
@@ -45,21 +45,21 @@ private func router() -> DiagnosticRouter { DiagnosticRouter(coordinator: Scanne
         (#"{"jsonrpc":"2.0","id":1,"method":"v1.settings","params":{"output":"/tmp/a"}}"#, -32602),
         (#"{"jsonrpc":"2.0","id":1,"method":"v1.settings","params":{"deviceID":7}}"#, -32602)
     ] {
-        let response = await router().respond(to: Data(text.utf8))
+        let response = try await router().respond(to: Data(text.utf8))
         #expect(response.error?.code == code)
         #expect(response.result == nil)
     }
 }
 @Test func missingDeviceUsesStructuredError() async throws {
     let request = RPCRequest(method: "v1.capabilities", deviceID: "missing")
-    let response = await router().respond(to: try Wire.encoder().encode(request))
+    let response = try await router().respond(to: try Wire.encoder().encode(request))
     #expect(response.error?.data?.kind == "deviceNotFound")
 }
 
 @Test @MainActor func mockBackendThroughRealServiceTransport() async throws {
     let directory = "/tmp/scanner-test-\(UUID().uuidString)"
     let path = directory + "/s.sock"
-    let router = router()
+    let router = try router()
     let server = UnixServer(path: path, handler: router.respond)
     try server.start()
     defer { server.stopAccepting(); try? FileManager.default.removeItem(atPath: directory) }
@@ -75,13 +75,13 @@ private func router() -> DiagnosticRouter { DiagnosticRouter(coordinator: Scanne
                    .object(["shell": .string("ignored")])] {
         var request = RPCRequest(method: "v1.scan.start")
         request.params = params
-        let response = await router().respond(to: try Wire.encoder().encode(request))
+        let response = try await router().respond(to: try Wire.encoder().encode(request))
         #expect(response.error?.code == -32602)
     }
     for method in ["v1.scan.status", "v1.scan.cancel"] {
         var request = RPCRequest(method: method)
         request.params = .object(["scanID": .string("not-a-uuid")])
-        let response = await router().respond(to: try Wire.encoder().encode(request))
+        let response = try await router().respond(to: try Wire.encoder().encode(request))
         #expect(response.error?.code == -32602)
     }
 }

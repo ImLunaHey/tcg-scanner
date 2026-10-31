@@ -31,7 +31,7 @@ actor MockBackend: ScannerBackend {
 @Test func missingAndAmbiguousDevicesNeverOpenSessions() async throws {
     for devices in [[], [Device(id: "a", name: "A"), Device(id: "b", name: "B")]] {
         let mock = MockBackend(devices)
-        let coordinator = ScannerCoordinator(backend: mock)
+        let coordinator = try ScannerCoordinator(backend: mock)
         await #expect(throws: ScannerError.self) { try await coordinator.inspect(deviceID: nil) }
         #expect(await mock.inspections == 0)
     }
@@ -39,7 +39,7 @@ actor MockBackend: ScannerBackend {
 
 @Test func explicitSelectionAndFailureReleaseOwnership() async throws {
     let mock = MockBackend([Device(id: "a", name: "A"), Device(id: "b", name: "B")])
-    let coordinator = ScannerCoordinator(backend: mock)
+    let coordinator = try ScannerCoordinator(backend: mock)
     await mock.setFail(true)
     await #expect(throws: ScannerError.self) { try await coordinator.inspect(deviceID: "b") }
     await mock.setFail(false)
@@ -51,7 +51,7 @@ actor MockBackend: ScannerBackend {
 @Test func concurrentClientsCannotOpenOverlappingSessions() async throws {
     let mock = MockBackend([Device(id: "a", name: "A")])
     await mock.setHold(true)
-    let coordinator = ScannerCoordinator(backend: mock)
+    let coordinator = try ScannerCoordinator(backend: mock)
     let first = Task { try await coordinator.inspect(deviceID: nil) }
     while !(await mock.entered) { await Task.yield() }
     do {
@@ -67,7 +67,7 @@ actor MockBackend: ScannerBackend {
 @Test func cancellationReleasesOwnership() async throws {
     let mock = MockBackend([Device(id: "a", name: "A")])
     await mock.setHold(true)
-    let coordinator = ScannerCoordinator(backend: mock)
+    let coordinator = try ScannerCoordinator(backend: mock)
     let task = Task { try await coordinator.inspect(deviceID: nil) }
     while !(await mock.entered) { await Task.yield() }
     task.cancel()

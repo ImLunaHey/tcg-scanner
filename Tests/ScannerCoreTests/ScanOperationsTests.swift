@@ -26,14 +26,16 @@ private actor ScanMock: ScannerBackend {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: root) }
     let backend = ScanMock()
-    let coordinator = ScannerCoordinator(backend: backend, storageRoot: root)
+    let coordinator = try ScannerCoordinator(backend: backend, storageRoot: root)
     let request = ScanRequest(format: .png)
     let first = try await coordinator.startScan(request)
     #expect(try await coordinator.startScan(request).id == first.id)
     var changed = request; changed.duplex = true
     await #expect(throws: ScannerError.self) { try await coordinator.startScan(changed) }
     await #expect(throws: ScannerError.self) { try await coordinator.inspect(deviceID: nil) }
-    await #expect(throws: ScannerError.self) { try await coordinator.startScan(ScanRequest()) }
+    let queued = try await coordinator.startScan(ScanRequest())
+    #expect(queued.state == .queued)
+    #expect(try await coordinator.cancelScan(queued.id).state == .cancelled)
     while (try await coordinator.scanStatus(first.id)).images.isEmpty { try await Task.sleep(for: .milliseconds(5)) }
     _ = try await coordinator.cancelScan(first.id)
     let deadline = ContinuousClock.now + .seconds(2)
@@ -53,7 +55,7 @@ private actor ScanMock: ScannerBackend {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: root) }
     let backend = ScanMock()
-    let coordinator = ScannerCoordinator(backend: backend, storageRoot: root)
+    let coordinator = try ScannerCoordinator(backend: backend, storageRoot: root)
     await #expect(throws: ScannerError.self) { try await coordinator.startScan(ScanRequest(dpi: -1)) }
     await #expect(throws: ScannerError.self) { try await coordinator.startScan(ScanRequest(outputDirectory: "../escape")) }
     #expect(await backend.calls == 0)

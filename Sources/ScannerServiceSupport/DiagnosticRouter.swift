@@ -3,7 +3,7 @@ import ScannerAPI
 import ScannerCore
 
 public struct DiagnosticRouter: Sendable {
-    private let coordinator: ScannerCoordinator
+    let coordinator: ScannerCoordinator
     private let backendName: String
     public init(coordinator: ScannerCoordinator, backendName: String = "ImageCaptureCore") {
         self.coordinator = coordinator; self.backendName = backendName
@@ -20,7 +20,8 @@ public struct DiagnosticRouter: Sendable {
             return RPCResponse(id: request.id, error: RPCFailure(code: -32600, message: "Expected JSON-RPC 2.0 and a string or numeric ID."))
         }
         do {
-            if request.method.hasPrefix("v1.scan.") {
+            if let response = try await serviceResponse(request) { return response }
+            if request.method.hasPrefix("v1.scan.") || request.method == "v1.jobs.create" {
                 return try await scanResponse(request)
             }
             let deviceID = try parseParams(request.params)
@@ -73,8 +74,8 @@ private extension DiagnosticRouter {
         guard case .object(let params) = request.params else { throw RPCFailure(code: -32602, message: "Scan parameters must be an object.") }
         let record: ScanRecord
         switch request.method {
-        case "v1.scan.start":
-            let allowed: Set<String> = ["requestID", "deviceID", "outputDirectory", "dpi", "duplex", "format"]
+        case "v1.scan.start", "v1.jobs.create":
+            let allowed: Set<String> = ["requestID", "deviceID", "outputDirectory", "dpi", "duplex", "format", "profileID"]
             guard params.keys.allSatisfy(allowed.contains) else { throw RPCFailure(code: -32602, message: "Unknown scan parameter.") }
             let options: ScanRequest
             do { options = try JSONValue.object(params).decode(ScanRequest.self) }

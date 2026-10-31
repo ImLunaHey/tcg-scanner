@@ -1,5 +1,6 @@
 import Foundation
 import ScannerAPI
+import ScannerPersistence
 
 public protocol ScannerBackend: Sendable {
     func devices() async throws -> [Device]
@@ -20,20 +21,31 @@ public actor ScannerCoordinator {
     var inspecting = false
     var stopping = false
     var scans: [UUID: ScanStorage] = [:]
-    var requests: [UUID: ScanRequest] = [:]
+    var queue: [UUID] = []
+    var paused = false
+    var persistenceError: ScannerError?
+    var eventWaiters = 0
+    let database: ScannerDatabase
     var scanTask: Task<Void, Never>?
     var activeScanID: UUID?
     let storageRoot: URL
-    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans")) {
+    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil) throws {
         self.backend = backend; self.storageRoot = storageRoot
+        self.database = try database ?? ScannerDatabase()
     }
-    public func devices() async throws -> [Device] { try await backend.devices() }
+    public func devices() async throws -> [Device] {
+        let devices = try await backend.devices()
+        try database.observeDevices(devices)
+        return devices
+    }
     public func inspect(deviceID: String?) async throws -> Inspection {
-        guard !inspecting && !stopping else { throw ScannerError("busy", "Scanner is busy or shutting down; retry shortly.") }
+        guard !inspecting && activeScanID == nil && !stopping && !paused else { throw ScannerError("busy", "Scanner is busy or shutting down; retry shortly.") }
         inspecting = true
-        defer { inspecting = false }
+        defer { inspecting = false; scheduleNext() }
         let selected = try await selectDevice(deviceID)
-        return try await backend.inspect(deviceID: selected.id)
+        let report = try await backend.inspect(deviceID: selected.id)
+        try database.saveInspection(report)
+        return report
     }
     func selectDevice(_ deviceID: String?) async throws -> Device {
         let devices = try await backend.devices()
