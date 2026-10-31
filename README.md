@@ -1,10 +1,12 @@
 # Native macOS scanner platform
 
-Milestones 1–5: Swift scanner discovery, capability reports, basic A4 simplex/duplex
+Milestones 1–6: Swift scanner discovery, capability reports, basic A4 simplex/duplex
 scanning, and a persistent background service for the USB Ricoh fi-8170.
-The CLI, Swift MCP server and authenticated HTTP gateway use the service exclusively.
-No graphical application is required. SwiftUI, web interfaces and card processing
-remain later milestones.
+The CLI, Swift MCP server, authenticated HTTP gateway and native SwiftUI app use
+the service exclusively. No graphical application is required for scanning.
+The remote web interface and card processing remain later milestones.
+See [native app installation and workflow](Docs/native-app.md) and
+[milestone 6 validation](Docs/milestone-6-validation.md).
 See [MCP setup and agent workflow](Docs/mcp.md) and [milestone 4 validation](Docs/milestone-4-validation.md).
 
 Actual hardware evidence: [paper scans](Docs/milestone-2-validation.md) and

@@ -1,3 +1,6 @@
 .build/
 .DS_Store
 Diagnostics/
+# Local Xcode UI state; shared project/schemes and dependency pins remain tracked.
+xcuserdata/
+*.xcuserstate
