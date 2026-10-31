@@ -10,11 +10,14 @@ public actor ScanStorage {
     public nonisolated let initialRecord: ScanRecord
     private let directory: URL
     private var record: ScanRecord
+    private let validateStorage: @Sendable () throws -> Void
     private let persist: @Sendable (ScanRecord) throws -> Void
 
     public init(root: URL, device: Device, request: ScanRequest, queued: Bool = false, profile: ScanProfile? = nil,
+                validateStorage: @escaping @Sendable () throws -> Void = {},
                 persist: @escaping @Sendable (ScanRecord) throws -> Void = { _ in }) throws {
-        self.persist = persist
+        self.persist = persist; self.validateStorage = validateStorage
+        try validateStorage()
         try request.validate()
         let root = root.standardizedFileURL.resolvingSymlinksInPath()
         let proposed = request.outputDirectory.map { value in
@@ -28,13 +31,12 @@ public actor ScanStorage {
         }
         try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         guard parent.resolvingSymlinksInPath().path == parent.path else { throw ScannerError("storage", "Output path changed during creation.") }
-        directory = parent.appendingPathComponent("scan-" + request.requestID.uuidString.lowercased(), isDirectory: true)
+        directory = parent.appendingPathComponent("batch-" + request.requestID.uuidString.lowercased(), isDirectory: true)
         guard mkdir(directory.path, 0o700) == 0 else {
             throw ScannerError("storage", "Cannot create unique batch directory; existing batches are never overwritten (\(String(cString: strerror(errno)))).")
         }
-        incomingDirectory = directory.appendingPathComponent("incoming", isDirectory: true)
+        incomingDirectory = directory.appendingPathComponent(".incoming", isDirectory: true)
         try FileManager.default.createDirectory(at: incomingDirectory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
-        try FileManager.default.createDirectory(at: directory.appendingPathComponent("originals"), withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
         record = ScanRecord(device: device, request: request, outputDirectory: directory.path)
         record.profile = profile
         if queued { record.state = .queued }
@@ -55,6 +57,7 @@ public actor ScanStorage {
         try save()
     }
     public func preserve(_ url: URL, sequence: Int) throws {
+        try validateStorage()
         guard url.isFileURL, url.deletingLastPathComponent().standardizedFileURL == incomingDirectory,
               url.resolvingSymlinksInPath().path == url.standardizedFileURL.path else {
             throw ScannerError("storage", "Driver returned an unexpected output path; file left untouched: \(url.path)")
@@ -78,7 +81,7 @@ public actor ScanStorage {
         let expectedUTI = record.request.format == .tiff ? "public.tiff" : "public.png"
         guard uti == expectedUTI else { throw ScannerError("image", "Driver returned \(uti), expected \(expectedUTI); retained in incoming.") }
         let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
-        let relative = String(format: "originals/page-%06d.%@", sequence, record.request.format.rawValue)
+        let relative = String(format: "page-%06d.%@", sequence, record.request.format.rawValue)
         let destination = directory.appendingPathComponent(relative)
         // copyItem refuses an existing destination. Keep incoming too, including on any error.
         try FileManager.default.copyItem(at: url, to: destination)
@@ -108,6 +111,7 @@ public actor ScanStorage {
         record.completedAt = Date()
     }
     private func save() throws {
+        try validateStorage()
         try Wire.encoder().encode(record).write(to: directory.appendingPathComponent("manifest.json"), options: .atomic)
         try persist(record)
     }

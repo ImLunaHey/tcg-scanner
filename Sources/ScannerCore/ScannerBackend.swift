@@ -32,8 +32,9 @@ public actor ScannerCoordinator {
     var scanTask: Task<Void, Never>?
     var activeScanID: UUID?
     let storageRoot: URL
-    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil) throws {
-        self.backend = backend; self.storageRoot = storageRoot
+    let validateStorage: @Sendable () throws -> Void
+    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil, validateStorage: @escaping @Sendable () throws -> Void = {}) throws {
+        self.backend = backend; self.storageRoot = storageRoot; self.validateStorage = validateStorage
         self.database = try database ?? ScannerDatabase()
     }
     public func devices() async throws -> [Device] {

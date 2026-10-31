@@ -7,6 +7,7 @@ import ScannerImageProcessing
 extension ScannerCoordinator {
     public func editImage(_ request: ImageEditRequest) async throws -> ProcessedImage {
         try request.validate()
+        try validateStorage()
         guard !stopping, editingJobs.count < 2, !editingJobs.contains(request.jobID) else { throw ScannerError("busy", "Another image edit is running; retry shortly.") }
         editingJobs.insert(request.jobID)
         defer { editingJobs.remove(request.jobID) }
@@ -27,7 +28,7 @@ extension ScannerCoordinator {
             let source = try OriginalReader.read(root: root, record: snapshot, image: original, offset: 0, length: original.bytes)
             guard source.chunkSHA256 == original.sha256, let bytes = Data(base64Encoded: source.base64) else { throw ScannerError("storage", "Original checksum verification failed.") }
             let output = try ImageProcessor.render(bytes, request: request)
-            let image = OriginalImage(sequence: request.sequence, relativePath: "processed/\(request.id.uuidString.lowercased()).png", bytes: output.data.count,
+            let image = OriginalImage(sequence: request.sequence, relativePath: "edit-\(request.id.uuidString.lowercased()).png", bytes: output.data.count,
                 sha256: SHA256.hash(data: output.data).map { String(format: "%02x", $0) }.joined(), width: output.width, height: output.height, imageCount: 1, uniformType: "public.png")
             let edit = ProcessedImage(request: request, sourceSHA256: original.sha256, image: image)
             try EditFiles.writeImage(output.data, edit: edit, root: root, record: snapshot)
@@ -45,14 +46,11 @@ private enum EditFiles {
     /// Complete sidecars allow a retry after a crash between file publication and ledger commit.
     static func recover(_ request: ImageEditRequest, original: OriginalImage, root: URL, record: ScanRecord) throws -> ProcessedImage? {
         let batch = try directory(root: root, record: record); defer { Darwin.close(batch) }
-        let fd = openat(batch, "processed", O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
-        if fd < 0 && errno == ENOENT { return nil }
-        guard fd >= 0 else { throw ScannerError("accessDenied", "Unsafe processed directory.") }
-        defer { Darwin.close(fd) }
-        guard let metadata = try read(at: fd, name: request.id.uuidString.lowercased() + ".json", limit: 65536) else { return nil }
+        let fd = batch
+        guard let metadata = try read(at: fd, name: ".edit-" + request.id.uuidString.lowercased() + ".json", limit: 65536) else { return nil }
         let edit = try Wire.decoder().decode(ProcessedImage.self, from: metadata)
         guard edit.request == request, edit.sourceSHA256 == original.sha256 else { throw ScannerError("conflict", "Retained edit has different inputs.") }
-        guard let image = try read(at: fd, name: request.id.uuidString.lowercased() + ".png", limit: 64 * 1024 * 1024),
+        guard let image = try read(at: fd, name: "edit-" + request.id.uuidString.lowercased() + ".png", limit: 64 * 1024 * 1024),
               image.count == edit.image.bytes,
               SHA256.hash(data: image).map({ String(format: "%02x", $0) }).joined() == edit.image.sha256 else { throw ScannerError("storage", "Retained edit failed integrity checks.") }
         return edit
@@ -104,12 +102,9 @@ private enum EditFiles {
     }
     static func writeImage(_ data: Data, edit: ProcessedImage, root: URL, record: ScanRecord) throws {
         let batch = try directory(root: root, record: record); defer { Darwin.close(batch) }
-        if mkdirat(batch, "processed", 0o700) != 0 && errno != EEXIST { throw ScannerError("storage", "Cannot create processed directory.") }
-        let fd = openat(batch, "processed", O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
-        guard fd >= 0 else { throw ScannerError("accessDenied", "Unsafe processed directory.") }
-        defer { Darwin.close(fd) }
-        try write(data, at: fd, name: edit.id.uuidString.lowercased() + ".png")
-        try write(Wire.encoder().encode(edit), at: fd, name: edit.id.uuidString.lowercased() + ".json")
+        let fd = batch
+        try write(data, at: fd, name: "edit-" + edit.id.uuidString.lowercased() + ".png")
+        try write(Wire.encoder().encode(edit), at: fd, name: ".edit-" + edit.id.uuidString.lowercased() + ".json")
         _ = fsync(fd)
     }
     static func writeManifest(_ record: ScanRecord, root: URL) throws {

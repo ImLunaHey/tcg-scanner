@@ -169,6 +169,6 @@ private actor UnclosedBackend: ScannerBackend {
     #expect(try await coordinator.scanStatus(second.id).state == .queued)
     #expect(await backend.entered.count == 1)
     #expect(FileManager.default.fileExists(atPath: moved.appendingPathComponent("manifest.json").path))
-    #expect(FileManager.default.fileExists(atPath: moved.appendingPathComponent("originals/page-000001.png").path))
+    #expect(FileManager.default.fileExists(atPath: moved.appendingPathComponent("page-000001.png").path))
     await coordinator.shutdownScans()
 }

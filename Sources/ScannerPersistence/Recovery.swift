@@ -23,7 +23,7 @@ extension ScannerDatabase {
             if !record.state.terminal {
                 record.state = .failed; record.completedAt = Date(); record.sessionClosed = false
                 record.errors.append(ScannerError("interrupted", "Service stopped before this job finished. Physical feeding was not resumed; inspect retained files before submitting a new job."))
-                record.warnings.append("Unindexed or partial files may remain in incoming/ or originals/. Recovery never deletes or overwrites image files.")
+                record.warnings.append("Unindexed or partial files may remain in the batch directory or its staging directories. Recovery never deletes or overwrites image files.")
             }
             if safe && manifest.resolvingSymlinksInPath().path == manifest.path {
                 do { try Wire.encoder().encode(record).write(to: manifest, options: .atomic) }

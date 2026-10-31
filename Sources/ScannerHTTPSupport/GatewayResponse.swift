@@ -15,7 +15,7 @@ struct GatewayError: Error, Sendable {
         case "invalidParams", "invalidSettings", "unsupported": status = 422
         case "accessDenied": status = 403
         case "resourceLimit": status = 429
-        case "serviceUnavailable", "transport", "storage": status = 503
+        case "serviceUnavailable", "transport", "storage", "storageUnavailable": status = 503
         default: status = 500
         }
     }

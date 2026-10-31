@@ -31,22 +31,25 @@ import UniformTypeIdentifiers
     panel.begin { response in
         guard response == .OK, let parent = panel.url else { return }
         model.perform {
-            let root = parent.appendingPathComponent("scan-\(record.id.uuidString.lowercased())")
+            let root = parent.appendingPathComponent("batch-\(record.id.uuidString.lowercased())")
             guard !FileManager.default.fileExists(atPath: root.path) else { throw ScannerError("conflict", "An export already exists here. Choose a different folder.") }
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
             do {
-                try FileManager.default.createDirectory(at: root.appendingPathComponent("originals"), withIntermediateDirectories: false)
-                try FileManager.default.createDirectory(at: root.appendingPathComponent("processed"), withIntermediateDirectories: false)
                 for image in record.images {
                     // Construct names locally; never interpret server paths as export paths.
                     let name = String(format: "page-%06d.%@", image.sequence, record.request.format.rawValue)
-                    try await model.client.export(jobID: record.id, sequence: image.sequence, to: root.appendingPathComponent("originals").appendingPathComponent(name))
+                    try await model.client.export(jobID: record.id, sequence: image.sequence, to: root.appendingPathComponent(name))
                 }
                 for edit in record.processedImages ?? [] {
                     try await model.client.export(jobID: record.id, sequence: edit.request.sequence, editID: edit.id,
-                        to: root.appendingPathComponent("processed").appendingPathComponent(edit.id.uuidString.lowercased() + ".png"))
+                        to: root.appendingPathComponent("edit-" + edit.id.uuidString.lowercased() + ".png"))
                 }
-                try Wire.encoder().encode(record).write(to: root.appendingPathComponent("manifest.json"), options: .withoutOverwriting)
+                var manifest = record
+                for index in manifest.images.indices { manifest.images[index].relativePath = String(format: "page-%06d.%@", manifest.images[index].sequence, record.request.format.rawValue) }
+                if let edits = manifest.processedImages {
+                    manifest.processedImages = edits.map { edit in var copy = edit; copy.image.relativePath = "edit-" + edit.id.uuidString.lowercased() + ".png"; return copy }
+                }
+                try Wire.encoder().encode(manifest).write(to: root.appendingPathComponent("manifest.json"), options: .withoutOverwriting)
                 model.notice = "Batch exported to \(root.path)."
             } catch {
                 throw ScannerError("export", "Export incomplete at \(root.path). Verified files are retained; no completion manifest was written. \(error.localizedDescription)")

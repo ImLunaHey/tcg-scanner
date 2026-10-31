@@ -8,7 +8,9 @@ enum LaunchAgent {
         let executable = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL.path
         let logs = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Scanner")
         try FileManager.default.createDirectory(at: logs, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-        var arguments = [executable, "--storage-root", options.storageRoot, "--database", options.database, "--socket", options.socket]
+        var arguments = [executable, "--database", options.database, "--socket", options.socket]
+        if let root = options.storageRoot { arguments += ["--storage-root", root] }
+        if let share = options.requiredSMBShare { arguments += ["--required-smb-share", share] }
         if options.verbose { arguments.append("--verbose") }
         let plist: [String: Any] = ["Label": "local.scanner.service", "ProgramArguments": arguments,
             "RunAtLoad": true, "KeepAlive": true, "ThrottleInterval": 10, "ExitTimeOut": 60,

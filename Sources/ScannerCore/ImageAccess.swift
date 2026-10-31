@@ -72,9 +72,11 @@ enum OriginalReader {
     static func read(root: URL, record: ScanRecord, image: OriginalImage, offset: Int, length: Int) throws -> ImageChunk {
         let root = root.standardizedFileURL.resolvingSymlinksInPath()
         let directory = URL(fileURLWithPath: record.outputDirectory).standardizedFileURL
-        var expected = String(format: "originals/page-%06d.%@", image.sequence, record.request.format.rawValue)
+        var expected = String(format: "page-%06d.%@", image.sequence, record.request.format.rawValue)
+        if image.relativePath == "originals/" + expected { expected = "originals/" + expected } // Legacy batches.
         if let edit = record.processedImages?.first(where: { $0.image.relativePath == image.relativePath && $0.image.sha256 == image.sha256 }) {
-            expected = "processed/\(edit.id.uuidString.lowercased()).png"
+            expected = "edit-\(edit.id.uuidString.lowercased()).png"
+            if image.relativePath == "processed/\(edit.id.uuidString.lowercased()).png" { expected = image.relativePath }
         }
         guard directory.path.hasPrefix(root.path + "/"), image.relativePath == expected, offset <= image.bytes else {
             throw ScannerError("accessDenied", "Image is outside configured storage or has invalid metadata/offset.")
