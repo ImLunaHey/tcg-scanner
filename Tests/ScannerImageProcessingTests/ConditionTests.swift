@@ -60,10 +60,63 @@ func inspectSavedConditionRegionsWithoutAssigningGrades() throws {
     for edit in record.processedImages ?? [] {
         let data = try Data(contentsOf: URL(fileURLWithPath: record.outputDirectory).appendingPathComponent(edit.image.relativePath))
         let result = try ConditionInspector.analyze(data, preparation: edit.cardPreparation)
-        if edit.cardPreparation?.orientationBasis == "pokemon-back-pattern" {
+        if edit.cardPreparation?.orientationBasis == "pokemon-back-pattern" || (record.batchNumber == 15 && edit.request.sequence % 2 == 1) {
             #expect(result.state == .checked); checked += 1
         } else { #expect(result.state == .unsupported) }
         print("CONDITION", edit.request.sequence, String(data: try Wire.encoder().encode(result), encoding: .utf8)!)
     }
     #expect(checked > 0)
+}
+
+
+@Test func conditionBorderMarksRemainAlignedAtEveryQuarterTurn() {
+    var pixels = backPixels()
+    paint(&pixels, x: 12, y: 60, width: 7, height: 7)
+    for turns in 0..<4 {
+        let w = turns % 2 == 0 ? 700 : 1000, h = turns % 2 == 0 ? 1000 : 700
+        var rotated = [UInt8](repeating: 0, count: pixels.count)
+        for y in 0..<1000 { for x in 0..<700 {
+            let xx: Int, yy: Int
+            switch turns {
+            case 1: xx = 999 - y; yy = x
+            case 2: xx = 699 - x; yy = 999 - y
+            case 3: xx = y; yy = 699 - x
+            default: xx = x; yy = y
+            }
+            for c in 0..<4 { rotated[(yy * w + xx) * 4 + c] = pixels[(y * 700 + x) * 4 + c] }
+        } }
+        let result = ConditionInspector.inspect(rotated, width: w, height: h)
+        #expect(result.state == .checked && result.findings.count == 1)
+        #expect(result.findings.first?.kind == .cornerWhitening)
+        let r = result.findings[0].region
+        let cx = r.x + r.width / 2, cy = r.y + r.height / 2
+        #expect((turns == 1 || turns == 2) ? cx > 0.9 : cx < 0.1)
+        #expect((turns == 2 || turns == 3) ? cy > 0.9 : cy < 0.1)
+    }
+}
+
+@Test(.enabled(if: ProcessInfo.processInfo.environment["SCANNER_CONDITION_FIXTURES"] != nil))
+func backLayoutFallbackChecksUnreadableLogosAndRejectsSavedFronts() throws {
+    let paths = try #require(ProcessInfo.processInfo.environment["SCANNER_CONDITION_FIXTURES"]).split(separator: ":")
+    let unknown = CardPreparation(crop: ImageCrop(), quarterTurns: 0, orientationVerified: false, warnings: [], orientationBasis: "unknown")
+    for path in paths {
+        let record = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: String(path))))
+        for identity in record.cardIdentifications ?? [] {
+            guard let image = record.processedImages?.first(where: { $0.id == identity.sourceEditID })?.image else { continue }
+            let data = try Data(contentsOf: URL(fileURLWithPath: record.outputDirectory).appendingPathComponent(image.relativePath))
+            let front = identity.evidence?.candidates.isEmpty == false
+            if front {
+                // Force the fallback even though real front preparation already excludes it.
+                #expect(try ConditionInspector.analyze(data, preparation: unknown).state == .unsupported)
+            } else if record.batchNumber == 15 && [11, 17].contains(identity.request.sequence) {
+                for turn in 0..<4 {
+                    let bytes = try ImageProcessor.render(data, request: ImageEditRequest(jobID: UUID(), sequence: 1, quarterTurns: turn)).data
+                    let result = try ConditionInspector.analyze(bytes, preparation: unknown)
+                    #expect(result.state == .checked && result.backRecognition == "colour-layout")
+                    #expect(result.coverage?.count == 3)
+                    print("BACK-FALLBACK", identity.request.sequence, turn, result.state.rawValue, result.findings.count)
+                }
+            }
+        }
+    }
 }

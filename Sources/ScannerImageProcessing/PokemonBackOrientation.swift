@@ -8,8 +8,14 @@ enum PokemonBackOrientation {
     static func rotation(_ data: Data, words: [String]) throws -> Int? {
         // Logos alone are rotationally ambiguous. Require both logo evidence and
         // the blue border, yellow end logos, and central red/white ball layout.
-        let hasLogo = words.contains(where: resemblesLogo)
-        guard hasLogo, let source = CGImageSourceCreateWithData(data as CFData, nil),
+        guard words.contains(where: resemblesLogo) else { return nil }
+        return try patternRotation(data)
+    }
+
+    /// Independent colour/layout evidence for orientation-invariant border checks.
+    /// Preparation still requires logo OCR; this alone never changes saved images.
+    static func patternRotation(_ data: Data) throws -> Int? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true,
                 kCGImageSourceThumbnailMaxPixelSize: 256] as CFDictionary) else { return nil }
         let width = image.width, height = image.height

@@ -175,20 +175,22 @@ private actor SavedConditionPaper: ScannerBackend {
 func conditionChecksRunAutomaticallyWithoutClientRequest(catalogueFails: Bool) async throws {
     let path = try #require(ProcessInfo.processInfo.environment["SCANNER_CONDITION_FIXTURE"])
     let saved = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
-    let source = try #require(saved.images.first { $0.sequence == 1 })
-    let bytes = try Data(contentsOf: URL(fileURLWithPath: saved.outputDirectory).appendingPathComponent(source.relativePath))
-    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-    defer { try? FileManager.default.removeItem(at: root) }
-    let coordinator = try ScannerCoordinator(backend: SavedConditionPaper(bytes: bytes), storageRoot: root,
-        cardRecognizer: AutomaticRecognition(fail: catalogueFails))
-    let job = try await coordinator.startScan(ScanRequest(prepareCards: true))
-    let done = try await waitForCard(coordinator, id: job.id)
-    let identity = try #require(done.cardIdentifications?.first)
-    #expect(done.state == .completed)
-    #expect(identity.conditionCheck?.state == .checked)
-    #expect(identity.condition == .unassessed)
-    #expect(identity.state == (catalogueFails ? .failed : .reviewRequired))
-    let manifest = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: done.outputDirectory).appendingPathComponent("manifest.json")))
-    #expect(manifest.cardIdentifications?.first?.conditionCheck == identity.conditionCheck)
-    await coordinator.shutdownScans()
+    for sourceSequence in [1, 11, 17] {
+        let source = try #require(saved.images.first { $0.sequence == sourceSequence })
+        let bytes = try Data(contentsOf: URL(fileURLWithPath: saved.outputDirectory).appendingPathComponent(source.relativePath))
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let coordinator = try ScannerCoordinator(backend: SavedConditionPaper(bytes: bytes), storageRoot: root,
+            cardRecognizer: AutomaticRecognition(fail: catalogueFails))
+        let job = try await coordinator.startScan(ScanRequest(prepareCards: true))
+        let done = try await waitForCard(coordinator, id: job.id)
+        let identity = try #require(done.cardIdentifications?.first)
+        #expect(done.state == .completed)
+        #expect(identity.conditionCheck?.state == .checked)
+        #expect(identity.condition == .unassessed)
+        #expect(identity.state == (catalogueFails ? .failed : .reviewRequired))
+        let manifest = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: done.outputDirectory).appendingPathComponent("manifest.json")))
+        #expect(manifest.cardIdentifications?.first?.conditionCheck == identity.conditionCheck)
+        await coordinator.shutdownScans()
+    }
 }

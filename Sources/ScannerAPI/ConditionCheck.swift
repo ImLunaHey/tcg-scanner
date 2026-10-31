@@ -13,12 +13,14 @@ public struct ConditionCheck: Codable, Sendable, Equatable {
             self.kind = kind; self.region = region; self.explanation = explanation
         }
     }
-    public var method = "blue-back-visible-marks-v1"
+    public var method = "blue-back-visible-marks-v2"
     public var state: State
     public var findings: [Finding]
     public var limitations: [String]
     public var analyzedWidth: Int?
     public var analyzedHeight: Int?
+    public var backRecognition: String?
+    public var coverage: [String]?
     public init(state: State, findings: [Finding] = [], limitations: [String]) {
         self.state = state; self.findings = findings; self.limitations = limitations
     }

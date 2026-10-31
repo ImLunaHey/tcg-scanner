@@ -3,8 +3,8 @@ import Foundation
 import ImageIO
 import ScannerAPI
 
-/// Conservative candidate-mark detection on an upright, prepared standard blue
-/// back. Requires independently established back orientation; never grades cards.
+/// Candidate-mark detection on a prepared standard blue back at any quarter turn.
+/// Recognizes the back independently of logo OCR; never assigns a selling grade.
 public enum ConditionInspector {
     public static func check(_ data: Data, preparation: CardPreparation?) -> ConditionCheck {
         do { return try analyze(data, preparation: preparation) }
@@ -15,19 +15,27 @@ public enum ConditionInspector {
         let limits = ["Experimental candidate marks, not confirmed damage or a condition grade.",
             "Checks only the blue outer border of a prepared standard back. Fronts, artwork, the outermost rim and hidden surfaces are not assessed.",
             "Dust, print variation and scan artifacts can resemble wear. Fine scratches, dents and creases may be invisible; no flagged marks does not mean Near Mint."]
-        guard preparation?.orientationVerified == true, preparation?.orientationBasis == "pokemon-back-pattern" else {
-            return ConditionCheck(state: .unsupported, limitations: ["This check requires an upright, automatically prepared standard blue Pokémon back."] + limits)
+        guard let preparation else {
+            return ConditionCheck(state: .unsupported, limitations: ["Not assessed: this image has no automatic card preparation."] + limits)
+        }
+        guard preparation.orientationBasis != "text" else {
+            return ConditionCheck(state: .unsupported, limitations: ["Not assessed: this front image is outside the blue-back border check's scope."] + limits)
         }
         try Task.checkCancellation()
         guard data.count <= 32 * 1024 * 1024,
               let source = CGImageSourceCreateWithData(data as CFData, nil), CGImageSourceGetCount(source) == 1,
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
               let width = properties[kCGImagePropertyPixelWidth] as? Int, let height = properties[kCGImagePropertyPixelHeight] as? Int,
-              width >= 500, height >= 700, width <= 20_000, height <= 20_000, width * height <= 40_000_000,
-              (0.65...0.80).contains(Double(width) / Double(height)),
+              min(width, height) >= 500, max(width, height) >= 700, width <= 20_000, height <= 20_000, width * height <= 40_000_000,
+              (0.65...0.80).contains(Double(min(width, height)) / Double(max(width, height))),
               let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true,
                 kCGImageSourceCreateThumbnailWithTransform: true, kCGImageSourceThumbnailMaxPixelSize: 1200] as CFDictionary) else {
-            return ConditionCheck(state: .inconclusive, limitations: ["Needs one upright card image of at least 500 × 700 pixels, up to 32 MiB and 40 megapixels."] + limits)
+            return ConditionCheck(state: .inconclusive, limitations: ["Not assessed: needs one card image of at least 500 × 700 pixels in either orientation, up to 32 MiB and 40 megapixels."] + limits)
+        }
+        let recognizedByPreparation = preparation.orientationVerified && preparation.orientationBasis == "pokemon-back-pattern"
+        let recognizedByPattern = recognizedByPreparation ? false : try PokemonBackOrientation.patternRotation(data) != nil
+        guard recognizedByPreparation || recognizedByPattern else {
+            return ConditionCheck(state: .unsupported, limitations: ["Not assessed: the standard blue-back colour and layout pattern could not be confirmed."] + limits)
         }
         let w = image.width, h = image.height
         var pixels = [UInt8](repeating: 0, count: w * h * 4)
@@ -37,6 +45,9 @@ public enum ConditionInspector {
         }
         context.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
         var result = inspect(pixels, width: w, height: h)
+        result.backRecognition = recognizedByPreparation ? "preparation" : "colour-layout"
+        if result.state == .checked { result.coverage = ["backBorderWhitening", "backCornerWhitening", "backBorderLinearMarks"] }
+        result.limitations += preparation.warnings.filter { $0.contains("scan boundary") }
         result.limitations += limits
         return result
     }
@@ -44,12 +55,15 @@ public enum ConditionInspector {
     static func inspect(_ pixels: [UInt8], width w: Int, height h: Int) -> ConditionCheck {
         var mask = [UInt8](repeating: 0, count: w * h)
         var border = 0, blue = 0
+        let landscape = w > h
+        let insetX = landscape ? 0.006 : 0.008, insetY = landscape ? 0.008 : 0.006
+        let bandX = landscape ? 0.032 : 0.045, bandY = landscape ? 0.045 : 0.032
         for y in 0..<h { for x in 0..<w {
             let nx = Double(x) / Double(w), ny = Double(y) / Double(h)
             // Exclude the very outer rim (normal paper edge/antialiasing) and all
             // interior printing. Rounded black corners never pass the light test.
-            guard nx >= 0.008, nx <= 0.992, ny >= 0.006, ny <= 0.994,
-                  nx < 0.045 || nx > 0.955 || ny < 0.032 || ny > 0.968 else { continue }
+            guard nx >= insetX, nx <= 1 - insetX, ny >= insetY, ny <= 1 - insetY,
+                  nx < bandX || nx > 1 - bandX || ny < bandY || ny > 1 - bandY else { continue }
             let i = (y * w + x) * 4
             let r = Int(pixels[i]), g = Int(pixels[i + 1]), b = Int(pixels[i + 2])
             border += 1
@@ -77,8 +91,9 @@ public enum ConditionInspector {
             let bw = right - left + 1, bh = bottom - top + 1
             guard queue.count >= max(8, w * h / 90_000), bw >= 2, bh >= 2 else { continue }
             let cx = Double(left + right) / Double(2 * w), cy = Double(top + bottom) / Double(2 * h)
-            let corner = (cx < 0.12 || cx > 0.88) && (cy < 0.10 || cy > 0.90)
-            let linear = max(bw, bh) >= max(24, w / 25) && max(bw, bh) >= min(bw, bh) * 6
+            let cornerX = landscape ? 0.10 : 0.12, cornerY = landscape ? 0.12 : 0.10
+            let corner = (cx < cornerX || cx > 1 - cornerX) && (cy < cornerY || cy > 1 - cornerY)
+            let linear = max(bw, bh) >= max(24, min(w, h) / 25) && max(bw, bh) >= min(bw, bh) * 6
             let kind: ConditionCheck.Finding.Kind = linear ? .linearMark : corner ? .cornerWhitening : .edgeWhitening
             let explanation = linear ? "Elongated light mark in the blue border. Inspect for a scratch or crease; a scan artifact is also possible." :
                 corner ? "Light patch near a corner. Inspect for whitening, chipped ink or a scan artifact." :
