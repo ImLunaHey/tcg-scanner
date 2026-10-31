@@ -144,7 +144,7 @@ unchanged. The service returned to idle, with no queued jobs and no pause. The M
 process exited cleanly after stdin closed.
 
 Ignored evidence is retained in `Diagnostics/milestone4/physical-png-duplex/`.
-Original images and incoming driver files remain in the output directory. Physical
-feeding or damage feedback for this particular run has not yet been recorded.
+Original images and incoming driver files remain in the output directory. The operator
+subsequently confirmed that this PNG run worked fine.
 This verifies PNG duplex at 300 DPI; it does not establish other resolutions,
 PNG simplex, card safety or marketplace upload acceptance for these test images.

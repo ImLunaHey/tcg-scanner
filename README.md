@@ -1,9 +1,10 @@
 # Native macOS scanner platform
 
-Milestones 1–4: Swift scanner discovery, capability reports, basic A4 simplex/duplex
+Milestones 1–5: Swift scanner discovery, capability reports, basic A4 simplex/duplex
 scanning, and a persistent background service for the USB Ricoh fi-8170.
-The CLI and Swift MCP server use the service exclusively. No graphical application
-is required. HTTP, SwiftUI, web interfaces and card processing remain later milestones.
+The CLI, Swift MCP server and authenticated HTTP gateway use the service exclusively.
+No graphical application is required. SwiftUI, web interfaces and card processing
+remain later milestones.
 See [MCP setup and agent workflow](Docs/mcp.md) and [milestone 4 validation](Docs/milestone-4-validation.md).
 
 Actual hardware evidence: [paper scans](Docs/milestone-2-validation.md) and
@@ -12,7 +13,7 @@ been validated. Discovery and diagnostics never request a scan.
 
 ## Build and startup
 
-Requires macOS 14+, Swift 6.1+ (GRDB's minimum) and the official ICA driver.
+Requires macOS 14+, Swift 6.2+ (Hummingbird's minimum) and the official ICA driver.
 Hardware checks used Apple Silicon, macOS 26.5.2, Swift 6.3.3 and Ricoh driver
 package 2.4.1. Other macOS versions have not been hardware-tested.
 
@@ -41,6 +42,21 @@ Scripts/uninstall-launch-agent.sh
 Uninstall retains scans, metadata, profiles, logs and binaries. For an update,
 uninstall first, then install again. See [service operations](Docs/service-operations.md)
 for paths, restart commands, troubleshooting and physical test steps.
+
+## HTTP control
+
+After updating ScannerService, install the authenticated localhost gateway:
+
+```sh
+Scripts/install-http-agent.sh
+```
+
+It listens on `127.0.0.1:8170` and requires a bearer credential on every route.
+The installer creates a private credential file without printing it. REST endpoints
+cover devices, profiles, jobs, history, manifests, original downloads, thumbnails
+and SSE progress. PNG remains the scan default. The browser interface is a later
+milestone. See [HTTP API](Docs/http-api.md), [Tailscale and operations](Docs/http-operations.md)
+and [validation](Docs/milestone-5-validation.md).
 
 ## Discover and inspect
 
@@ -159,7 +175,8 @@ requests, profiles, image metadata, batches, capabilities, device observations a
 events. Metadata migrations run at startup. Original images stay on disk and are
 never overwritten by a retry. Keeping incoming and originals uses roughly twice
 the image storage. Callback order is retained; side identity remains unknown.
-No cropping, rotation or image processing is implemented yet.
+On-demand thumbnails use native ImageIO and preserve originals. Cropping, rotation
+and card processing remain later work.
 
 States: queued → preparing → scanning → processing → completed, or failed/cancelled.
 `processing` currently means finalizing storage, not card-image processing.
@@ -183,6 +200,8 @@ scanners, matching the current backend's session limitation.
 - **ScannerServiceSupport**: versioned JSON-RPC routing and validation.
 - **ScannerTransport**: private Unix sockets; blocking CLI and asynchronous Swift client APIs.
 - **ScannerService**: hardware owner, main run loop, monitoring, lifecycle and structured logs.
+- **ScannerHTTP / ScannerHTTPSupport**: Hummingbird REST, bearer sessions, streaming
+  images/events; uses service IPC exclusively.
 - **ScannerCLI**: ArgumentParser client; imports no hardware backend.
 - **ScannerMCP / ScannerMCPSupport**: official Swift MCP SDK, stdio tools and schemas;
   communicates through the same private Unix socket, with no hardware backend.
@@ -191,7 +210,9 @@ Default socket: `~/Library/Application Support/Scanner/run/control.sock`.
 Directory mode 0700, socket mode 0600, and same-user peer checks restrict local
 access. A per-user hardware lock rejects another service even with different
 socket/database paths. ICA additionally controls sessions held by other apps.
-No TCP listener, shell execution endpoint or remote control is exposed.
+The optional HTTP gateway adds authenticated TCP control, binding to loopback by
+default. Only explicit Tailscale access is supported beyond loopback. No shell
+execution endpoint is exposed.
 
 See [local API](Docs/local-api.md) for job, profile, event and diagnostic methods.
 JSON results go to stdout; logs go to stderr. Exit codes: 0 success, 1 scan/API/I/O
@@ -205,7 +226,8 @@ partial inspections include errors and exit 1.
 concurrent submissions, queue cancellation, immutable profile snapshots,
 persistence/recovery, disconnects, simulated sleep, disk failure, transport limits,
 permissions, checksums, CLI parsing, private original exports, and a complete workflow
-through the compiled MCP executable over stdio. Automated tests never feed the real scanner.
+through the compiled MCP executable over stdio. HTTP integration tests use a live
+Hummingbird listener, concurrent HTTP clients and a mock-backed service socket. Automated tests never feed the real scanner.
 Physical sleep/wake, unplugging during capture and cancellation during a real feed
 remain unverified; do those controlled paper checks before unattended operation.
 
