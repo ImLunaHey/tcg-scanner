@@ -46,6 +46,9 @@ the web installer.
 
 ## Available workflow
 
+Saved card fronts can also be [identified and reviewed](card-identification.md)
+using local OCR and TCGdex suggestions, with separate manual finish and condition.
+
 - Dashboard: connection state, scanners, shared queue, recent batches and storage.
 - Capture: scanner/profile selection, discovered supported DPI and duplex,
   PNG/TIFF, defaults for future jobs, readiness acknowledgement, start/cancel.

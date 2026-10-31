@@ -8,6 +8,9 @@ The [remote web workspace](Docs/web-app.md) provides responsive scanning control
 live events and a batch library; see [web validation](Docs/milestone-7-validation.md).
 [Card feeding validation](Docs/card-test-readiness.md)
 is the next milestone; no physical card tests have been performed.
+Optional [English card identification](Docs/card-identification.md) now uses local
+Apple Vision OCR and TCGdex to suggest a card and set. Finish and condition are
+recorded through manual review; no automatic foil detection or grading is claimed.
 See [native app installation and workflow](Docs/native-app.md) and
 [milestone 6 validation](Docs/milestone-6-validation.md).
 See [MCP setup and agent workflow](Docs/mcp.md) and [milestone 4 validation](Docs/milestone-4-validation.md).

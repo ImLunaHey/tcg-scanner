@@ -203,3 +203,10 @@ precede body decoding and IPC. A dropped response releases its admission slot.
 
 These are defensive bounds for authenticated local/tailnet control, not a claim of
 public-internet hardening. No public bind or wildcard address is accepted.
+
+## Card identification extension
+
+Authenticated asynchronous identification and manual review are available at
+`/api/v1/images/{jobID}:{sequence}/identification` using GET, POST and PATCH.
+See [contracts, states and limitations](card-identification.md). Identification
+operates on saved originals and never starts a physical scan.
