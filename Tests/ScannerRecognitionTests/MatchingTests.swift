@@ -124,3 +124,16 @@ func savedRepeatBatchMatchesAllElevenExpectedPrintings() async throws {
         #expect(result.candidates.map(\.id) == [id])
     }
 }
+
+@Test(.enabled(if: ProcessInfo.processInfo.environment["SCANNER_PREPARED_ORIENTATION_FIXTURE"] != nil))
+func deskewedMixedBatchKeepsAllElevenPrintingMatches() async throws {
+    let root = URL(fileURLWithPath: try #require(ProcessInfo.processInfo.environment["SCANNER_PREPARED_ORIENTATION_FIXTURE"]))
+    let recognizer = CardRecognizer()
+    let expected = ["sve-010", "sv09-015", "sv09-028", "sv09-099", "sv09-149", "sv09-100", "sv09-076", "sv09-177", "sv09-139", "sv09-071", "sv09-120"]
+    for (index, id) in expected.enumerated() {
+        let data = try Data(contentsOf: root.appendingPathComponent(String(format: "C-%03d.png", (index + 1) * 2)))
+        let result = try await recognizer.recognize(data)
+        #expect(result.candidates.map(\.id) == [id])
+        #expect(result.orientation == 0)
+    }
+}

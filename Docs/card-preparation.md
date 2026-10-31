@@ -323,3 +323,48 @@ uncaptured pixels. The original PNGs are preserved. Private requests, final job
 records, physical confirmation, file verification and browser-check evidence are
 under `Diagnostics/mixed-orientation/` (ignored by Git). No further scan was
 started after B-012.
+
+## Automatic deskew and back orientation follow-up — 2026-10-31
+
+The v3 processing update supersedes the missing deskew/back-orientation behavior
+reported in the preceding physical tests. It runs automatically in ScannerService
+when card preparation is enabled; no operator rotation is needed for recognized
+fronts or standard international blue Pokémon backs. Uncertain images retain a
+review warning. The implementation uses native Swift, Vision and Core Image.
+
+Validation used saved B-012 originals; the feeder was not operated:
+
+- All 22 captures passed expected upright orientation checks (11 text-based fronts
+  and 11 pattern-based backs). Six captures received small-angle corrections,
+  ranging from −1° to +1°; effectively straight captures avoided interpolation.
+- Digitally transformed front/back examples passed every quarter-turn orientation
+  with additional −5° and +5° tilt (16 cases). These are image-processing tests,
+  not evidence that sideways physical card feeding is safe.
+- Geometry tests check enclosing dimensions and margins at several angles. A mock
+  scanner job verifies automatic deskew is rendered and persisted before OCR.
+  All eleven real fronts were rejected by the back-pattern detector even when
+  supplied with a matching logo token, guarding against false back classification.
+- A separate read-only recognition regression on the new PNGs retained all eleven
+  expected printing IDs, including Larvesta; every chosen OCR orientation was 0°.
+- The full Swift suite, the 14-test image-processing run with saved fixtures,
+  nine HTTP tests (including valid/invalid deskew requests through the service),
+  eleven web tests, TypeScript/Vite build and signed release build passed.
+
+The signed service, CLI/MCP clients, HTTP gateway, web assets and native app were
+updated. Native installation followed the user's confirmation that the app was
+closed. B-012 was reprocessed through `v1.images.prepareCard` using saved operation
+UUIDs: it now has 22 original PNGs, 22 earlier prepared copies and 22 new v3 copies.
+All 66 file sizes/checksums were verified. Installed-service output exactly matched
+the saved-fixture output. Stored identification/review records remain unchanged,
+including their original source provenance; fresh OCR was tested separately rather
+than clearing review state.
+
+Read-only browser checks verified all 22 current front/back downloads by checksum,
+all eleven identity dialogs, original-coordinate manual-crop prefill, desktop and
+390-pixel phone layouts, and unchanged job history. The gallery uses the new
+prepared copies after refresh. Evidence is ignored under
+`Diagnostics/orientation-refresh/` and `Diagnostics/orientation-validation/`.
+
+Original scan-boundary warnings still apply: deskew cannot reconstruct an edge
+that the scanner did not capture. The standard-back detector is not an authenticity
+check, and unrecognized back designs remain subject to manual review.
