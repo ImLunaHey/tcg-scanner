@@ -43,11 +43,12 @@ os.chmod(target, 0o600)
 PY
 plutil -lint "$scanner_backup/updated.plist"
 # bootout returns before launchd finishes removing the job. A bounded retry also
-# covers rollback, so an unload race cannot leave the gateway stopped.
+# covers rollback. Active SSE clients can keep the old gateway draining for
+# launchd's termination grace period, so allow 45 seconds before failing.
 scanner_bootstrap_http() {
     python3 - "$scanner_domain" "$scanner_plist" <<'PY'
 import subprocess, sys, time
-deadline = time.monotonic() + 10
+deadline = time.monotonic() + 45
 while True:
     result = subprocess.run(['launchctl', 'bootstrap', sys.argv[1], sys.argv[2]], capture_output=True, text=True)
     if result.returncode == 0:
