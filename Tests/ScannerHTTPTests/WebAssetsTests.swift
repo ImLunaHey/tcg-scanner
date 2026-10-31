@@ -23,6 +23,7 @@ import ScannerAPI
             #expect(response.headers[.cacheControl] == "no-store")
         }
         #expect(try await client.execute(uri: "/", method: .post).status.code == 405)
+        #expect(try await client.execute(uri: "/", method: .get, headers: [.contentLength: "2"], body: ByteBuffer(string: "{}" )).status.code == 400)
         #expect(try await client.execute(uri: "/?token=secret", method: .get).status.code == 400)
         for route in ["/api/v1/jobs", "/api/v1/devices", "/token", "/manifest.json", "/assets/missing.js"] {
             #expect(try await client.execute(uri: route, method: .get).status.code == 401)

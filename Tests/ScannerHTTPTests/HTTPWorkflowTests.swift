@@ -124,6 +124,18 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
             #expect(preview.width == 512 && preview.height == 384)
             #expect(try await client.execute(uri: path + "/metadata", method: .get, headers: headers).status.code == 200)
         }
+        let editID = UUID()
+        let editPath = "/api/v1/images/\(requestID):1"
+        let editBody = try buffer(.object(["id": .string(editID.uuidString), "quarterTurns": .number(1),
+            "crop": .object(["x": .number(0), "y": .number(0), "width": .number(1), "height": .number(1)])]))
+        let edited = try await client.execute(uri: editPath + "/edits", method: .post, headers: headers, body: editBody)
+        #expect(edited.status.code == 201)
+        let edit = try decode(edited, as: ProcessedImage.self)
+        #expect(edit.image.width == 600 && edit.image.height == 800)
+        let downloadedEdit = try await client.execute(uri: editPath + "?editID=\(editID)", method: .get, headers: headers)
+        #expect(SHA256.hash(data: Data(downloadedEdit.body.readableBytesView)).map { String(format: "%02x", $0) }.joined() == edit.image.sha256)
+        #expect(try await client.execute(uri: editPath + "/thumbnail?editID=\(editID)", method: .get, headers: headers).status.code == 200)
+        #expect(try await client.execute(uri: editPath + "?editID=invalid", method: .get, headers: headers).status.code == 400)
         var badAuthority = headers; badAuthority[HTTPField.Name("Host")!] = "evil.example"
         badAuthority[HTTPField.Name("X-Forwarded-Host")!] = "127.0.0.1:8170"
         #expect(try await client.execute(uri: "/api/v1/status", method: .get, headers: badAuthority).status.code == 403)

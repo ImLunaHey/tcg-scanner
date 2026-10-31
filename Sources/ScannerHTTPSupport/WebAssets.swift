@@ -52,9 +52,12 @@ public struct WebAssets: Sendable {
         let key = "/" + path.components.joined(separator: "/")
         guard let asset = files[key] else { return nil }
         guard request.method == .get || request.method == .head else { throw GatewayError(405, "methodNotAllowed", "Web assets are read-only.") }
+        guard request.headers[.transferEncoding] == nil, request.headers[.contentLength] == nil || request.headers[.contentLength] == "0" else {
+            throw GatewayError(400, "invalidParams", "Web asset requests cannot contain a body.")
+        }
         try path.only([])
         return Response(status: .ok, headers: [.contentType: asset.type],
                         body: request.method == .head ? .init() : .init(byteBuffer: ByteBuffer(bytes: asset.data)))
     }
-    static let contentPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+    static let contentPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; worker-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 }

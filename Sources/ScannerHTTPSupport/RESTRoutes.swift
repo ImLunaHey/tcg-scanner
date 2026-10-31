@@ -17,7 +17,16 @@ extension ScannerGateway {
             if method == .delete { try await access.revoke(principal); return try jsonResponse(.object(["revoked": .bool(true)])) }
         }
         if parts == ["events"], method == .get { return try await events(request, path: path, principal: principal) }
-        if parts.first == "images", method == .get { try path.only([]); return try await image(parts: parts, request: request, principal: principal) }
+        if parts.first == "images", method == .get {
+            try path.only(["editID"])
+            return try await image(parts: parts, request: request, principal: principal, editID: path.query["editID"])
+        }
+        if parts.count == 3, parts[0] == "images", parts[2] == "edits", method == .post {
+            try path.only([]); try only(body, ["id", "crop", "quarterTurns"])
+            var params = try imageParameters(parts[1])
+            params.merge(body) { _, value in value }
+            return try jsonResponse(await service.call("images.edit", params), status: 201)
+        }
         let rpc: String
         var params = body
         var status = 200

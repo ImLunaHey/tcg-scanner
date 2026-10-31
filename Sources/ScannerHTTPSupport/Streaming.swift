@@ -54,14 +54,17 @@ extension ScannerGateway {
     private func eventPage(after: Int, wait: Int) async throws -> EventPage {
         try await service.call("events", ["after": .number(Double(after)), "limit": .number(100), "waitSeconds": .number(Double(wait))]).decode(EventPage.self)
     }
-    func image(parts: [String], request: Request, principal: String) async throws -> Response {
-        guard (2...3).contains(parts.count) else { throw GatewayError(404, "notFound", "Unknown image route.") }
-        let identifier = parts[1].split(separator: ":", omittingEmptySubsequences: false)
+    func imageParameters(_ value: String) throws -> [String: JSONValue] {
+        let identifier = value.split(separator: ":", omittingEmptySubsequences: false)
         guard identifier.count == 2, let sequence = Int(identifier[1]), (1...100).contains(sequence) else {
             throw GatewayError(400, "invalidParams", "Image ID must be JOB_UUID:SEQUENCE.")
         }
-        let jobID = try uuid(String(identifier[0]))
-        let params: [String: JSONValue] = ["jobID": .string(jobID), "sequence": .number(Double(sequence))]
+        return ["jobID": .string(try uuid(String(identifier[0]))), "sequence": .number(Double(sequence))]
+    }
+    func image(parts: [String], request: Request, principal: String, editID: String? = nil) async throws -> Response {
+        guard (2...3).contains(parts.count) else { throw GatewayError(404, "notFound", "Unknown image route.") }
+        var params = try imageParameters(parts[1])
+        if let editID { params["editID"] = .string(try uuid(editID)) }
         if parts.count == 3 {
             if parts[2] == "metadata" { return try jsonResponse(await service.call("images.get", params)) }
             if parts[2] == "thumbnail" {
@@ -74,6 +77,9 @@ extension ScannerGateway {
         guard request.headers[.range] == nil else { throw GatewayError(416, "unsupported", "Range requests are not supported; download the complete original.") }
         let first = try await imageChunk(params, offset: 0)
         let metadata = first.metadata
+        let jobID = metadata.jobID.uuidString
+        let sequence = metadata.image.sequence
+        let chunkParams = params
         let format = metadata.image.uniformType == "public.png" ? "png" : "tiff"
         let body = ResponseBody(contentLength: metadata.image.bytes) { writer in
             var chunk = first
@@ -96,7 +102,7 @@ extension ScannerGateway {
                 try await writer.write(ByteBuffer(bytes: data))
                 offset = chunk.nextOffset
                 if chunk.eof { break }
-                chunk = try await imageChunk(params, offset: offset)
+                chunk = try await imageChunk(chunkParams, offset: offset)
             }
             try await writer.finish(nil)
         }
