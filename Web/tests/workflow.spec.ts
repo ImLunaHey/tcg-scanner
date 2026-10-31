@@ -59,8 +59,10 @@ test("authenticated browser workflow, retry, review, export and cancellation", a
     .selectOption({ label: name });
   await page.getByLabel("I have checked the feeder setup").check();
 
-  await expect(page.getByLabel("Auto-crop and orient cards")).toBeChecked();
-  await page.getByLabel("Auto-crop and orient cards").uncheck();
+  await expect(
+    page.getByLabel("Auto-crop, orient and identify cards"),
+  ).toBeChecked();
+  await page.getByLabel("Auto-crop, orient and identify cards").uncheck();
 
   // The server creates the job but the first response is lost. Retry must reuse its UUID.
   let requests = 0;
@@ -252,7 +254,9 @@ test("card batch groups consecutive captures and shows identity once", async ({
   await page.getByRole("button", { name: "Open workspace" }).click();
   await page.getByLabel("Resolution", { exact: true }).selectOption("300");
   await page.getByLabel("Scan both sides").check();
-  await expect(page.getByLabel("Auto-crop and orient cards")).toBeChecked();
+  await expect(
+    page.getByLabel("Auto-crop, orient and identify cards"),
+  ).toBeChecked();
   await page.getByLabel("I have checked the feeder setup").check();
   await page.getByRole("button", { name: "Start scan", exact: true }).click();
   await expect(page.locator(".page-heading .state-completed")).toBeVisible({
@@ -274,14 +278,7 @@ test("card batch groups consecutive captures and shows identity once", async ({
   await expect(
     card.getByRole("button", { name: "Download side 2", exact: true }),
   ).toBeVisible();
-  await card
-    .getByRole("button", { name: "Identify card", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Identify this image", exact: true })
-    .click();
-  await expect(page.getByRole("radio")).toHaveCount(1);
-  await page.getByRole("button", { name: "Close identification" }).click();
+  // The scan pipeline identifies card images without a separate UI action.
   await expect(card.getByText("Furret", { exact: true })).toHaveCount(1);
   await expect(card).toContainText("Suggested · review required");
   await expect(card).toContainText("Pokémon · Colorless");
@@ -298,11 +295,13 @@ test("card batch groups consecutive captures and shows identity once", async ({
   await front.click();
   const lightbox = page.getByRole("dialog");
   await expect(lightbox.getByRole("img")).toBeVisible();
-  expect(
-    await lightbox
-      .getByRole("img")
-      .evaluate((image: HTMLImageElement) => image.naturalHeight),
-  ).toBeGreaterThan(512);
+  await expect
+    .poll(() =>
+      lightbox
+        .getByRole("img")
+        .evaluate((image: HTMLImageElement) => image.naturalHeight),
+    )
+    .toBeGreaterThan(512);
   const initialWidth = (await lightbox.getByRole("img").boundingBox())!.width;
   await lightbox.getByRole("button", { name: "Zoom in", exact: true }).click();
   expect(
@@ -319,6 +318,22 @@ test("card batch groups consecutive captures and shows identity once", async ({
   await page.keyboard.press("Escape");
   await expect(lightbox).toHaveCount(0);
   await expect(front).toBeFocused();
+  let reopenRequests = 0;
+  const countImage = (request: import("@playwright/test").Request) => {
+    if (request.url().includes("/api/v1/images/")) reopenRequests++;
+  };
+  page.on("request", countImage);
+  await front.click();
+  await expect
+    .poll(() =>
+      lightbox
+        .getByRole("img")
+        .evaluate((image: HTMLImageElement) => image.naturalHeight),
+    )
+    .toBeGreaterThan(512);
+  expect(reopenRequests).toBe(0);
+  page.off("request", countImage);
+  await page.keyboard.press("Escape");
   await page.emulateMedia({ colorScheme: "dark" });
   await expect
     .poll(() =>
