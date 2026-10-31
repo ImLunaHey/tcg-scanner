@@ -54,4 +54,3 @@ private func finishCard(_ finishes: [CardFinish] = [.normal, .reverseHolo]) -> C
         #expect(result.state == .unsupported && result.suggestedFinish == nil)
     }
 }
-

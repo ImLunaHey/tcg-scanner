@@ -121,6 +121,7 @@ private struct CardIdentitySummary: View {
                 Text(card.name).bold()
                 Text(([card.category == "Pokemon" ? "Pokémon" : card.category].compactMap { $0 } + (card.types ?? [])).joined(separator: " · "))
                 Text(card.setName + " · " + card.localID + (card.officialSetCount.map { "/\($0)" } ?? ""))
+                Text("Finish: " + identification.finishDescription)
             } else {
                 switch identification.state {
                 case .processing: Text("Identifying card…")

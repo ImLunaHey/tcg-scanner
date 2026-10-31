@@ -43,6 +43,17 @@ struct CardIdentificationView: View {
                             Text(card.evidence.joined(separator: " · ")).font(.caption)
                             Text("Catalogue finishes: " + card.availableFinishes.map(\.displayName).joined(separator: ", ")).font(.caption).foregroundStyle(.secondary)
                         }
+                        if let estimate = result?.finishEstimate {
+                            Text("Finish: " + (result?.finishDescription ?? "Needs review")).font(.headline)
+                            DisclosureGroup("Why this finish estimate") {
+                                ForEach(estimate.evidence + estimate.limitations, id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary) }
+                            }
+                            if estimate.state == .estimated, let suggested = estimate.suggestedFinish, selected == estimate.candidateID {
+                                Button("Use finish estimate in review") { finish = suggested }.disabled(saving || processing)
+                            }
+                        }
+                        Button(result?.finishEstimate == nil ? "Estimate finish locally" : "Refresh finish estimate") { estimateFinish() }
+                            .disabled(saving || processing || candidates.count != 1)
                         Picker("Finish · manual", selection: $finish) {
                             ForEach(CardFinish.allCases, id: \.self) { Text($0.displayName).tag($0) }
                         }
@@ -90,6 +101,17 @@ struct CardIdentificationView: View {
             } catch { self.error = error.localizedDescription }
         }
     }
+    private func estimateFinish() {
+        guard let result else { return }
+        saving = true; error = nil
+        Task {
+            defer { saving = false }
+            do {
+                accept(try await model.client.estimateFinish(jobID: job, sequence: sequence, identificationID: result.request.id))
+                try await model.refresh()
+            } catch { self.error = error.localizedDescription }
+        }
+    }
     private func review(reject: Bool) {
         guard let result else { return }
         saving = true; error = nil
@@ -104,7 +126,7 @@ struct CardIdentificationView: View {
     }
 }
 
-private extension CardFinish {
+extension CardFinish {
     var displayName: String {
         switch self { case .unverified: "Not verified"; case .normal: "Non-holo"; case .holo: "Holo"; case .reverseHolo: "Reverse holo"; case .other: "Other finish" }
     }
@@ -112,5 +134,16 @@ private extension CardFinish {
 private extension CardCondition {
     var displayName: String {
         switch self { case .unassessed: "Not assessed"; case .nearMint: "Near mint"; case .lightlyPlayed: "Lightly played"; case .moderatelyPlayed: "Moderately played"; case .heavilyPlayed: "Heavily played"; case .damaged: "Damaged" }
+    }
+}
+
+extension CardIdentification {
+    var finishDescription: String {
+        if finish != .unverified { return finish.displayName + " (reviewed)" }
+        let candidate = selectedCardID ?? (evidence?.candidates.count == 1 ? evidence?.candidates.first?.id : nil)
+        if let estimate = finishEstimate, estimate.state == .estimated, let value = estimate.suggestedFinish, estimate.candidateID == candidate {
+            return value.displayName + " (estimated)"
+        }
+        return finishEstimate == nil ? "Not verified" : "Needs review"
     }
 }

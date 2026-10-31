@@ -18,6 +18,14 @@ export type CardCandidate = {
   category?: string;
   types?: string[];
 };
+export type FinishEstimate = {
+  state: "estimated" | "uncertain" | "unsupported";
+  suggestedFinish?: string;
+  candidateID?: string;
+  evidence: string[];
+  limitations: string[];
+  method: string;
+};
 export type Identification = {
   request: { id: string; sequence: number; language: string };
   state:
@@ -36,6 +44,7 @@ export type Identification = {
   error?: { message: string };
   selectedCardID?: string;
   reviewedAt?: string;
+  finishEstimate?: FinishEstimate;
   finish: string;
   condition: string;
 };
@@ -55,6 +64,24 @@ export const conditions: Record<string, string> = {
   heavilyPlayed: "Heavily played",
   damaged: "Damaged",
 };
+
+export function finishDescription(value: Identification): string {
+  if (value.finish !== "unverified")
+    return `${finishes[value.finish] || value.finish} (reviewed)`;
+  const estimate = value.finishEstimate;
+  const cardID =
+    value.selectedCardID ||
+    (value.evidence?.candidates.length === 1
+      ? value.evidence.candidates[0].id
+      : undefined);
+  if (
+    estimate?.state === "estimated" &&
+    estimate.suggestedFinish &&
+    estimate.candidateID === cardID
+  )
+    return `${finishes[estimate.suggestedFinish] || estimate.suggestedFinish} (estimated)`;
+  return estimate ? "Needs review" : "Not verified";
+}
 
 export function IdentificationReview({
   batchID,
@@ -118,10 +145,22 @@ export function IdentificationReview({
       }),
     onSuccess: update,
   });
+  const estimateFinish = useMutation({
+    mutationFn: () =>
+      api.send<Identification>(
+        `images/${batchID}:${sequence}/finish-estimate`,
+        "POST",
+        { identificationID: result!.request.id },
+      ),
+    onSuccess: update,
+  });
   const candidates = result?.evidence?.candidates || [];
   const chosen = candidates.find((candidate) => candidate.id === selected);
   const busy =
-    identify.isPending || review.isPending || result?.state === "processing";
+    identify.isPending ||
+    review.isPending ||
+    estimateFinish.isPending ||
+    result?.state === "processing";
   const mayIdentify =
     !result || ["failed", "noMatch", "rejected"].includes(result.state);
   return (
@@ -152,6 +191,7 @@ export function IdentificationReview({
             current.error ||
             identify.error ||
             review.error ||
+            estimateFinish.error ||
             result?.error?.message
           }
         />
@@ -236,6 +276,48 @@ export function IdentificationReview({
                     </span>
                   </label>
                 ))}
+                {result?.finishEstimate && (
+                  <div className="small">
+                    <p>
+                      Finish: {finishDescription(result)}. Estimates require
+                      physical confirmation.
+                    </p>
+                    <details>
+                      <summary>Why this finish estimate</summary>
+                      {[
+                        ...result.finishEstimate.evidence,
+                        ...result.finishEstimate.limitations,
+                      ].map((text, index) => (
+                        <p key={index}>{text}</p>
+                      ))}
+                    </details>
+                    {result.finishEstimate.state === "estimated" &&
+                      result.finishEstimate.suggestedFinish &&
+                      selected === result.finishEstimate.candidateID && (
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() =>
+                            setFinish(result.finishEstimate!.suggestedFinish!)
+                          }
+                        >
+                          Use finish estimate in review
+                        </button>
+                      )}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="text-button"
+                  disabled={busy || candidates.length !== 1}
+                  onClick={() => estimateFinish.mutate()}
+                >
+                  {estimateFinish.isPending
+                    ? "Estimating finish locally…"
+                    : result?.finishEstimate
+                      ? "Refresh finish estimate"
+                      : "Estimate finish locally"}
+                </button>
                 <div className="form-row">
                   <Field label="Finish · manual">
                     <select
@@ -358,7 +440,7 @@ export function IdentitySummary({
           .filter(Boolean)
           .join(" · ")}
         <br />
-        Finish: {finishes[identification.finish]} · Condition:{" "}
+        Finish: {finishDescription(identification)} · Condition:{" "}
         {conditions[identification.condition]} (manual)
       </p>
     );
