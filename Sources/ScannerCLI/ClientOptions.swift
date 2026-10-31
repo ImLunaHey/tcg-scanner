@@ -9,7 +9,7 @@ struct ClientOptions: ParsableArguments {
     @Option(help: "Scanner ID returned by devices; required if multiple scanners are present.") var device: String?
     @Option(help: "Absolute path to the ScannerService Unix socket.") var socket = SocketLocation.defaultPath
 
-    func perform(_ command: String, params: JSONValue? = nil) throws -> JSONValue {
+    func request(_ command: String, params: JSONValue? = nil) throws -> JSONValue {
         if verbose { stderr("Requesting v1.\(command) via \(socket)") }
         let result: JSONValue
         do {
@@ -27,6 +27,10 @@ struct ClientOptions: ParsableArguments {
             else { stderr("Error [\(failure.kind)]: \(failure.message)") }
             throw ExitCode(Self.exitCode(for: failure.kind))
         }
+        return result
+    }
+    func perform(_ command: String, params: JSONValue? = nil) throws -> JSONValue {
+        let result = try request(command, params: params)
         if command.hasPrefix("scan.") { return result }
         if json { try writeJSON(result) }
         else { try HumanOutput.printResult(command: command, result: result) }

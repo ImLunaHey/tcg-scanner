@@ -33,5 +33,18 @@ import ScannerAPI
     #expect(try Scanner.parseAsRoot(["profiles", "save", "Documents", "--duplex"]) is Profiles.Save)
     #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["jobs", "list", "--limit", "101"]) }
     #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["events", "--after", "-1"]) }
-    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["scan", "--profile", "invalid"]) }
+    #expect(try Scanner.parseAsRoot(["scan", "--profile", "pokemon"]) is Scan)
+}
+
+@Test func parsesCompleteProfilesLibraryAndConfigurationCommands() throws {
+    #expect(try Scanner.parseAsRoot(["profiles", "create", "pokemon"]) is Profiles.Create)
+    #expect(try Scanner.parseAsRoot(["profiles", "show", "pokemon"]) is Profiles.Show)
+    let update = try Scanner.parseAsRoot(["profiles", "update", "pokemon", "--no-duplex"]) as! Profiles.Update
+    #expect(update.duplex == false)
+    #expect(update.dpi == nil && update.format == nil)
+    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["profiles", "update", "pokemon"]) }
+    #expect(try Scanner.parseAsRoot(["batches", "list", "--json"]) is Batches.List)
+    #expect(try Scanner.parseAsRoot(["configure", "--dpi", "600", "--duplex"]) is Configure)
+    #expect(try Scanner.parseAsRoot(["device", "--json"]) is DeviceCommand)
+    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["scan", "--profile", "pokemon", "--use-device-settings"]) }
 }
