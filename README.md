@@ -18,7 +18,9 @@ been validated. Discovery and diagnostics never request a scan.
 This installation saves scans to `smb://lake/scans` at `/Volumes/scans`.
 Each batch has one folder with image files directly inside; no `originals/` or
 `processed/` folders are used. New scans default to PNG without application image
-processing. See [storage configuration and migration](Docs/storage.md).
+processing. Folders use permanent numbers (`B-001`) and dates stay in metadata.
+Current unpaired captures use `C-001.png`; `C-001-front.png`/`C-001-back.png`
+will require verified card pairing. See [storage configuration and migration](Docs/storage.md).
 
 ## Build and startup
 
@@ -172,11 +174,11 @@ Temporary changes are restored after the scan stops.
 Each job creates a unique batch directory:
 
 ```text
-scan-UUID/
+B-001/
   manifest.json
-  incoming/                  # untouched driver files, including partial/invalid files
-  originals/page-000001.png  # verified byte-identical copies
-  originals/page-000002.png
+  .incoming/   # untouched driver files, including partial/invalid files
+  C-001.png    # verified byte-identical copies; side unknown
+  C-002.png
 ```
 
 Manifests update atomically after each image. GRDB/SQLite stores jobs, original

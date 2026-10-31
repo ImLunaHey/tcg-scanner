@@ -1,5 +1,8 @@
 # SMB storage migration and native scan validation — 2026-10-31
 
+Historical paths below describe this validation run. They were subsequently
+renamed to `B-001` through `B-006`; see [batch naming validation](batch-naming-validation.md).
+
 The scanner now uses `smb://lake/scans` mounted at `/Volumes/scans`. Its SQLite
 ledger remains local. `storage.json` in local Application Support records the
 required share and root. The installed service LaunchAgent reads this persistent

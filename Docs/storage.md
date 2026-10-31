@@ -11,17 +11,29 @@ folder, without `originals/` or `processed/` subdirectories.
 
 ```text
 /Volumes/scans/
-  batch-<UUID>/
-    page-000001.png
-    page-000002.png
+  B-001/
+    C-001.png
+    C-002.png
     manifest.json
 ```
 
-Existing paper scans retain sequential page names and their original TIFF/PNG
-encoding. For future card batches with verified side pairing, the requested names
-are `card-000001-front.png`, `card-000001-back.png`, then the next card number.
-Front/back naming is not yet enabled: acquisition order alone must not be treated
-as verified card pairing. The manifest's `side` remains `unknown` until validated.
+Batch numbers increase across the installation's lifetime, not per day. Dates
+stay in metadata and the app. Label a box `B-001` and a sleeve `B-001 / C-001`.
+The ledger reserves numbers transactionally before job creation, never recycles
+them, and preserves reservations across restarts and idempotent retries. Failed
+job creation can leave a gap. Keep the local SQLite ledger in backups: the share
+alone is not the numbering authority. Existing folders are never overwritten.
+Padding is a minimum of three digits; `B-1000` follows `B-999`.
+
+UUIDs remain the API and idempotency identifiers; `batchNumber` is an additive,
+optional metadata field. The six existing batches were assigned numbers oldest
+first. Existing TIFF files retain their encoding; new jobs default to PNG.
+
+The intended card layout is `B-001/C-001-front.png` and
+`B-001/C-001-back.png`, then the next card number. **Verified card pairing is still
+pending**, so current paper captures use `C-001.png`, `C-002.png` in acquisition
+order, with `side: unknown`. These capture indices are not yet shared card IDs
+across duplex sides. Do not label card sleeves from them until pairing is verified.
 
 `.incoming/` is hidden internal staging for driver delivery and recovery. It may
 retain duplicate delivery files or partial captures; it is not a processed-image
@@ -97,7 +109,8 @@ in the repository are test artifacts rather than canonical scan batches and stay
 outside the live scan library.
 
 Migration and the subsequent physical native-app scan are documented in
-[storage validation](storage-migration-validation.md).
+[storage validation](storage-migration-validation.md). The later permanent-number
+migration is recorded in [batch naming validation](batch-naming-validation.md).
 
 ## Checks
 
