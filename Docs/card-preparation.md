@@ -187,9 +187,9 @@ are retained separately; the retry did not overwrite or complete that older job.
 ### Paired web library
 
 Duplex jobs requested with card preparation show consecutive captures together
-under one card heading. For the fi-8170's observed ordering, the even capture is
-shown as Front and the odd capture as Back, with the front displayed first. Other
-scanner models use Side 1/Side 2. The pair shares one identity summary, including
+under one card heading. The first implementation labelled even captures Front and odd captures Back
+for the fi-8170. B-011's reversed-feed test below supersedes that assumption:
+current labels use recognition evidence and otherwise remain Side 1/Side 2. The pair shares one identity summary, including
 catalogue category and elemental types when available. [TCGdex card fields](https://tcgdex.dev/rest/card) are
 catalogue attributes of the suggestion, not proof of a physical printing. Phone and
 tablet layouts keep the two previews side by side.
@@ -231,3 +231,46 @@ For another batch, use **Identify card** on its front image to start OCR; result
 then appear directly on the pair. Confirmation, foil finish and condition remain
 manual. Grouping does not rename the original files or establish permanent
 physical-side metadata.
+
+## Reversed-feed validation — B-011, 2026-10-31
+
+The user reloaded the same eleven cards back-to-front and authorized one test.
+Job `1E0CF640-DA93-4915-ADC6-3DD9A539FD8D` retained the existing 300 DPI duplex PNG
+configuration and card processing; multifeed and other feeder safety settings
+were unchanged. It completed with 22 originals, 22 prepared copies, no job errors
+and a closed scanner session. The user reported all eleven fed cleanly without
+jams, overlap or new damage. All 44 saved PNG files passed size/SHA-256 checks.
+
+Automatic recognition found the same eleven printings as B-010, now on odd
+capture sequences. Every front was automatically rotated two quarter turns and
+had text-supported orientation. Card backs remain orientation-unverified; this
+test does not establish arbitrary-orientation support or automatic back rotation.
+
+In pair-number order, the suggestions were Dunsparce, Impidimp, Lechonk,
+Salamence ex, Cubone, Lokix, Iris's Fighting Spirit, Pangoro, Larvesta, Virizion,
+and Fire Energy. This is the observed order, not a promise that every reload
+preserves card position. Identifications remain reviewable suggestions.
+
+The test exposed a web presentation bug: the paired gallery assumed the even
+capture was always the front and could select its no-match result instead of
+the recognized front. It now displays whichever side has recognition evidence
+first. If both sides match, neither matches, or a side is missing, it keeps
+Side 1 / Side 2 labels; ambiguous matches have a warning and each side can be
+reviewed separately. This is a presentation inference, not a change to original
+capture order, image metadata, permanent IDs or verified physical pairing.
+
+Web unit tests cover either front sequence, missing sides, ambiguous matches,
+no matches, rejected matches and pending recognition. Private scan requests,
+records, checksums and physical confirmation are in `Diagnostics/reversed-feed/`.
+The browser validation does not create or alter scans. A separately authorized
+mixed-orientation physical test follows this batch.
+
+Read-only Chromium checks over the production Tailscale HTTPS address found
+11 pairs and 11 suggestions in both B-011 and B-010. Larvesta's front download
+matched the prepared PNG checksum at sequence 17 and 4 respectively; each
+identity dialog opened the correct capture. Both layouts fit a 390-pixel phone
+viewport, with no page errors or changes to job history. During validation,
+image downloads were found to consume the same admission slots as image
+metadata/identification controls. Only binary GETs now use the two download
+slots; the normal authenticated request limit still covers controls. All nine
+HTTP tests passed, including a regression with both download slots occupied.
