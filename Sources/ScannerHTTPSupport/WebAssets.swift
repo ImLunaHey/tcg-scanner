@@ -50,7 +50,10 @@ public struct WebAssets: Sendable {
     }
     func response(for request: Request, path: GatewayPath) throws -> Response? {
         let key = "/" + path.components.joined(separator: "/")
-        guard let asset = files[key] else { return nil }
+        let appRoute = ["/library", "/profiles", "/scanner"].contains(key)
+            || (path.components.count == 2 && path.components[0] == "batches"
+                && UUID(uuidString: path.components[1]) != nil)
+        guard let asset = files[key] ?? (appRoute ? files["/index.html"] : nil) else { return nil }
         guard request.method == .get || request.method == .head else { throw GatewayError(405, "methodNotAllowed", "Web assets are read-only.") }
         guard request.headers[.transferEncoding] == nil, request.headers[.contentLength] == nil || request.headers[.contentLength] == "0" else {
             throw GatewayError(400, "invalidParams", "Web asset requests cannot contain a body.")

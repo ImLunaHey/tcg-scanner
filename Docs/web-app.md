@@ -1,9 +1,16 @@
 # Remote web workspace
 
 The React/Vite/TypeScript application uses Tailwind CSS, TanStack Query and Wouter
-hash routes. The existing Swift HTTP gateway serves its production assets and
+browser-history routes. The existing Swift HTTP gateway serves its production assets and
 forwards every scanner operation over the private service socket. Node is required
 for building and tests, not for running the installed dashboard.
+
+App URLs use paths such as `/library` and `/batches/{jobUUID}`. The gateway
+serves the public sign-in/app shell for these known routes on GET/HEAD, so direct
+links and reloads work. Scanner data still requires authentication. API paths,
+unknown paths and missing assets never fall back to the app shell. Existing
+`#/` bookmarks for supported routes are replaced with the clean path before the
+router mounts; ordinary page anchors are left alone.
 
 ## Installation and access
 

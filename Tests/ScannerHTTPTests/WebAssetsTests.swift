@@ -16,7 +16,8 @@ import ScannerAPI
     let gateway = try ScannerGateway(socketPath: "/tmp/no-scanner-web-test", token: httpTestToken, configuration: config, webAssets: WebAssets(directory: root.path))
     let app = Application(responder: gateway)
     try await app.test(.router) { client in
-        for route in ["/", "/index.html", "/assets/main.js"] {
+        for route in ["/", "/index.html", "/assets/main.js", "/library", "/profiles", "/scanner",
+                      "/batches/5F2213C2-7E6E-41E1-9A9B-C756613A1A15"] {
             let response = try await client.execute(uri: route, method: .get)
             #expect(response.status.code == 200)
             #expect(response.headers[HTTPField.Name("Content-Security-Policy")!]?.contains("script-src 'self'") == true)
@@ -26,9 +27,15 @@ import ScannerAPI
             #expect(response.headers[.cacheControl] == "no-store")
         }
         #expect(try await client.execute(uri: "/", method: .post).status.code == 405)
+        let batch = "/batches/5F2213C2-7E6E-41E1-9A9B-C756613A1A15"
+        let deepLink = try await client.execute(uri: batch, method: .get)
+        #expect(String(buffer: deepLink.body) == "<html>Sign in</html>")
+        #expect(try await client.execute(uri: batch, method: .head).body.readableBytes == 0)
+        #expect(try await client.execute(uri: batch, method: .post).status.code == 405)
+        #expect(try await client.execute(uri: batch + "?token=secret", method: .get).status.code == 400)
         #expect(try await client.execute(uri: "/", method: .get, headers: [.contentLength: "2"], body: ByteBuffer(string: "{}" )).status.code == 400)
         #expect(try await client.execute(uri: "/?token=secret", method: .get).status.code == 400)
-        for route in ["/api/v1/jobs", "/api/v1/devices", "/token", "/manifest.json", "/assets/missing.js"] {
+        for route in ["/api/v1/jobs", "/api/v1/devices", "/token", "/manifest.json", "/assets/missing.js", "/batches/invalid", batch + "/originals", "/unknown"] {
             #expect(try await client.execute(uri: route, method: .get).status.code == 401)
         }
         #expect(try await client.execute(uri: "/assets/%2e%2e/token", method: .get).status.code == 400)

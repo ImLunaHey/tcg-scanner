@@ -2,11 +2,13 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Router } from "wouter";
-import { useHashLocation } from "wouter/use-hash-location";
+import { migrateHashRoute } from "./routing";
 import { AuthProvider } from "./auth";
 import { App, AppBoundary } from "./App";
 import { ApiError } from "./api";
 import "./styles.css";
+
+migrateHashRoute();
 
 const queries = new QueryClient({
   defaultOptions: {
@@ -29,7 +31,7 @@ createRoot(document.getElementById("root")!).render(
     <AppBoundary>
       <QueryClientProvider client={queries}>
         <AuthProvider>
-          <Router hook={useHashLocation}>
+          <Router>
             <App />
           </Router>
         </AuthProvider>
