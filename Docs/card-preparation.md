@@ -425,3 +425,23 @@ screenshots are retained under ignored `Diagnostics/bulk-holo-test/`.
 The existing capture guard stops the job at 100 image callbacks, so this test
 used fewer than 50 duplex cards. Raising that limit and validating larger batches
 were outside this run.
+
+## Fine deskew — B-023, 2026-11-01
+
+C-001's front retained a small tilt despite verified upright orientation. The old
+minimum-area search found −0.3° but discarded it: the enclosing area improved by
+only 0.165%, below its 0.5% cutoff. Rounded, pixelated corners can also make the
+minimum-area box choose zero while the straight card edges are tilted.
+
+`card-boundary-v4` refines the coarse angle using the middle 80% of two long outer
+edges. It rejects isolated edge noise and requires sufficient edge coverage,
+low residual error and agreement between opposite edges. Both row and column
+endpoints are sampled so sideways cards have the same evidence. Refinement is
+bounded to 0.6° from the coarse result; the existing ±12° limit and 0.15° noise
+floor remain. The fallback area-gain cutoff is 0.1%. Crops still enclose every
+observed foreground point with padding, rather than trimming to the fitted lines.
+
+Regression tests cover rounded rasterized cards at ±0.3° and zero, each in all
+four orientations, plus original corner enclosure, isolated edge noise and the
+saved six-image B-023 fixture. The native pipeline performs this correction
+automatically for future scans; it is not a manually entered card rotation.

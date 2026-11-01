@@ -103,13 +103,17 @@ public enum CardProcessor {
                 throw ScannerError("cardNotFound", "More than one substantial object found. Crop manually to avoid losing a card.")
             }
         }
-        // Two endpoints per occupied row bound the entire connected component.
+        // Row endpoints enclose the component; column endpoints also sample the
+        // long top/bottom edges when a card was fed sideways for fine deskew.
         var rows: [Int: (Int, Int)] = [:]
+        var columns: [Int: (Int, Int)] = [:]
         for pixel in bestPixels {
             let x = pixel % width, y = pixel / width
             let previous = rows[y] ?? (x, x); rows[y] = (min(previous.0, x), max(previous.1, x))
+            let column = columns[x] ?? (y, y); columns[x] = (min(column.0, y), max(column.1, y))
         }
-        let points = rows.flatMap { y, range in [CGPoint(x: range.0, y: y), CGPoint(x: range.1 + 1, y: y), CGPoint(x: range.0, y: y + 1), CGPoint(x: range.1 + 1, y: y + 1)] }
+        var points = rows.flatMap { y, range in [CGPoint(x: range.0, y: y), CGPoint(x: range.1 + 1, y: y), CGPoint(x: range.0, y: y + 1), CGPoint(x: range.1 + 1, y: y + 1)] }
+        points += columns.flatMap { x, range in [CGPoint(x: x, y: range.0), CGPoint(x: x, y: range.1 + 1), CGPoint(x: x + 1, y: range.0), CGPoint(x: x + 1, y: range.1 + 1)] }
         return (points, card.minX == 0 || card.minY == 0 || card.maxX == width - 1 || card.maxY == height - 1)
     }
 
