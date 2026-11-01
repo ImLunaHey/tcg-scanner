@@ -137,3 +137,13 @@ tested**, so 18/19 must not be advertised as validated pipeline accuracy. A futu
 integration must preserve unsupported/uncertain outcomes, use the reverse-holo
 signal independently, and be checked on further fresh cards. This one small batch
 supports complementary signals, not a general accuracy guarantee.
+
+## Subsequent implementation and service recheck
+
+The user then requested the combined detector. Its native implementation and
+decision rules are documented in [combined finish estimates](combined-finish.md).
+The deployed service rechecked the existing B-026 prepared fronts and stored
+nine holo, seven normal and two reverse-holo estimates. Fire Energy remains
+unsupported. All eighteen issued estimates match the physical labels. The original
+blind results above are retained; this later implementation used the trial findings
+and is a regression/recheck, not an independent blind accuracy result.

@@ -1,5 +1,11 @@
 # Card identification and manual assessment
 
+Automatic finish estimates now combine printed-marker/catalogue evidence with
+native border-texture analysis for eligible prepared cards. See
+[combined finish estimates](combined-finish.md) for decision rules, limitations,
+validation and the B-026 service recheck. Estimated finish remains separate from
+the physically reviewed finish field.
+
 Card scans with `prepareCards: true` automatically identify saved images during
 post-capture processing. Identification is also available as an explicit operation
 on an already saved original. It never

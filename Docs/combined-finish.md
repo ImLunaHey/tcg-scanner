@@ -78,5 +78,26 @@ SCANNER_COMBINED_FINISH_RECORDS=Diagnostics/combined-finish/b026-before.json swi
 ```
 
 These optional tests only read saved image fixtures. Normal tests never require
-the scanner or start hardware. Live deployment/recheck results are recorded below
-after the signed service update.
+the scanner or start hardware.
+
+## Signed deployment and live B-026 recheck — 2026-11-01
+
+The release build passed. The idle service, CLI/MCP clients, native app and HTTP
+gateway were installed with the existing certificate-backed identities; web assets
+were updated. The old service exited before SQLite backup and binary replacement.
+No scans, identification operations or Store sends were active during replacement.
+The installed service and native app passed strict code-signature verification.
+
+All nineteen B-026 fronts were refreshed through `v1.images.estimateFinish`.
+The saved result is nine holo, seven normal, two reverse holo and one unsupported
+Fire Energy. The four formerly ambiguous holos (Goodra, Spiritomb, Moltres and
+Mismagius) now resolve to holo. All eighteen issued estimates match the physical
+labels; coverage is 18/19 (94.7%), with no claim of general 100% accuracy.
+
+Verified that every non-estimate job/identification field remained identical,
+including source edits, reviewed finish/condition and timestamps. All 38 original
+files still matched their saved SHA-256 values. No images were regenerated and
+no Store transfer was initiated. The SMB manifest matches the live identification
+records. Authenticated HTTPS returned all nineteen v5 estimates, and the clean
+batch URL returned HTTP 200. Evidence is retained in ignored
+`Diagnostics/combined-finish/`.
