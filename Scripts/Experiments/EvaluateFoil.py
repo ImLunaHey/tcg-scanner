@@ -5,6 +5,7 @@ Usage:
   python3 Scripts/Experiments/EvaluateFoil.py --self-test
   python3 Scripts/Experiments/EvaluateFoil.py measurements.json groups.json output.json
   python3 Scripts/Experiments/EvaluateFoil.py --apply fitted.json measurements.json output.json
+  python3 Scripts/Experiments/EvaluateFoil.py --predict fitted.json measurements.json output.json
 
 Measurements: [{"input": {"id": "B-025/C-001", "label":
 "user-reported-non-holo", "printingIDs": [], "path": "/prepared.png"},
@@ -23,6 +24,10 @@ mutations. Output must be a new file, separate from both inputs.
 All cards must have the same complete variant set, including baseline. Stability
 is three-way: every variant above threshold => flaggedFoil; none above =>
 noFoilEvidence; disagreement => unstable. Neither latter status proves non-holo.
+
+--predict requires label exactly "unlabelled" for every measurement. It uses
+saved thresholds and reports per-card consensus only, without physical labels,
+accuracy or confusion counts. Aggregate batch finish counts are not an input.
 """
 
 import copy
@@ -34,9 +39,11 @@ import sys
 
 POSITIVE = "user-reported-holo"
 NEGATIVE = "user-reported-non-holo"
+UNLABELLED = "unlabelled"
 
 
-def validate(measurements, groups, require_calibration_negative=True):
+def validate(measurements, groups, require_calibration_negative=True,
+             allowed_labels=(POSITIVE, NEGATIVE)):
     if not isinstance(measurements, list) or not 1 <= len(measurements) <= 10000:
         raise ValueError("Expected 1–10000 measurement rows")
     if not isinstance(groups, dict):
@@ -51,8 +58,8 @@ def validate(measurements, groups, require_calibration_negative=True):
         variant = item.get("variant")
         if not isinstance(ident, str) or not ident or ident not in groups:
             raise ValueError("Each measurement needs an ID present in groups")
-        if label not in (POSITIVE, NEGATIVE):
-            raise ValueError("Labels must be physical user-reported holo/non-holo")
+        if label not in allowed_labels:
+            raise ValueError("Expected labels: " + ", ".join(allowed_labels))
         if not isinstance(variant, str) or not variant:
             raise ValueError("Each measurement needs a variant")
         if (ident, variant) in seen:
@@ -160,25 +167,33 @@ def evaluate(measurements, groups):
                 features=results)
 
 
-def stability(rows, feature, threshold):
+def consensus_predictions(rows, feature, threshold):
     cards = {}
     for row in rows:
         cards.setdefault(row["id"], []).append(row)
-    counts = {label: dict(flaggedFoil=0, noFoilEvidence=0, unstable=0)
-              for label in (POSITIVE, NEGATIVE)}
     predictions = []
     for ident, variants in sorted(cards.items()):
         flags = [row["features"][feature] > threshold for row in variants]
         status = "flaggedFoil" if all(flags) else "unstable" if any(flags) else "noFoilEvidence"
-        label = variants[0]["label"]
-        counts[label][status] += 1
-        predictions.append(dict(id=ident, label=label, status=status,
+        predictions.append(dict(id=ident, status=status,
                                 values={row["variant"]: row["features"][feature]
                                         for row in sorted(variants, key=lambda r: r["variant"])}))
+    return predictions
+
+
+def stability(rows, feature, threshold):
+    labels = {row["id"]: row["label"] for row in rows}
+    counts = {label: dict(flaggedFoil=0, noFoilEvidence=0, unstable=0)
+              for label in (POSITIVE, NEGATIVE)}
+    predictions = consensus_predictions(rows, feature, threshold)
+    for prediction in predictions:
+        label = labels[prediction["id"]]
+        prediction["label"] = label
+        counts[label][prediction["status"]] += 1
     return dict(countsByPhysicalLabel=counts, predictions=predictions)
 
 
-def apply_fitted(fitted, measurements):
+def measurement_groups(measurements):
     if not isinstance(measurements, list):
         raise ValueError("Expected measurement rows")
     groups = {}
@@ -189,7 +204,10 @@ def apply_fitted(fitted, measurements):
         if not isinstance(ident, str) or not ident:
             raise ValueError("Each measurement needs a nonempty ID")
         groups[ident] = dict(group=ident, split="holdout")
-    rows, features = validate(measurements, groups, require_calibration_negative=False)
+    return groups
+
+
+def fitted_thresholds(fitted, features):
     if not isinstance(fitted, dict) or fitted.get("schemaVersion") != 1:
         raise ValueError("Expected a schemaVersion 1 fitted evaluation")
     fitted_features = fitted.get("features")
@@ -207,6 +225,12 @@ def apply_fitted(fitted, measurements):
         thresholds[name] = threshold
     if set(thresholds) != set(features):
         raise ValueError("Measurements and fitted evaluation must have identical feature names")
+    return thresholds
+
+
+def apply_fitted(fitted, measurements):
+    rows, features = validate(measurements, measurement_groups(measurements), require_calibration_negative=False)
+    thresholds = fitted_thresholds(fitted, features)
     variants = sorted({r["variant"] for r in rows})
     results = []
     for feature in features:
@@ -221,6 +245,20 @@ def apply_fitted(fitted, measurements):
                          "Dataset/design confounding and prior data inspection still limit validation.",
                          "Physical labels are used only to report results, never to alter thresholds."],
                 features=results)
+
+
+def predict_fitted(fitted, measurements):
+    rows, features = validate(measurements, measurement_groups(measurements),
+                              require_calibration_negative=False, allowed_labels=(UNLABELLED,))
+    thresholds = fitted_thresholds(fitted, features)
+    return dict(schemaVersion=1, status="unlabelled-fixed-threshold-predictions",
+                thresholdRule="Saved fitted thresholds; no fitting, label inference or batch-count matching",
+                caveats=["Predictions only; physical per-card labels are unknown and accuracy is not computed.",
+                         "NoFoilEvidence does not establish non-holo; disagreement remains unstable.",
+                         "A foil signal does not distinguish holo from reverse holo."],
+                features=[dict(feature=feature, threshold=thresholds[feature],
+                               predictions=consensus_predictions(rows, feature, thresholds[feature]))
+                          for feature in features])
 
 
 def self_test():
@@ -286,7 +324,40 @@ def self_test():
         pass
     else:
         raise AssertionError("Apply accepted incomplete variants")
-    print("Evaluator checks passed: threshold isolation, grouped folds, complete variants, fixed-threshold application and three-way stability.")
+    blind = [row("b1", UNLABELLED, .1), row("b1", UNLABELLED, .01, "inset"),
+             row("b2", UNLABELLED, .1), row("b2", UNLABELLED, .1, "inset"),
+             row("b3", UNLABELLED, .01), row("b3", UNLABELLED, .01, "inset")]
+    predicted = predict_fitted(fitted, blind)
+    feature = predicted["features"][0]
+    assert feature["threshold"] == result["threshold"]
+    assert [p["status"] for p in feature["predictions"]] == ["unstable", "flaggedFoil", "noFoilEvidence"]
+    assert set(feature) == {"feature", "threshold", "predictions"}
+    assert all(set(p) == {"id", "status", "values"} for p in feature["predictions"])
+    changed_blind = copy.deepcopy(blind)
+    changed_blind[0]["features"]["signal"] = 1e6
+    assert predict_fitted(fitted, changed_blind)["features"][0]["threshold"] == feature["threshold"]
+
+    def rejects_prediction(rows):
+        try:
+            predict_fitted(fitted, rows)
+        except ValueError:
+            return
+        raise AssertionError("Invalid blind inputs were accepted")
+
+    rejects_prediction(blind[:-1])
+    for label in (POSITIVE, NEGATIVE, None, "unknown", ""):
+        changed_blind = copy.deepcopy(blind)
+        changed_blind[0]["input"]["label"] = label
+        rejects_prediction(changed_blind)
+    for labelled_mode in (lambda: evaluate(blind, measurement_groups(blind)),
+                          lambda: apply_fitted(fitted, blind)):
+        try:
+            labelled_mode()
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Labelled mode accepted unlabelled data")
+    print("Evaluator checks passed: threshold isolation, grouped folds, complete variants, fixed-threshold application and strict unlabelled consensus.")
 
 
 def main(argv):
@@ -294,13 +365,14 @@ def main(argv):
         self_test()
         return
     applying = len(argv) == 4 and argv[0] == "--apply"
-    if len(argv) != 3 and not applying:
-        raise ValueError("Usage: EvaluateFoil.py measurements.json groups.json output.json | --apply fitted.json measurements.json output.json | --self-test")
-    first_path, second_path, output_path = map(pathlib.Path, argv[1:] if applying else argv)
+    predicting = len(argv) == 4 and argv[0] == "--predict"
+    if len(argv) != 3 and not applying and not predicting:
+        raise ValueError("Usage: EvaluateFoil.py measurements.json groups.json output.json | --apply fitted.json measurements.json output.json | --predict fitted.json measurements.json output.json | --self-test")
+    first_path, second_path, output_path = map(pathlib.Path, argv[1:] if applying or predicting else argv)
     if output_path.resolve() in (first_path.resolve(), second_path.resolve()):
         raise ValueError("Output must be separate from inputs")
     first, second = json.loads(first_path.read_text()), json.loads(second_path.read_text())
-    result = apply_fitted(first, second) if applying else evaluate(first, second)
+    result = predict_fitted(first, second) if predicting else apply_fitted(first, second) if applying else evaluate(first, second)
     encoded = json.dumps(result, indent=2, sort_keys=True, allow_nan=False) + "\n"
     with output_path.open("x") as output:
         output.write(encoded)
