@@ -9,7 +9,7 @@ public enum FinishEstimator {
     public static func estimate(_ data: Data, evidence: RecognitionEvidence) -> FinishEstimate {
         do { return try analyze(data, evidence: evidence) }
         catch { return FinishEstimate(state: .uncertain, candidateID: evidence.candidates.count == 1 ? evidence.candidates.first?.id : nil,
-            evidence: ["Local finish analysis could not read the set-code box."], limitations: ["Inspect the physical card; no finish has been confirmed."]) }
+            evidence: ["Local finish analysis could not read the set-code box."], limitations: ["Inspect the physical card; no finish has been confirmed."], uncertaintyReason: .analysisFailed) }
     }
 
     public static func analyze(_ data: Data, evidence: RecognitionEvidence) throws -> FinishEstimate {
@@ -18,7 +18,7 @@ public enum FinishEstimator {
             "Uses printed set-code contrast and catalogue variants, not measured reflectivity. Special/promotional printings may differ."]
         guard evidence.candidates.count == 1, let card = evidence.candidates.first,
               card.evidence.contains(where: { $0.hasPrefix("Collector number ") }) else {
-            return FinishEstimate(state: .uncertain, evidence: ["A single printing with a readable collector number is required."], limitations: limitations)
+            return FinishEstimate(state: .uncertain, evidence: ["A single printing with a readable collector number is required."], limitations: limitations, uncertaintyReason: .ambiguousIdentity)
         }
         guard card.setID.range(of: #"^(sv|me)[0-9]{2}(\.[0-9][a-z]?)?$"#, options: .regularExpression) != nil,
               let total = card.officialSetCount, let number = Int(card.localID), number <= total,
@@ -41,49 +41,84 @@ public enum FinishEstimator {
             enlargedReading = markers.count == 1
         }
         guard markers.count == 1, let marker = markers.first else {
-            return FinishEstimate(state: .uncertain, candidateID: card.id, evidence: ["The English set-code box could not be located unambiguously."], limitations: limitations)
+            return FinishEstimate(state: .uncertain, candidateID: card.id, evidence: ["The English set-code box could not be located unambiguously."], limitations: limitations, uncertaintyReason: .markerNotFound)
         }
+        var result = try measure(data, marker: marker, card: card, orientation: evidence.orientation, limitations: limitations)
+        if enlargedReading { result.evidence.append("Set-code box located by re-reading enlarged pixels locally.") }
+        // A recognized word can still have an oversized Vision character box that
+        // includes the neighbouring regulation symbol. Retry only unresolved contrast,
+        // never conflicting evidence or a catalogue ambiguity. Require the same code
+        // and a substantially tighter, contained rectangle before accepting a retry.
+        if result.uncertaintyReason == .markerContrast && !enlargedReading {
+            try Task.checkCancellation()
+            let refined = locate(try CardOCR.englishSetCode(data, rotation: evidence.orientation, magnify: true))
+            if refined.count == 1, let tighter = refined.first, isTighterRead(tighter, than: marker) {
+                var retry = try measure(data, marker: tighter, card: card, orientation: evidence.orientation, limitations: limitations)
+                if retry.markerPolarity != nil {
+                    retry.evidence.append("An enlarged local OCR pass isolated the same set code in a tighter box, excluding neighbouring print.")
+                    result = retry
+                }
+            }
+        }
+        return result
+    }
+
+    static func isTighterRead(_ refined: RecognizedLine, than original: RecognizedLine) -> Bool {
+        func code(_ line: RecognizedLine) -> String { line.text.uppercased().filter { !$0.isWhitespace } }
+        let areaRatio = refined.width * refined.height / (original.width * original.height)
+        return code(refined) == code(original) && (0.3...0.8).contains(areaRatio) &&
+            refined.x >= original.x - 0.004 && refined.y >= original.y - 0.004 &&
+            refined.x + refined.width <= original.x + original.width + 0.004 &&
+            refined.y + refined.height <= original.y + original.height + 0.004
+    }
+
+    private static func measure(_ data: Data, marker: RecognizedLine, card: CardCandidate,
+                                orientation: Int, limitations: [String]) throws -> FinishEstimate {
         // Include the narrow padding inside the printed box, so dense white glyphs
         // do not turn a black-background code into a mid-gray average.
         let region = ImageCrop(x: marker.x - 0.002, y: 1 - marker.y - marker.height - 0.0015,
                                width: marker.width + 0.004, height: marker.height + 0.003)
-        let patch = try pixels(data, region: region, turns: evidence.orientation)
+        let patch = try pixels(data, region: region, turns: orientation)
         let luminance = patch.values
         let median = luminance.sorted()[luminance.count / 2]
         let dark = Double(luminance.filter { $0 < 0.30 }.count) / Double(luminance.count)
         let light = Double(luminance.filter { $0 > 0.70 }.count) / Double(luminance.count)
         let background = MarkerBackground.measure(luminance, width: patch.width, height: patch.height)
         var result = decision(card: card, median: median, dark: dark, light: light, background: background)
-        result.limitations = limitations; result.region = region; result.sourceQuarterTurns = evidence.orientation
+        result.limitations = limitations; result.region = region; result.sourceQuarterTurns = orientation
         result.medianLuminance = median
         result.darkBackgroundAreaFraction = background.darkArea
         result.lightBackgroundAreaFraction = background.lightArea
-        if enlargedReading { result.evidence.append("Set-code box located by re-reading enlarged pixels locally.") }
         return result
     }
 
     static func decision(card: CardCandidate, median: Double, dark: Double, light: Double,
                          background: MarkerBackground? = nil) -> FinishEstimate {
-        var result = FinishEstimate(state: .uncertain, candidateID: card.id, evidence: ["Set-code contrast is inconclusive."])
+        var result = FinishEstimate(state: .uncertain, candidateID: card.id, evidence: ["Set-code contrast is inconclusive."], uncertaintyReason: .markerContrast)
         guard dark > 0.08 && light > 0.08 else { return result }
         let overall: String? = median > 0.65 && light > 0.40 ? "light" :
             median < 0.45 && dark > 0.30 ? "dark" : nil
         if let overall, let spatial = background?.polarity, overall != spatial {
             result.evidence = ["Set-code background and overall contrast disagree."]
+            result.uncertaintyReason = .conflictingContrast
             return result
         }
         let polarity = background?.polarity ?? overall
         if polarity == "light" {
-            result.state = .estimated; result.suggestedFinish = .reverseHolo; result.markerPolarity = "light"
+            result.uncertaintyReason = nil; result.state = .estimated; result.suggestedFinish = .reverseHolo; result.markerPolarity = "light"
             result.evidence = ["Light set-code box with dark lettering suggests a reverse-holo printing."]
         } else if polarity == "dark" {
             result.markerPolarity = "dark"
             let regular = card.availableFinishes.filter { $0 == .normal || $0 == .holo }
             if Set(regular).count == 1, let finish = regular.first {
-                result.state = .estimated; result.suggestedFinish = finish
+                result.uncertaintyReason = nil; result.state = .estimated; result.suggestedFinish = finish
                 result.evidence = ["Dark set-code box suggests the regular printing.", "The catalogue lists one regular finish for this printing."]
+            } else if regular.isEmpty {
+                result.evidence = ["Dark set-code box suggests the regular printing, but the catalogue does not list its finish."]
+                result.uncertaintyReason = .missingRegularFinish
             } else {
                 result.evidence = ["Dark set-code box suggests the regular printing, but it does not distinguish holo from non-holo."]
+                result.uncertaintyReason = .multipleRegularFinishes
             }
         }
         if background?.polarity != nil {

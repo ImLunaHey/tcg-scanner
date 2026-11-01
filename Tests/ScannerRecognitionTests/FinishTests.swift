@@ -16,10 +16,14 @@ func inspectSavedFinishEvidenceWithoutChangingReviews() throws {
             let known: [Int: CardFinish] = record.batchNumber == 9 ? [4: .reverseHolo, 18: .normal] :
                 record.batchNumber == 13 ? [2: .normal, 4: .normal, 6: .normal, 8: .normal, 10: .holo, 18: .holo] :
                 record.batchNumber == 14 ? Dictionary(uniqueKeysWithValues: (1...15).map { ($0 * 2, CardFinish.normal) }) :
-                record.batchNumber == 15 ? Dictionary(uniqueKeysWithValues: (1...14).map { ($0 * 2, CardFinish.normal) }) : [:]
+                record.batchNumber == 15 ? Dictionary(uniqueKeysWithValues: (1...14).map { ($0 * 2, CardFinish.normal) }) :
+                record.batchNumber == 16 ? Dictionary(uniqueKeysWithValues: (1...22).map { ($0 * 2 - 1, CardFinish.normal) }) : [:]
             if let expected = known[identity.request.sequence] {
                 // Preserve the calibrated detections and resolve all normal B-014 examples.
-                if record.batchNumber == 14 || record.batchNumber == 15 || record.batchNumber == 9 || identity.request.sequence != 6 {
+                if record.batchNumber == 16 && [19, 21, 23].contains(identity.request.sequence) {
+                    #expect(result.state == .uncertain && result.suggestedFinish == nil)
+                    #expect(result.uncertaintyReason == .multipleRegularFinishes)
+                } else if record.batchNumber == 14 || record.batchNumber == 15 || record.batchNumber == 9 || identity.request.sequence != 6 {
                     #expect(result.suggestedFinish == expected)
                 } else {
                     #expect(result.suggestedFinish == nil || result.suggestedFinish == expected)
@@ -41,6 +45,7 @@ private func finishCard(_ finishes: [CardFinish] = [.normal, .reverseHolo]) -> C
     #expect(FinishEstimator.decision(card: finishCard([.holo, .reverseHolo]), median: 0.2, dark: 0.7, light: 0.2).suggestedFinish == .holo)
     let ambiguous = FinishEstimator.decision(card: finishCard([.normal, .holo, .reverseHolo]), median: 0.2, dark: 0.7, light: 0.2)
     #expect(ambiguous.state == .uncertain && ambiguous.suggestedFinish == nil)
+    #expect(ambiguous.uncertaintyReason == .multipleRegularFinishes)
     // A blank patch or weak contrast cannot establish a printed marker.
     for (median, dark, light) in [(0.5, 0.3, 0.3), (0.9, 0.0, 1.0), (0.1, 1.0, 0.0)] {
         #expect(FinishEstimator.decision(card: finishCard(), median: median, dark: dark, light: light).suggestedFinish == nil)
@@ -99,4 +104,28 @@ private func finishCard(_ finishes: [CardFinish] = [.normal, .reverseHolo]) -> C
         #expect(FinishEstimator.decision(card: finishCard(), median: blank, dark: blank < 0.5 ? 1 : 0,
             light: blank > 0.5 ? 1 : 0, background: background).suggestedFinish == nil)
     }
+}
+
+@Test func tighterMarkerReadRequiresSameCodeAndContainedGeometry() {
+    let original = RecognizedLine(text: "ASCEN", confidence: 1, x: 0.07, y: 0.03, width: 0.095, height: 0.026)
+    let tighter = RecognizedLine(text: "ASC EN", confidence: 1, x: 0.10, y: 0.035, width: 0.057, height: 0.017)
+    #expect(FinishEstimator.isTighterRead(tighter, than: original))
+    var different = tighter; different.text = "JTG EN"
+    var outside = tighter; outside.x = 0.20
+    var clipped = tighter; clipped.width = 0.01
+    #expect(!FinishEstimator.isTighterRead(different, than: original))
+    #expect(!FinishEstimator.isTighterRead(outside, than: original))
+    #expect(!FinishEstimator.isTighterRead(clipped, than: original))
+    #expect(!FinishEstimator.isTighterRead(original, than: original))
+}
+
+@Test func finishUncertaintyReasonsPreserveLegacyDecodingAndConflicts() throws {
+    let legacy = Data(#"{"state":"uncertain","method":"v3","evidence":[],"limitations":[]}"#.utf8)
+    #expect(try Wire.decoder().decode(FinishEstimate.self, from: legacy).uncertaintyReason == nil)
+    let conflict = FinishEstimator.decision(card: finishCard(), median: 0.8, dark: 0.2, light: 0.7,
+        background: MarkerBackground(darkArea: 0.1, lightArea: 0))
+    #expect(conflict.uncertaintyReason == .conflictingContrast && conflict.suggestedFinish == nil)
+    let unclear = FinishEstimator.decision(card: finishCard(), median: 0.5, dark: 0.3, light: 0.3)
+    #expect(unclear.uncertaintyReason == .markerContrast)
+    #expect(try Wire.decoder().decode(FinishEstimate.self, from: Wire.encoder().encode(conflict)) == conflict)
 }
