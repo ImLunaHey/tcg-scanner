@@ -85,3 +85,38 @@ The user subsequently noticed slight residual tilt on C-001. Upright orientation
 verification establishes quarter-turn direction, not sub-degree straightness;
 fine deskew was subsequently fixed and the batch refreshed from these saved
 originals (see [fine-deskew validation](card-preparation.md#fine-deskew--b-023-2026-11-01)).
+
+## 600 DPI capture — B-024, 2026-11-01
+
+Captured 16 user-supplied holo cards as 32 duplex PNG originals at confirmed
+600 DPI, cropping value 4 (Overscan), driver-selected black backing and disabled
+blank-page skipping. Multifeed settings were unchanged. The user confirmed all
+16 reached the output tray without feeding problems or visible new damage.
+
+The driver produced 5312 × 7768 pixel frames (over 41 megapixels), exceeding the
+previous 40-megapixel processing input cap. Increased only card preparation and
+editing input limits to 48 megapixels, retaining the 32 MiB encoded input bound,
+20,000-pixel axis bound and 40-megapixel rendered-output bound. Boundary analysis
+still uses a bounded thumbnail; cropped output retains the source resolution.
+The original scan was allowed to finish before installing the signed service.
+Reprocessing reads the preserved originals and does not feed hardware again.
+
+148 Swift tests passed with the actual first saved 600 DPI frame enabled, followed
+by a release build. The regression confirms full-resolution card preparation
+and rejection of an uncropped output above the existing output cap:
+
+```sh
+SCANNER_600DPI_FIXTURE=/Volumes/scans/B-024/C-001.png swift test --filter saved600DPIOverscanCanBePreparedWithoutReducingCardResolution
+```
+
+Runtime evidence stays ignored under `Diagnostics/600dpi-holos/`. Higher input
+resolution alone does not add a foil-pattern detector; finish estimates still
+use set-code polarity and catalogue alternatives.
+
+All 32 sides were subsequently cropped and verified upright, with identification
+source hashes pointing at their prepared copies. Original checksums were verified
+unchanged and the manifest matches the persisted records. Current results are
+11 holo estimates, three normal-or-holo ambiguities (Lillie's Ribombee, Relicanth,
+Mismagius), and two unresolved printing identities (Kilowattrel, Zarude). These
+results do not establish a measured improvement over 300 DPI or a validated foil
+classifier. No finish overrides or Store transfers were performed.
