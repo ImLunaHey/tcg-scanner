@@ -13,18 +13,31 @@ extension ScannerCoordinator {
     public func sendToStore(_ id: UUID) async throws -> StoreTransferStatus {
         guard !stopping, !paused else { throw ScannerError("busy", "Service is stopping or paused.") }
         guard let client = storeClient else { throw ScannerError("storeNotConfigured", "Store integration is not configured on the scanner service.") }
-        if let data = try database.storeTransfer(id) {
-            let saved = try Wire.decoder().decode(StoreTransferLedger.self, from: data)
-            if [.sent, .sending].contains(saved.status.state) { return saved.status }
+        let saved = try database.storeTransfer(id).map { try Wire.decoder().decode(StoreTransferLedger.self, from: $0) }
+        if let saved, saved.status.state == .sending { return saved.status }
+        if let saved {
+            guard saved.origin == client.origin, saved.submission.scannerInstanceId == client.scannerInstanceID else {
+                throw ScannerError("storeConflict", "This transfer belongs to a different Store configuration. Restore the original connection before retrying.")
+            }
         }
         guard !preparingStoreTransfer, storeTransferTask == nil else { throw ScannerError("busy", "Another batch is being sent to Store.") }
         preparingStoreTransfer = true; defer { preparingStoreTransfer = false }
         var ledger: StoreTransferLedger
-        if let data = try database.storeTransfer(id) { ledger = try Wire.decoder().decode(StoreTransferLedger.self, from: data) }
+        if let saved, saved.status.state != .sent { ledger = saved }
         else {
             let record = try await scanStatus(id)
             let valuation = try await batchValuation(id)
             ledger = try StoreTransferLedger.make(record: record, store: client, valuation: valuation)
+            if let saved {
+                guard ledger.submission.batchNumber == saved.submission.batchNumber,
+                      ledger.cards.map(\.number) == saved.cards.map(\.number) else {
+                    throw ScannerError("storeConflict", "Batch/card identities changed since the previous transfer.")
+                }
+                ledger.status.reviewURL = saved.status.reviewURL
+                ledger.baselines = saved.baselines ?? zip(saved.submission.cards, saved.cards).map {
+                    StoreSyncBaseline(input: $0.0, card: $0.1)
+                }
+            }
         }
         // Upgrade only a frozen local transfer snapshot, never Store reviewer data.
         // Older persisted receipts remain readable; all new requests use the current contract.
@@ -40,7 +53,7 @@ extension ScannerCoordinator {
             throw ScannerError("storeConflict", "This transfer belongs to a different Store configuration. Restore the original connection before retrying.")
         }
         guard !stopping, !paused else { throw ScannerError("busy", "Service paused while preparing the transfer.") }
-        ledger.status.state = .sending; ledger.status.sentCards = 0; ledger.status.error = nil
+        ledger.status.state = .sending; ledger.status.sentCards = 0; ledger.status.preservedCards = []; ledger.status.error = nil
         try saveStoreLedger(&ledger)
         let snapshot = ledger
         storeTransferTask = Task { await transferToStore(snapshot, client: client) }
@@ -68,13 +81,26 @@ extension ScannerCoordinator {
             for card in ledger.cards {
                 try Task.checkCancellation()
                 let label = "C-" + BatchNaming.number(card.number)
-                guard let remote = imported.cards.first(where: { $0.cardNumber == label }) else { throw ScannerError("storeResponse", "Store omitted a staged card.") }
-                if Self.photosMatch(remote, card: card) {
-                    // A retry after a lost response or approval preserves Store changes.
-                } else {
-                    guard remote.front == nil, remote.back == nil, remote.status == "pending" else {
-                        throw ScannerError("storeConflict", "\(label) already has different photos or has been reviewed in Store. Existing review data was preserved.")
+                guard var remote = imported.cards.first(where: { $0.cardNumber == label }),
+                      let input = ledger.submission.cards.first(where: { $0.cardNumber == label }) else {
+                    throw ScannerError("storeResponse", "Store omitted a staged card.")
+                }
+                let baseline = ledger.baselines?.first { $0.card.number == card.number }
+                guard Self.canSync(remote, input: input, card: card, baseline: baseline) else {
+                    ledger.status.preservedCards?.append(label)
+                    try saveStoreLedger(&ledger)
+                    continue
+                }
+                if !Self.metadataMatches(remote, input: input) {
+                    let updated = try await client.update(card: remote, input: input)
+                    guard updated.id == remote.id, updated.scanBatchId == remote.scanBatchId,
+                          updated.cardNumber == label, updated.status == "pending",
+                          Self.metadataMatches(updated, input: input) else {
+                        throw ScannerError("storeResponse", "Store did not confirm the updated card metadata.")
                     }
+                    remote = updated
+                }
+                if !Self.photosMatch(remote, card: card) {
                     let record = ledger.snapshot, root = storageRoot, validate = validateStorage
                     let read = Task.detached(priority: .utility) {
                         try Task.checkCancellation(); try validate()
@@ -96,6 +122,9 @@ extension ScannerCoordinator {
                         throw ScannerError("storeResponse", "Store did not confirm the expected paired photo checksums.")
                     }
                 }
+                if ledger.baselines == nil { ledger.baselines = [] }
+                ledger.baselines?.removeAll { $0.card.number == card.number }
+                ledger.baselines?.append(StoreSyncBaseline(input: input, card: card))
                 ledger.status.sentCards += 1; try saveStoreLedger(&ledger)
             }
             ledger.status.state = .sent; try saveStoreLedger(&ledger)

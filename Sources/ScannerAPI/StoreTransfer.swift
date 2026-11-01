@@ -8,6 +8,7 @@ public struct StoreTransferStatus: Codable, Sendable {
     public var state: State = .notSent
     public var totalCards = 0
     public var sentCards = 0
+    public var preservedCards: [String]? = nil
     public var reviewURL: String?
     public var error: ScannerError?
     public var updatedAt = Date()

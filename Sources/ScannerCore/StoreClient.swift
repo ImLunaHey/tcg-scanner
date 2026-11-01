@@ -39,6 +39,18 @@ public struct StoreClient: StoreStaging {
     public func importBatch(_ value: StoreImport) async throws -> StoreImportReply {
         try await request("/api/v1/admin/scan-batches", body: Wire.encoder().encode(value), contentType: "application/json")
     }
+    public func update(card: StoreCardReply, input: StoreCardInput) async throws -> StoreCardReply {
+        let body = JSONValue.object([
+            "revision": .number(Double(card.revision)), "status": .string("pending"),
+            "notes": .string(""), "confirmed": .null, "review": try .wrapping(input.review),
+            "game": input.game.map(JSONValue.string) ?? .null,
+            "language": input.language.map(JSONValue.string) ?? .null,
+            "gameSource": input.gameSource.map(JSONValue.string) ?? .null,
+            "languageSource": input.languageSource.map(JSONValue.string) ?? .null,
+        ])
+        return try await request("/api/v1/admin/scan-cards/\(card.id.uuidString)", body: Wire.encoder().encode(body),
+                                 contentType: "application/json", method: "PUT")
+    }
     public func upload(card: StoreCardReply, front: Data, back: Data) async throws -> StoreCardReply {
         guard !front.isEmpty, !back.isEmpty, front.count <= 10 * 1024 * 1024, back.count <= 10 * 1024 * 1024 else {
             throw ScannerError("resourceLimit", "Store accepts at most 10 MiB per prepared PNG.")
@@ -54,9 +66,9 @@ public struct StoreClient: StoreStaging {
         text("--\(boundary)--\r\n")
         return try await request("/api/v1/admin/scan-cards/\(card.id.uuidString)/photos", body: data, contentType: "multipart/form-data; boundary=\(boundary)")
     }
-    private func request<T: Decodable>(_ path: String, body: Data, contentType: String) async throws -> T {
+    private func request<T: Decodable>(_ path: String, body: Data, contentType: String, method: String = "POST") async throws -> T {
         var request = URLRequest(url: URL(string: origin + path)!)
-        request.httpMethod = "POST"; request.httpBody = body
+        request.httpMethod = method; request.httpBody = body
         request.setValue("Bearer " + token, forHTTPHeaderField: "Authorization")
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")

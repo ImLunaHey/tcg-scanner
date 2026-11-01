@@ -7,7 +7,7 @@ public struct StoreImport: Codable, Sendable {
     public var batchNumber: String
     public var cards: [StoreCardInput]
 }
-public struct StoreCardInput: Codable, Sendable {
+public struct StoreCardInput: Codable, Sendable, Equatable {
     public var cardNumber: String
     public var review: StoreReview
     public var game: String? = nil
@@ -22,14 +22,16 @@ public struct StoreCardInput: Codable, Sendable {
         try values.encode(gameSource, forKey: .gameSource); try values.encode(languageSource, forKey: .languageSource)
     }
 }
-public struct StoreReview: Codable, Sendable {
-    public struct Suggestion: Codable, Sendable {
+public struct StoreReview: Codable, Sendable, Equatable {
+    public struct Suggestion: Codable, Sendable, Equatable {
         public var provider: String? = nil
         public var externalId: String? = nil
         public var name: String
-        public var setName: String
-        public var collectorNumber: String
-        public var language: String
+        public var setName: String?
+        public var collectorNumber: String?
+        public var language: String?
+        public var catalogueId: String? = nil
+        public var confidence: Int? = nil
     }
     public var recognitionSuggestions: [Suggestion]
     public var finishEstimate: String?
@@ -57,6 +59,13 @@ public struct StoreCardReply: Codable, Sendable {
     public var status: String
     public var front: StorePhoto?
     public var back: StorePhoto?
+    public var review: StoreReview? = nil
+    public var confirmed: JSONValue? = nil
+    public var notes: String? = nil
+    public var game: String? = nil
+    public var language: String? = nil
+    public var gameSource: String? = nil
+    public var languageSource: String? = nil
 }
 public struct StoreImportReply: Codable, Sendable {
     public var batch: StoreBatchReply
@@ -67,6 +76,7 @@ public protocol StoreStaging: Sendable {
     var origin: String { get }
     var scannerInstanceID: String { get }
     func importBatch(_ value: StoreImport) async throws -> StoreImportReply
+    func update(card: StoreCardReply, input: StoreCardInput) async throws -> StoreCardReply
     func upload(card: StoreCardReply, front: Data, back: Data) async throws -> StoreCardReply
 }
 
@@ -81,4 +91,12 @@ struct StoreTransferLedger: Codable, Sendable {
     var snapshot: ScanRecord
     var submission: StoreImport
     var cards: [StorePlannedCard]
+    var baselines: [StoreSyncBaseline]? = nil
+}
+
+/// Last scanner-owned values acknowledged per card. Kept across partial retries
+/// and preserved Store edits; never used to overwrite a different remote value.
+struct StoreSyncBaseline: Codable, Sendable {
+    var input: StoreCardInput
+    var card: StorePlannedCard
 }
