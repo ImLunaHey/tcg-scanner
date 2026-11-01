@@ -12,6 +12,16 @@ with a readable collector number, a supported modern set, a number within the
 ordinary set count, and a listed reverse-holo variant. Energy, older/promotional
 layouts and unresolved identities continue to abstain when outside that scope.
 
+A separate `modern-ex-catalogue-v1` branch supports exact Scarlet & Violet
+Pokémon ex printings when the catalogue lists only holo. It requires one candidate,
+matching collector-number evidence and printing ID, a numeric SV expansion,
+positive collector number/set total, and the literal ` ex` name suffix. Collector
+numbers above the ordinary total are allowed here. This is catalogue inference;
+it records no measured marker, border or reflectivity evidence. Other expansions,
+promos and mixed/missing finish variants do not qualify. Category is not a second
+identity gate: recognition already uses the English Pokémon catalogue, exact set
+namespace and printing identity. See [scope research](finish-catalogue-scope.md).
+
 - A clear light set-code box keeps its reverse-holo estimate independently of
   border texture. Missing texture does not contradict reverse holo.
 - A dark box indicates a regular printing. For a prepared, upright Pokémon card,

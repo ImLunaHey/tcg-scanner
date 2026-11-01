@@ -73,6 +73,10 @@ func combinedFinishSavedBatchesPreserveUncertaintyAndMatchPhysicalChecks() throw
             fronts += 1
             rows.append(Row(batch: batch, sequence: identity.request.sequence,
                             name: evidence.candidates.map(\.name).joined(separator: ", "), result: result))
+            if evidence.candidates.count == 1, evidence.candidates.first?.id == "sv09-177" {
+                #expect(result.suggestedFinish == .holo && result.method == "modern-ex-catalogue-v1")
+                #expect(result.markerPolarity == nil && result.borderEvidence == nil)
+            }
             if batch == 26 {
                 if ordinal == 10 {
                     #expect(result.state == .unsupported && result.suggestedFinish == nil)

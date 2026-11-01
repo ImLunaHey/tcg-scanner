@@ -3,7 +3,7 @@ import Foundation
 import ImageIO
 import ScannerAPI
 
-/// Local printed-variant inference for ordinary modern English cards. It does
+/// Local printed-variant inference for supported modern English cards. It does
 /// not measure reflectivity or confirm finish, and never writes a reviewed field.
 public enum FinishEstimator {
     public static func estimate(_ data: Data, evidence: RecognitionEvidence, preparation: CardPreparation? = nil) -> FinishEstimate {
@@ -67,6 +67,13 @@ public enum FinishEstimator {
               card.evidence.contains(where: { $0.hasPrefix("Collector number ") }) else {
             return FinishEstimate(state: .uncertain, evidence: ["A single printing with a readable collector number is required."], limitations: limitations, uncertaintyReason: .ambiguousIdentity)
         }
+        if let catalogue = modernExCatalogueEstimate(card) { return catalogue }
+        if card.setID == "sve" {
+            return FinishEstimate(state: .unsupported, candidateID: card.id,
+                evidence: ["Basic Energy foil variants need validation. A dark SVE set-code box does not yet establish non-holo."],
+                limitations: ["The catalogue groups several special Energy foil treatments under broad variant flags. A missing holo flag does not prove a non-holo card.",
+                    "Compare known normal and foil examples of the same SVE collector number before enabling automatic Energy finish estimates."])
+        }
         guard card.setID.range(of: #"^(sv|me)[0-9]{2}(\.[0-9][a-z]?)?$"#, options: .regularExpression) != nil,
               let total = card.officialSetCount, let number = Int(card.localID), number <= total,
               card.availableFinishes.contains(.reverseHolo) else {
@@ -107,6 +114,27 @@ public enum FinishEstimator {
                 }
             }
         }
+        return result
+    }
+
+    /// Modern English Pokémon ex have documented foil printings. Infer only when
+    /// the exact catalogue printing lists holo alone; never generalise to older
+    /// ex, promos, or mixed variants. Category adds no identity evidence here:
+    /// recognition already uses the Pokémon catalogue and the exact SV namespace.
+    private static func modernExCatalogueEstimate(_ card: CardCandidate) -> FinishEstimate? {
+        guard card.setID.range(of: #"^sv[0-9]{2}(\.[0-9][a-z]?)?$"#, options: .regularExpression) != nil,
+              card.id == card.setID + "-" + card.localID,
+              card.localID.range(of: #"^[0-9]+$"#, options: .regularExpression) != nil,
+              let number = Int(card.localID), number > 0,
+              let total = card.officialSetCount, total > 0,
+              card.evidence.contains("Collector number " + card.localID),
+              card.name.hasSuffix(" ex"), Set(card.availableFinishes) == [.holo] else { return nil }
+        var result = FinishEstimate(state: .estimated, suggestedFinish: .holo, candidateID: card.id,
+            evidence: ["The exact Scarlet & Violet Pokémon ex printing \(card.id) lists only holo in the catalogue.",
+                "Modern Pokémon ex foil printing rules support this catalogue-based estimate, including collector numbers above the ordinary set total."],
+            limitations: ["Catalogue-based inference, not measured reflectivity. Incorrect identification, missing catalogue variants or special printings can invalidate it.",
+                "Inspect the physical card before confirming finish; this does not confirm authenticity or a particular foil texture."])
+        result.method = "modern-ex-catalogue-v1"
         return result
     }
 
