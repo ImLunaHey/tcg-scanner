@@ -66,6 +66,37 @@ private func cache(_ root: URL, _ fixture: ReferenceFixture, maximumBytes: Int =
     let after = await fixture.calls; #expect(after.0 == 1 && after.1 == 1)
 }
 
+private actor GatedReference {
+    private var gate: CheckedContinuation<Void, Never>?
+    private(set) var downloads = 0
+    let data: Data
+    init(data: Data) { self.data = data }
+    func fetch(_ url: URL) async throws -> TCGdexReferenceCache.Download {
+        downloads += 1
+        await withCheckedContinuation { gate = $0 }
+        try Task.checkCancellation()
+        return .init(data: data, responseURL: url)
+    }
+    func release() { gate?.resume(); gate = nil }
+}
+
+@Test func cancellingOneReferenceWaiterDoesNotCancelAnotherClient() async throws {
+    let root = referenceRoot(); defer { try? FileManager.default.removeItem(at: root) }
+    let fixture = GatedReference(data: try referencePNG())
+    let provider = TCGdexReferenceCache(root: root,
+        metadata: { _ in "https://assets.tcgdex.net/en/sv/sv01/104" },
+        download: { try await fixture.fetch($0) })
+    let cancelled = Task { try await provider.reference(cardID: "sv01-104") }
+    while await fixture.downloads == 0 { await Task.yield() }
+    let other = Task { try await provider.reference(cardID: "sv01-104") }
+    cancelled.cancel()
+    await fixture.release()
+    do { _ = try await cancelled.value; Issue.record("Cancelled caller must receive cancellation") }
+    catch { #expect(error is CancellationError) }
+    #expect(try await other.value != nil)
+    #expect(await fixture.downloads == 1)
+}
+
 @Test func referenceCacheRejectsUnsafeAssetURLsAndIdentifiers() async throws {
     for base in [
         "http://assets.tcgdex.net/en/sv/sv01/104", "https://evil.example/en/sv/sv01/104",

@@ -69,12 +69,18 @@ public actor TCGdexReferenceCache: CardReferenceProviding {
         try Task.checkCancellation()
         guard Self.validID(cardID) else { throw ScannerError("reference", "Invalid reference card identifier.") }
         if let existing = pending[cardID] {
-            return try await withTaskCancellationHandler { try await existing.value } onCancel: { existing.cancel() }
+            let value = try await existing.value
+            try Task.checkCancellation()
+            return value
         }
         let task = Task { try await self.load(cardID) }
         pending[cardID] = task
         defer { pending[cardID] = nil }
-        return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+        // The bounded fetch belongs to the cache, not any individual waiter.
+        // A cancelled client must not cancel another client's shared download.
+        let value = try await task.value
+        try Task.checkCancellation()
+        return value
     }
 
     private func load(_ cardID: String) async throws -> CardReferenceImage? {
