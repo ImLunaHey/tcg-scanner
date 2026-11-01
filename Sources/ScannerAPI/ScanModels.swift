@@ -14,17 +14,22 @@ public struct ScanRequest: Codable, Sendable, Equatable {
     public var useDeviceSettings: Bool?
     public var prepareCards: Bool?
     public var background: ScanBackground?
+    public var overscan: Bool?
     public var dpi: Int
     public var duplex: Bool
     public var format: OriginalFormat
     public init(requestID: UUID = UUID(), deviceID: String? = nil, outputDirectory: String? = nil,
-                dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .png, profileID: UUID? = nil, useDeviceSettings: Bool? = nil, prepareCards: Bool? = nil, background: ScanBackground? = nil) {
+                dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .png, profileID: UUID? = nil, useDeviceSettings: Bool? = nil, prepareCards: Bool? = nil, background: ScanBackground? = nil, overscan: Bool? = nil) {
         self.requestID = requestID; self.deviceID = deviceID; self.outputDirectory = outputDirectory
         self.dpi = dpi; self.duplex = duplex; self.format = format; self.profileID = profileID; self.useDeviceSettings = useDeviceSettings
         self.prepareCards = prepareCards
         self.background = background
+        self.overscan = overscan
     }
     public func validate() throws {
+        guard overscan != true || (background == nil && prepareCards != true) else {
+            throw ScannerError("invalidSettings", "Overscan is a separate driver cropping mode with unverified backing colour; omit background and disable automatic card preparation for this diagnostic.")
+        }
         guard !(profileID != nil && useDeviceSettings == true) else { throw ScannerError("invalidSettings", "Choose either a profile or device defaults.") }
         guard (150...600).contains(dpi) else { throw ScannerError("invalidSettings", "DPI must be between 150 and 600 and supported by the scanner.") }
         if let deviceID, deviceID.isEmpty || deviceID.utf8.count > 512 {

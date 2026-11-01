@@ -31,7 +31,7 @@ final class ScanConfiguration {
         try setFeature("blank_page_skip", value: 0, on: feeder)
         // Driver-defined uncropped modes: 0 = black backing, 1 = white backing.
         let background = request.background ?? .black
-        let cropping = background == .white ? 1 : 0
+        let cropping = request.overscan == true ? 4 : (background == .white ? 1 : 0)
         try setFeature("cropping", value: cropping, on: feeder)
         feeder.measurementUnit = ICScannerMeasurementUnit(rawValue: 0)!
         feeder.documentType = ICScannerDocumentType(rawValue: 1)!
@@ -62,7 +62,8 @@ final class ScanConfiguration {
                 "pixelMode": .string("RGB"), "bitsPerChannel": .number(8), "format": .string(request.format.rawValue),
                 "scanAreaInches": .array([.number(0), .number(0), .number(size.width), .number(size.height)]),
                 "blankPageSkip": .number(0), "cropping": .number(Double(cropping)),
-                "background": .string(background.rawValue), "multifeed": .string("unchanged")]
+                "background": .string(request.overscan == true ? "driverDetermined" : background.rawValue),
+                "overscan": .bool(request.overscan == true), "multifeed": .string("unchanged")]
     }
     private func setFeature(_ name: String, value: Int, on unit: ICScannerFunctionalUnit) throws {
         guard let f = unit.vendorFeatures?.first(where: { $0.internalName == name }) as? ICScannerFeatureEnumeration,

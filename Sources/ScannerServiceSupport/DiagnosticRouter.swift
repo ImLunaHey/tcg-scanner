@@ -80,7 +80,7 @@ private extension DiagnosticRouter {
         let record: ScanRecord
         switch request.method {
         case "v1.scan.start", "v1.jobs.create":
-            let allowed: Set<String> = ["requestID", "deviceID", "outputDirectory", "dpi", "duplex", "format", "profileID", "useDeviceSettings", "prepareCards", "background"]
+            let allowed: Set<String> = ["requestID", "deviceID", "outputDirectory", "dpi", "duplex", "format", "profileID", "useDeviceSettings", "prepareCards", "background", "overscan"]
             guard params.keys.allSatisfy(allowed.contains) else { throw RPCFailure(code: -32602, message: "Unknown scan parameter.") }
             let options: ScanRequest
             do { options = try JSONValue.object(params).decode(ScanRequest.self) }

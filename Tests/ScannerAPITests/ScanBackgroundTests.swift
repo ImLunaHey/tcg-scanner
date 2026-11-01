@@ -37,3 +37,12 @@ private actor BackgroundBackend: ScannerBackend {
     await #expect(throws: ScannerError.self) { try await coordinator.startScan(scan) }
     await coordinator.shutdownScans()
 }
+
+@Test func overscanIsExplicitAndDoesNotPromiseAnUnverifiedBackground() throws {
+    try ScanRequest(overscan: true).validate()
+    #expect(throws: ScannerError.self) { try ScanRequest(background: .white, overscan: true).validate() }
+    #expect(throws: ScannerError.self) { try ScanRequest(prepareCards: true, overscan: true).validate() }
+    let data = try Wire.encoder().encode(ScanRequest(overscan: true))
+    #expect(try Wire.decoder().decode(ScanRequest.self, from: data).overscan == true)
+    #expect(try Wire.decoder().decode(ScanRequest.self, from: Wire.encoder().encode(ScanRequest())).overscan == nil)
+}
