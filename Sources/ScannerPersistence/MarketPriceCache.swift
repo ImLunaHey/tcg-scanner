@@ -4,13 +4,13 @@ import ScannerAPI
 
 extension ScannerDatabase {
     public func cachedPrices(_ cardID: String) throws -> CardMarketPrices? {
-        try priceCache("card:" + cardID, as: CardMarketPrices.self)
+        try priceCache("card-variants-v2:" + cardID, as: CardMarketPrices.self)
     }
     public func cachedSterlingRate() throws -> EuroSterlingRate? {
         try priceCache("eur-gbp", as: EuroSterlingRate.self)
     }
     public func cachePrices(_ value: CardMarketPrices) throws {
-        try savePriceCache("card:" + value.cardID, date: value.fetchedAt, value: value)
+        try savePriceCache("card-variants-v2:" + value.cardID, date: value.fetchedAt, value: value)
     }
     public func cacheSterlingRate(_ value: EuroSterlingRate) throws {
         try savePriceCache("eur-gbp", date: value.fetchedAt, value: value)

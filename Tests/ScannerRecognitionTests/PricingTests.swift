@@ -65,10 +65,11 @@ private func ready(_ service: ScannerCoordinator, id: UUID) async throws -> Batc
 @Test func pricingUsesVariantProductsAndNeverSubstitutesMissingQuotes() throws {
     let data = Data(#"{"id":"test-1","variants":{"normal":true,"holo":true,"reverse":true},"variants_detailed":[{"type":"normal","size":"standard","pricing":{"cardmarket":{"unit":"EUR","idProduct":1,"trend":0.03,"trend-holo":0.25}}},{"type":"holo","size":"standard","pricing":{"cardmarket":{"unit":"EUR","idProduct":2,"trend":1.25,"trend-holo":9}}},{"type":"reverse","size":"standard","pricing":{"cardmarket":{"unit":"EUR","idProduct":1,"trend":0.03,"trend-holo":0}}},{"type":"holo","size":"standard","stamp":["prerelease"],"pricing":{"cardmarket":{"unit":"EUR","trend":500}}}] }"#.utf8)
     let prices = try JSONDecoder().decode(PricingDetail.self, from: data).quotes()
-    #expect(prices.variants.count == 3)
+    #expect(prices.variants.count == 4)
     #expect(prices.variants[0].euros == Decimal(string: "0.03"))
     #expect(prices.variants[1].euros == Decimal(string: "1.25"))
     #expect(prices.variants[2].euros == nil)
+    #expect(prices.variants[3].stamps == ["prerelease"])
     let wrongCurrency = Data(#"{"id":"test-1","variants":{"normal":true},"pricing":{"cardmarket":{"unit":"USD","trend":5}}}"#.utf8)
     #expect(try JSONDecoder().decode(PricingDetail.self, from: wrongCurrency).quotes().variants[0].euros == nil)
 }

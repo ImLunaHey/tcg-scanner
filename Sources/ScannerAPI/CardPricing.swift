@@ -2,13 +2,18 @@ import Foundation
 
 /// Public catalogue quotes, separate from immutable capture/recognition metadata.
 public struct MarketVariantPrice: Codable, Sendable {
+    /// Scoped to CardMarketPrices.cardID; a variant ID is not globally unique.
+    public var variantID: String?
+    public var stamps: [String]
     public var finish: CardFinish
     public var pattern: String?
     public var productID: Int?
     public var euros: Decimal?
     public var updated: String?
-    public init(finish: CardFinish, pattern: String? = nil, productID: Int? = nil, euros: Decimal?, updated: String? = nil) {
+    public init(finish: CardFinish, pattern: String? = nil, productID: Int? = nil, euros: Decimal?, updated: String? = nil,
+                variantID: String? = nil, stamps: [String] = []) {
         self.finish = finish; self.pattern = pattern; self.productID = productID; self.euros = euros; self.updated = updated
+        self.variantID = variantID; self.stamps = stamps
     }
 }
 
@@ -35,6 +40,7 @@ public struct CardValuation: Codable, Sendable {
     public enum State: String, Codable, Sendable { case priced, range, pending, unavailable }
     public var number: Int
     public var cardID: String?
+    public var editionKey: String?
     public var state: State = .unavailable
     /// Integer GBP minor units. Rounded per physical card before summing the batch.
     public var lowPence: Int?
@@ -60,7 +66,7 @@ public struct BatchValuation: Codable, Sendable {
     public var highPence: Int?
     public var refreshing: Bool
     public var stale: Bool
-    public var warning = "Market guide for standard unstamped printings; not condition-adjusted. Excludes fees and postage."
+    public var warning = "Market guide for the matched catalogue printing; not condition-adjusted. Excludes fees and postage."
     public init(batchID: UUID, cards: [CardValuation], exchangeRate: EuroSterlingRate?, refreshing: Bool) {
         self.batchID = batchID; self.cards = cards; self.exchangeRate = exchangeRate; self.refreshing = refreshing
         totalCount = cards.count

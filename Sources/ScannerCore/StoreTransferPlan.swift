@@ -2,11 +2,22 @@ import Foundation
 import ScannerAPI
 
 extension StoreTransferLedger {
+    /// The current Store scan-staging contract has no printing-variant field.
+    /// Base identity or a reviewed finish cannot preserve a detected stamp there.
+    static func validateEditionSupport(record: ScanRecord) throws {
+        for identity in (record.cardIdentifications ?? []).sorted(by: { $0.request.sequence < $1.request.sequence }) {
+            guard identity.finishEstimate?.edition?.needsEditionHandling == true else { continue }
+            let number = record.request.duplex ? (identity.request.sequence + 1) / 2 : identity.request.sequence
+            throw ScannerError("storeNotReady", "C-\(BatchNaming.number(number)) has a detected or uncertain stamp. Store must support stamped-edition metadata before this card can be sent; its ordinary printing will not be substituted.")
+        }
+    }
+
     static func make(record: ScanRecord, store: any StoreStaging, valuation: BatchValuation?) throws -> Self {
         guard record.state == .completed, record.request.duplex, let batch = record.batchNumber,
               !record.images.isEmpty, record.images.count.isMultiple(of: 2), record.images.count <= 100 else {
             throw ScannerError("storeNotReady", "Send a completed, numbered duplex card batch with both sides of every card.")
         }
+        try validateEditionSupport(record: record)
         let images = record.images.sorted { $0.sequence < $1.sequence }
         guard images.map(\.sequence) == Array(1...images.count) else { throw ScannerError("storeNotReady", "Batch capture order is incomplete.") }
         var cards: [StorePlannedCard] = [], inputs: [StoreCardInput] = []
@@ -63,7 +74,11 @@ extension StoreTransferLedger {
                       item.finishEstimate?.candidateID == ScannerCoordinator.pricedCandidate(item)?.id else { return nil }
                 return item.finishEstimate?.suggestedFinish?.rawValue
             }
-            let quote = valuation?.cards.first { $0.number == number }
+            let currentCardID = identity.flatMap { ScannerCoordinator.pricedCandidate($0)?.id }
+            let quote = valuation?.cards.first {
+                $0.number == number && currentCardID != nil && $0.cardID == currentCardID &&
+                $0.editionKey == identity?.finishEstimate?.edition?.pricingKey
+            }
             let price = quote?.state == .priced && quote?.stale == false && quote?.lowPence == quote?.highPence ? quote?.lowPence : nil
             inputs.append(StoreCardInput(cardNumber: "C-" + BatchNaming.number(number), review: StoreReview(
                 recognitionSuggestions: suggestions, finishEstimate: finish, conditionEstimate: nil,

@@ -75,6 +75,7 @@ struct PricingDetail: Decodable {
         }
     }
     struct Variant: Decodable {
+        var variantId: String?
         var type: String
         var size: String?
         var foil: String?
@@ -90,7 +91,9 @@ struct PricingDetail: Decodable {
     func quotes() -> CardMarketPrices {
         let mapping: [String: CardFinish] = ["normal": .normal, "holo": .holo, "reverse": .reverseHolo]
         let details = (variants_detailed ?? []).filter {
-            $0.size == "standard" && ($0.stamp?.isEmpty ?? true) && $0.subtype == nil && mapping[$0.type] != nil
+            $0.size == "standard" && $0.subtype == nil && mapping[$0.type] != nil &&
+                ($0.variantId?.utf8.count ?? 0) <= 128 && ($0.stamp?.count ?? 0) <= 8 &&
+                $0.stamp?.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 80 }) != false
         }
         var quotes: [MarketVariantPrice] = []
         for variant in details {
@@ -99,12 +102,16 @@ struct PricingDetail: Decodable {
             // Its parallel foil series is the reverse printing. Never substitute series.
             var value = variant.type == "reverse" ? market?.reverseTrend : market?.trend
             if variant.type != "reverse", let product = market?.idProduct,
-               details.contains(where: { $0.type != "reverse" && $0.type != variant.type && $0.pricing?.cardmarket?.idProduct == product }) {
-                value = nil // The mapping cannot distinguish the two regular printings.
+               details.contains(where: {
+                   $0.type != "reverse" && $0.pricing?.cardmarket?.idProduct == product &&
+                       ($0.type != variant.type || Set($0.stamp ?? []) != Set(variant.stamp ?? []))
+               }) {
+                value = nil // One market product cannot distinguish different regular finishes or stamped editions.
             }
             if market?.unit != "EUR" || value.map({ $0 <= 0 || $0 > 1_000_000 || $0.isNaN }) != false { value = nil }
             quotes.append(MarketVariantPrice(finish: mapping[variant.type]!, pattern: variant.foil,
-                productID: market?.idProduct, euros: value, updated: market?.updated))
+                productID: market?.idProduct, euros: value, updated: market?.updated,
+                variantID: variant.variantId, stamps: variant.stamp ?? []))
         }
         // Older responses without detailed variants: root pricing is unambiguous only
         // when a single regular printing exists. Never fall back over missing detail quotes.

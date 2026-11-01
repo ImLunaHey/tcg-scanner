@@ -22,6 +22,9 @@ extension ScannerCoordinator {
         }
         guard !preparingStoreTransfer, storeTransferTask == nil else { throw ScannerError("busy", "Another batch is being sent to Store.") }
         preparingStoreTransfer = true; defer { preparingStoreTransfer = false }
+        // Failed retries reuse a frozen submission. Check the current image evidence
+        // first so a newly detected stamp cannot reuse an ordinary-printing payload.
+        try await validateCurrentStoreEdition(id)
         var ledger: StoreTransferLedger
         if let saved, saved.status.state != .sent { ledger = saved }
         else {
@@ -53,6 +56,7 @@ extension ScannerCoordinator {
             throw ScannerError("storeConflict", "This transfer belongs to a different Store configuration. Restore the original connection before retrying.")
         }
         guard !stopping, !paused else { throw ScannerError("busy", "Service paused while preparing the transfer.") }
+        try await validateCurrentStoreEdition(id)
         ledger.status.state = .sending; ledger.status.sentCards = 0; ledger.status.preservedCards = []; ledger.status.error = nil
         try saveStoreLedger(&ledger)
         let snapshot = ledger
@@ -63,11 +67,23 @@ extension ScannerCoordinator {
         ledger.status.updatedAt = Date()
         try database.saveStoreTransfer(ledger.status, record: Wire.encoder().encode(ledger))
     }
+    private func validateCurrentStoreEdition(_ id: UUID) async throws {
+        guard !preparingCardJobs.contains(id), !editingJobs.contains(id) else {
+            throw ScannerError("busy", "Wait for this batch's image and edition checks before sending it to Store.")
+        }
+        let record = try await scanStatus(id)
+        guard record.state == .completed, record.cardIdentifications?.contains(where: { $0.state == .processing }) != true else {
+            throw ScannerError("storeNotReady", "Wait for this batch's image and edition checks before sending it to Store.")
+        }
+        try StoreTransferLedger.validateEditionSupport(record: record)
+    }
     private func transferToStore(_ snapshot: StoreTransferLedger, client: any StoreStaging) async {
         var ledger = snapshot
         defer { storeTransferTask = nil }
         do {
             try Task.checkCancellation()
+            // The actor can accept a finish refresh between scheduling and this task.
+            try await validateCurrentStoreEdition(ledger.snapshot.id)
             let imported = try await client.importBatch(ledger.submission)
             guard imported.batch.scannerInstanceId == ledger.submission.scannerInstanceId,
                   imported.batch.sourceBatchId == ledger.snapshot.id, imported.batch.batchNumber == ledger.submission.batchNumber,
@@ -80,6 +96,7 @@ extension ScannerCoordinator {
             try saveStoreLedger(&ledger)
             for card in ledger.cards {
                 try Task.checkCancellation()
+                try await validateCurrentStoreEdition(ledger.snapshot.id)
                 let label = "C-" + BatchNaming.number(card.number)
                 guard var remote = imported.cards.first(where: { $0.cardNumber == label }),
                       let input = ledger.submission.cards.first(where: { $0.cardNumber == label }) else {
@@ -92,6 +109,7 @@ extension ScannerCoordinator {
                     continue
                 }
                 if !Self.metadataMatches(remote, input: input) {
+                    try await validateCurrentStoreEdition(ledger.snapshot.id)
                     let updated = try await client.update(card: remote, input: input)
                     guard updated.id == remote.id, updated.scanBatchId == remote.scanBatchId,
                           updated.cardNumber == label, updated.status == "pending",
@@ -116,6 +134,7 @@ extension ScannerCoordinator {
                     }
                     let (front, back) = try await withTaskCancellationHandler { try await read.value } onCancel: { read.cancel() }
                     try Task.checkCancellation()
+                    try await validateCurrentStoreEdition(ledger.snapshot.id)
                     let uploaded = try await client.upload(card: remote, front: front, back: back)
                     guard uploaded.id == remote.id, uploaded.scanBatchId == remote.scanBatchId, uploaded.cardNumber == label,
                           Self.photosMatch(uploaded, card: card) else {
