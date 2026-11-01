@@ -7,9 +7,13 @@ public protocol ScannerBackend: Sendable {
     func devices() async throws -> [Device]
     func inspect(deviceID: String) async throws -> Inspection
     func capture(deviceID: String, request: ScanRequest, store: ScanStorage) async throws -> CaptureOutcome
+    func observeButton(deviceID: String, seconds: Int) async throws
 }
 
 public extension ScannerBackend {
+    func observeButton(deviceID: String, seconds: Int) async throws {
+        throw ScannerError("unsupported", "Button observation is not supported by this backend.")
+    }
     func capture(deviceID: String, request: ScanRequest, store: ScanStorage) async throws -> CaptureOutcome {
         throw ScannerError("unsupported", "This backend does not implement scanning.")
     }
@@ -20,6 +24,7 @@ public extension ScannerBackend {
 public actor ScannerCoordinator {
     let backend: any ScannerBackend
     var inspecting = false
+    var buttonMonitorTask: Task<Void, Never>?
     var stopping = false
     var scans: [UUID: ScanStorage] = [:]
     var queue: [UUID] = []

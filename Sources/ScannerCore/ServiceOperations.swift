@@ -11,7 +11,7 @@ extension ScannerCoordinator {
     }
     public func deleteProfile(_ id: UUID) throws { try database.deleteProfile(id) }
     public func status() -> ServiceStatus {
-        ServiceStatus(activeJobID: activeScanID, queuedJobs: queue.count, paused: paused || requiresRestart, stopping: stopping,
+        ServiceStatus(activeJobID: activeScanID, queuedJobs: queue.count, paused: paused || requiresRestart || buttonMonitorTask != nil, stopping: stopping,
                       persistenceError: persistenceError, storageRoot: storageRoot.path)
     }
     public func events(after: Int64, limit: Int = 100, waitSeconds: Int = 0) async throws -> EventPage {

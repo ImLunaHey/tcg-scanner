@@ -38,6 +38,7 @@ extension ScannerCoordinator {
         return try database.job(request.requestID)
     }
     private func acceptingJobs() throws {
+        guard buttonMonitorTask == nil else { throw ScannerError("busy", "Button diagnostics are active; stop observation before scanning.") }
         guard !stopping && !paused && !requiresRestart && persistenceError == nil else { throw ScannerError("busy", "Service is stopping, paused or has a persistence error.") }
         guard queue.count < 100 else { throw ScannerError("resourceLimit", "Queue is full (100 waiting jobs).") }
     }
@@ -90,6 +91,7 @@ extension ScannerCoordinator {
     }
     public func shutdownScans() async {
         stopping = true
+        await stopButtonObservation()
         let identificationWorkers = Array(identificationTasks.values)
         for worker in identificationWorkers { worker.cancel() }
         await cancelOutstanding()
@@ -97,6 +99,7 @@ extension ScannerCoordinator {
     }
     public func prepareForSleep() async {
         paused = true
+        await stopButtonObservation()
         try? database.event("service.sleep", payload: .null)
         await cancelOutstanding()
     }

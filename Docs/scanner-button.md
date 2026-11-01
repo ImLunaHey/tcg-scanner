@@ -26,3 +26,27 @@ cannot work. Do not load cards or enable automatic jobs during this test.
 
 Status: diagnostic listener implemented; physical delivery and button-triggered
 batch creation are not yet hardware-verified.
+
+## Open-session diagnostic
+
+Empty-feeder and loaded-paper presses produced no browser-selection events and
+no new jobs. This does not establish why delivery failed. The discovery listener
+had no open scanner session. Ricoh's macOS driver guide, page 21, describes
+selecting the scanner in Image Capture and enabling Scan button monitor:
+https://origin.pfultd.com/downloads/IMAGE/macos/240/P2ZZ-0370-05ENZ0.pdf
+
+`v1.diagnostics.buttonMonitor` with `{"seconds":300}` starts an explicit bounded
+session observation in ScannerService (30–300 seconds). The response says
+`opening`; wait for `button-monitor: SESSION READY` in the service log before
+pressing the button. The ADF is selected and the monitor feature is logged without
+changing its value. No scan command, autolaunch setting or transport-safety change
+is issued. The documented open-session Objective-C button selector is logged if
+ImageCaptureCore delivers it; it is absent from the current protocol header, so
+its runtime delivery remains unverified. Autolaunch is only a discovery clue:
+Apple describes that property as launch-on-connect, not a button-target setting.
+
+While observation is active, service status reports paused and new scans and
+hardware inspections are rejected. `v1.diagnostics.stopButtonMonitor` stops it
+and waits for session closure. Timeout, sleep and service shutdown also close
+the session. Unconfirmed cleanup keeps the hardware restart guard in force.
+These methods are local diagnostics, not automatic discovery or remote HTTP routes.

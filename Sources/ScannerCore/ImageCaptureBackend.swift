@@ -62,6 +62,18 @@ public final class ImageCaptureBackend: NSObject, ScannerBackend, @preconcurrenc
         return outcome
     }
 
+    public func observeButton(deviceID: String, seconds: Int) async throws {
+        guard (30...300).contains(seconds) else { throw ScannerError("invalidParams", "Button observation must last 30–300 seconds.") }
+        guard !needsRestart, activeSession == nil, activeScan == nil else { throw ScannerError("busy", "Scanner session is unavailable.") }
+        guard let scanner = scanners.first(where: { Self.describe($0).id == deviceID }) else { throw ScannerError("deviceNotFound", "Scanner disconnected.") }
+        let session = ImageCaptureSession(scanner: scanner, device: Self.describe(scanner), log: log)
+        activeSession = session
+        defer { activeSession = nil }
+        let errors = await session.observeButton(seconds: seconds)
+        if errors.contains(where: { $0.kind == "cleanup" || $0.kind == "closeSession" }) { needsRestart = true }
+        if let error = errors.first(where: { $0.kind == "cleanup" || $0.kind == "closeSession" }) ?? errors.first { throw error }
+    }
+
     private var scanners: [ICScannerDevice] { (browser.devices ?? []).compactMap { $0 as? ICScannerDevice } }
     private static func describe(_ s: ICScannerDevice) -> Device {
         Device(id: s.uuidString ?? "usb:\(s.usbVendorID):\(s.usbProductID):\(s.usbLocationID)",
