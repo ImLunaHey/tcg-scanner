@@ -4,7 +4,7 @@ import ScannerAPI
 
 extension Images {
     struct Identify: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Start English card identification on an existing original. Never feeds hardware. Reuse --request-id for retries.")
+        static let configuration = CommandConfiguration(abstract: "Identify a saved card using its batch's English or Korean setting. Never feeds hardware. Reuse --request-id for retries.")
         @OptionGroup var options: ClientOptions
         @Argument var jobID: String
         @Argument var sequence: Int
@@ -14,7 +14,8 @@ extension Images {
             try IdentificationRequest(id: id, jobID: job, sequence: sequence).validate()
         }
         func run() throws {
-            _ = try options.perform("images.identify", params: .object(["jobID": .string(jobID), "sequence": .number(Double(sequence)), "id": .string(requestID), "language": .string("en")]))
+            let record = try options.request("jobs.get", params: .object(["id": .string(jobID)])).decode(ScanRecord.self)
+            _ = try options.perform("images.identify", params: .object(["jobID": .string(jobID), "sequence": .number(Double(sequence)), "id": .string(requestID), "language": .string(record.request.resolvedCardLanguage.rawValue)]))
         }
     }
     struct Identification: ParsableCommand {

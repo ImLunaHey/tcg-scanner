@@ -6,12 +6,14 @@ import { ApiError } from "./api";
 import { useWorkspace } from "./data";
 import {
   controls,
+  cardLanguages,
   uuid,
   type Batch,
   type DeviceStatus,
   type Format,
   type Inspection,
   type ScanSubmission,
+  type CardLanguage,
 } from "./models";
 import { ErrorNote, Field, Loading } from "./ui";
 
@@ -34,9 +36,14 @@ export function ScanPanel({ onStarted }: { onStarted: (id: string) => void }) {
   const [chosenDPI, setDPI] = useState(300);
   const [format, setFormat] = useState<Format>("png");
   const [duplex, setDuplex] = useState(false);
-  const [prepareCards, setPrepareCards] = useState(true);
-  const [ready, setReady] = useState(false);
   const [pending, setPending] = useState(loadPending);
+  const [prepareCards, setPrepareCards] = useState(
+    pending ? pending.prepareCards === true : true,
+  );
+  const [cardLanguage, setCardLanguage] = useState<CardLanguage>(
+    pending?.cardLanguage ?? "en",
+  );
+  const [ready, setReady] = useState(false);
   const sending = useRef(false);
   const hardwareBusy = !!status.data?.activeJobID || !!status.data?.queuedJobs;
   const inspection = useQuery({
@@ -130,7 +137,7 @@ export function ScanPanel({ onStarted }: { onStarted: (id: string) => void }) {
       deviceID,
       dpi,
       duplex: useDuplex,
-      ...(prepareCards ? { prepareCards: true } : {}),
+      ...(prepareCards ? { prepareCards: true, cardLanguage } : {}),
       format: selectedFormat,
       ...(profileID ? { profileID } : {}),
     };
@@ -244,6 +251,29 @@ export function ScanPanel({ onStarted }: { onStarted: (id: string) => void }) {
             onChange={(e) => setPrepareCards(e.target.checked)}
           />
         </label>
+        {prepareCards && (
+          <Field label="Card language">
+            <select
+              value={cardLanguage}
+              onChange={(event) => {
+                setCardLanguage(event.target.value as CardLanguage);
+                setReady(false);
+              }}
+            >
+              {Object.entries(cardLanguages).map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            {cardLanguage === "ko" && (
+              <small>
+                Korean catalogue coverage is limited. Finish and price estimates
+                are unavailable.
+              </small>
+            )}
+          </Field>
+        )}
         <p className="muted small">
           Current capture settings: A4 · RGB colour · 8-bit. Card feeding and
           front/back pairing still need validation.
@@ -329,12 +359,12 @@ export function ScanPanel({ onStarted }: { onStarted: (id: string) => void }) {
           }
           onClick={() => defaults.mutate()}
         >
-          Save as defaults
+          Save scanner settings
         </button>
       </div>
       {defaults.isSuccess && (
         <p className="success-text" role="status">
-          Defaults saved for future jobs.
+          DPI, sides and format saved. Card language is chosen per scan.
         </p>
       )}
     </section>

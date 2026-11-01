@@ -44,14 +44,18 @@ private actor LostReply {
     model.start()
     #expect(try await coordinator.jobs().jobs.isEmpty)
     model.paperReady = true
+    model.cardLanguage = .korean
     #expect(model.canScan)
     model.start()
     let deadline = ContinuousClock.now + .seconds(5)
     while model.busy && ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(5)) }
     let id = try #require(model.pending?.requestID)
+    #expect(model.pending?.cardLanguage == .korean)
     #expect(try await coordinator.jobs().jobs.count == 1)
     let relaunched = ScannerModel(client: client, defaults: defaults)
     #expect(relaunched.pending?.requestID == id)
+    #expect(relaunched.cardLanguage == .korean)
+    relaunched.cardLanguage = .english // A retry must still use the persisted Korean request.
     try await relaunched.refresh()
     relaunched.paperReady = true
     #expect(relaunched.canScan)
@@ -59,6 +63,7 @@ private actor LostReply {
     while relaunched.busy && ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(5)) }
     #expect(relaunched.pending == nil)
     #expect(relaunched.selectedJob == id)
+    #expect(relaunched.detail?.request.cardLanguage == .korean)
     #expect(try await coordinator.jobs().jobs.count == 1)
     await coordinator.shutdownScans()
 }

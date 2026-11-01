@@ -752,6 +752,7 @@ export function BatchDetail({ id }: { id: string }) {
         <IdentificationReview
           batchID={id}
           sequence={identifying}
+          cardLanguage={record.request.cardLanguage ?? "en"}
           close={() => setIdentifying(undefined)}
         />
       )}

@@ -86,7 +86,15 @@ struct DashboardView: View {
                         if model.pending != nil {
                             Label("A previous request has no confirmed reply. Retry uses its original ID and settings to prevent a duplicate scan.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
                         }
-                        Toggle("Auto-crop, orient and identify cards", isOn: $model.prepareCards)
+                        Toggle("Auto-crop, orient and identify cards", isOn: $model.prepareCards).disabled(model.pending != nil)
+                        if model.prepareCards {
+                            Picker("Card language", selection: $model.cardLanguage) {
+                                ForEach(CardLanguage.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                            }.disabled(model.pending != nil)
+                            if model.cardLanguage == .korean {
+                                Text("Korean catalogue coverage is limited. Finish and price estimates are not available for Korean cards.").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
                         Toggle("I have loaded suitable media and the feeder is ready", isOn: $model.paperReady)
                         Button(model.pending == nil ? "Start scan" : "Retry previous request", systemImage: "scanner.fill") { model.start() }
                             .buttonStyle(.borderedProminent).controlSize(.large).disabled(!model.canScan)

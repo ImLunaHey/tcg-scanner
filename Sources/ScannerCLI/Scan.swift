@@ -9,6 +9,7 @@ struct Scan: ParsableCommand {
     @Option(help: "Resolution supported by the driver (150–600 DPI).") var dpi = 300
     @Flag(help: "Scan both sides of each sheet.") var duplex = false
     @Flag(help: "Automatically crop black-background card images and orient readable fronts; preserve originals.") var prepareCards = false
+    @Option(help: "Physical card language when preparing cards: en (English) or ko (Korean).") var cardLanguage = "en"
     @Option(help: "Original format: tiff or png.") var format = "png"
     @Option(help: "Request UUID to reuse when retrying a start request, including after a restart.") var requestID: String?
     @Option(help: "Saved profile UUID or unique name; its DPI, duplex and format replace those scan options.") var profile: String?
@@ -17,6 +18,8 @@ struct Scan: ParsableCommand {
     func validate() throws {
         guard OriginalFormat(rawValue: format) != nil else { throw ValidationError("Format must be tiff or png.") }
         guard (150...600).contains(dpi) else { throw ValidationError("DPI must be between 150 and 600.") }
+        guard CardLanguage(rawValue: cardLanguage) != nil else { throw ValidationError("Card language must be en or ko.") }
+        guard prepareCards || cardLanguage == "en" else { throw ValidationError("Use --prepare-cards with --card-language.") }
         if profile != nil && useDeviceSettings { throw ValidationError("Choose either a profile or device defaults.") }
         if let requestID, UUID(uuidString: requestID) == nil { throw ValidationError("request-id must be a UUID.") }
     }
@@ -24,7 +27,7 @@ struct Scan: ParsableCommand {
         let directory = output.map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath).standardizedFileURL.path }
         let profileID = try profile.map { try options.request("profiles.get", params: .object(["id": .string($0)])).decode(ScanProfile.self).id }
         let request = ScanRequest(requestID: requestID.flatMap(UUID.init(uuidString:)) ?? UUID(), deviceID: options.device,
-                                  outputDirectory: directory, dpi: dpi, duplex: duplex, format: OriginalFormat(rawValue: format)!, profileID: profileID, useDeviceSettings: useDeviceSettings ? true : nil, prepareCards: prepareCards ? true : nil)
+                                  outputDirectory: directory, dpi: dpi, duplex: duplex, format: OriginalFormat(rawValue: format)!, profileID: profileID, useDeviceSettings: useDeviceSettings ? true : nil, prepareCards: prepareCards ? true : nil, cardLanguage: prepareCards ? CardLanguage(rawValue: cardLanguage) : nil)
         let result = try options.perform("scan.start", params: .wrapping(request))
         var record = try result.decode(ScanRecord.self)
         if !options.json { print("Scan \(record.id.uuidString)\nOutput: \(record.outputDirectory)") }

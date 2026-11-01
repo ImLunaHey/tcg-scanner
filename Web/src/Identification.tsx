@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import { useAuth } from "./auth";
 import { Modal } from "./Modal";
 import { ErrorNote, Field, Loading } from "./ui";
-import { captureLabel, uuid } from "./models";
+import { captureLabel, cardLanguages, uuid, type CardLanguage } from "./models";
 
 export type CardCandidate = {
   id: string;
@@ -220,10 +220,12 @@ export function finishDescription(value: Identification): string {
 export function IdentificationReview({
   batchID,
   sequence,
+  cardLanguage,
   close,
 }: {
   batchID: string;
   sequence: number;
+  cardLanguage: CardLanguage;
   close: () => void;
 }) {
   const { api } = useAuth();
@@ -259,7 +261,7 @@ export function IdentificationReview({
     mutationFn: () =>
       api.send<Identification>(path, "POST", {
         id: requestID.current,
-        language: "en",
+        language: cardLanguage,
       }),
     onSuccess: (value) => {
       update(value);
@@ -321,8 +323,8 @@ export function IdentificationReview({
           </button>
         </div>
         <p className="muted small">
-          English card fronts · text recognition runs on your Mac. TCGdex
-          supplies the catalogue; your scan is not uploaded.
+          {cardLanguages[cardLanguage]} card fronts · text recognition runs on
+          your Mac. TCGdex supplies the catalogue; your scan is not uploaded.
         </p>
         <ErrorNote
           error={

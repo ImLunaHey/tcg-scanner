@@ -1,5 +1,10 @@
 import type { Identification } from "./Identification";
 export type Format = "png" | "tiff";
+export type CardLanguage = "en" | "ko";
+export const cardLanguages: Record<CardLanguage, string> = {
+  en: "English",
+  ko: "Korean",
+};
 export type JobState =
   | "queued"
   | "preparing"
@@ -49,7 +54,7 @@ export type OriginalImage = {
 export type Batch = Omit<Job, "scannerID" | "progress"> & {
   device: Device;
   images: OriginalImage[];
-  request: Settings & { prepareCards?: boolean };
+  request: Settings & { prepareCards?: boolean; cardLanguage?: CardLanguage };
   warnings: string[];
   processedImages?: EditedImage[];
   cardIdentifications?: Identification[];
@@ -63,7 +68,11 @@ export type EditedImage = {
   };
   image: OriginalImage;
   createdAt: string;
-  cardPreparation?: { orientationVerified: boolean; warnings: string[]; sourceCrop?: { x: number; y: number; width: number; height: number } };
+  cardPreparation?: {
+    orientationVerified: boolean;
+    warnings: string[];
+    sourceCrop?: { x: number; y: number; width: number; height: number };
+  };
 };
 export type JobPage = { jobs: Job[]; nextOffset?: number };
 export type Setting = {
@@ -104,6 +113,7 @@ export type DeviceStatus = {
 };
 export type ScanSubmission = Settings & {
   prepareCards?: boolean;
+  cardLanguage?: CardLanguage;
   requestID: string;
   deviceID: string;
   profileID?: string;

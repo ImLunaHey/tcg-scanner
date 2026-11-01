@@ -14,6 +14,7 @@ struct CardIdentificationView: View {
     @State private var selected = ""
     @State private var finish = CardFinish.unverified
     @State private var condition = CardCondition.unassessed
+    @State private var language: CardLanguage = .english
     private var processing: Bool { result?.state == .processing }
     private var candidates: [CardCandidate] { result?.evidence?.candidates ?? [] }
     var body: some View {
@@ -22,7 +23,7 @@ struct CardIdentificationView: View {
                 Text("Identify C-\(BatchNaming.number(sequence))").font(.title2.bold())
                 Spacer(); Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
             }
-            Text("English card fronts. OCR runs on this Mac; TCGdex supplies catalogue data. Your image is not uploaded.").font(.callout).foregroundStyle(.secondary)
+            Text("\(language.displayName) card fronts. OCR runs on this Mac; TCGdex supplies catalogue data. Your image is not uploaded.").font(.callout).foregroundStyle(.secondary)
             if let error { Text(error).foregroundStyle(.red).textSelection(.enabled) }
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
@@ -83,6 +84,7 @@ struct CardIdentificationView: View {
             while !Task.isCancelled {
                 do {
                     let record = try await model.client.job(job)
+                    language = record.request.resolvedCardLanguage
                     accept(record.cardIdentifications?.first { $0.request.sequence == sequence })
                     loading = false
                     try await Task.sleep(for: .seconds(2))
@@ -102,7 +104,7 @@ struct CardIdentificationView: View {
         Task {
             defer { saving = false }
             do {
-                accept(try await model.client.identify(IdentificationRequest(id: requestID, jobID: job, sequence: sequence)))
+                accept(try await model.client.identify(IdentificationRequest(id: requestID, jobID: job, sequence: sequence, language: language.rawValue)))
                 requestID = UUID()
             } catch { self.error = error.localizedDescription }
         }
