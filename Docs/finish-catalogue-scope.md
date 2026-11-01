@@ -68,3 +68,35 @@ abstention. Catalogue-only estimates leave image-measurement fields absent and
 round-trip through the shared API. Optional saved-image integration checks every
 saved Salamence printing and existing known-normal/foil controls. It never starts
 the scanner or changes physical review fields.
+
+## Deployed validation — 2026-11-01
+
+- Full Swift suite: 161 tests passed with warnings treated as errors.
+- The optional saved-source check now includes all 217 eligible identities,
+  including preparations without a text-orientation basis. This broadens test
+  coverage only; the production border provenance gate remains unchanged.
+- Offline re-evaluation changed exactly eleven results: the five Salamence ex
+  captures now suggest holo, and six Fire Energy captures retain unsupported with
+  clearer evidence. The other 206 results were identical, including all earlier
+  normal controls and the combined B-026 outcomes.
+- Release build passed; ScannerService was installed with its existing persistent
+  certificate and passed strict signature verification. The service was idle,
+  the old process exited, and SQLite/binaries were backed up before replacement.
+- Eleven finish refreshes through the service matched those expected results.
+  B-008/C-002, B-009/C-006, B-010/C-008, B-011/C-004 and B-012/C-008 now show Holo.
+- Every non-estimate job field remained identical, including recognition evidence,
+  selected IDs, manual finish/condition values, timestamps and source references.
+  Unaffected jobs were entirely identical. No recognition was rejected or rerun.
+- All 144 originals in the six affected batches and the eleven analysis source
+  images matched their recorded sizes and SHA-256 values. All six SMB manifests
+  and authenticated HTTPS job responses matched the service identities.
+
+The library now has 149 normal, 44 holo, 11 reverse-holo estimates, seven uncertain
+results and six unsupported Energy captures: 204/217 finish coverage (94.0%).
+These are repeated saved captures, not 217 unique cards or an independent accuracy
+benchmark. No scan, image regeneration or Store transfer was initiated.
+
+Private runtime evidence is retained in `Diagnostics/catalogue-finish-20261101/`.
+The signed deployment backup is `catalogue-finish-20261101T204545Z` under the
+user's Scanner application-support backups. Future validation should use a fresh
+mixed batch with predictions frozen before the physical finish labels are supplied.

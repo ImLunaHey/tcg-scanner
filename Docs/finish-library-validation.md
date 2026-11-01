@@ -88,3 +88,12 @@ No detector or client code changed during this refresh. Per-record snapshots,
 updates, unresolved reasons and integrity results are retained in ignored
 `Diagnostics/finish-library-20261101T203242Z/`. See [combined detector](combined-finish.md)
 for implementation tests and decision rules.
+
+## Modern ex scope follow-up
+
+The subsequent [catalogue scope update](finish-catalogue-scope.md) resolves all
+five saved Salamence ex captures with an explicitly catalogue-based Holo estimate.
+Six Energy captures remain unsupported with a more precise explanation. The
+updated library has 204/217 finish coverage (94.0%): 149 normal, 44 holo,
+11 reverse-holo, seven uncertain and six unsupported. The original refresh above
+is retained as the historical v5 result.
