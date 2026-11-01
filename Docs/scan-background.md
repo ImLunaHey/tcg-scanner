@@ -51,3 +51,35 @@ with its existing physical-button configuration preserved. That button and
 ordinary requests without a background override still use black. Hardware-test
 evidence is ignored in `Diagnostics/white-background/`; the deployment backup is
 `~/Library/Application Support/Scanner/backups/white-background-20261101T131452Z`.
+
+## Full white pipeline and comparison — 2026-11-01
+
+Reprocessed B-022 through ScannerService, without feeding or modifying originals.
+All 38 captures received cropped/deskewed prepared PNGs and verified upright
+orientation. The local recognition pipeline returned the same 19 single card IDs,
+in the same paired order, as black-backed B-017. Both runs estimated normal finish
+for all 19 fronts. Backs correctly have no card-name match but are recognized as
+standard blue backs for condition checks. All 19 pairs in each batch are priced.
+
+The old condition checker incorrectly flagged two long white backing strips on
+each white-backed card: 38 candidate marks across 19 backs. Version
+`blue-back-visible-marks-v3` excludes neutral light regions connected to the image
+boundary before inspecting the blue border. Separate interior marks remain
+detectable in regression tests. Light wear that merges into white backing is not
+reliably distinguishable and is explicitly excluded from coverage, not declared
+absent. The checker still does not assign a selling grade.
+
+Rechecked both B-017 and B-022 using v3: 19 checked backs and zero candidate marks
+in each batch; front surfaces remain outside this blue-back check's scope. All
+original and prepared file sizes/hashes passed verification, and original image
+records match their pre-processing snapshots. All 38 white originals touch the
+leading scan boundary; their retained warnings require checking edge completeness.
+
+Validation: 129 Swift tests, 27 web tests and production builds passed. The explicit
+saved-white fixture exercised all 38 original scans without hardware access.
+Desktop and 390px browser checks confirmed 19 paired panels, finish estimates and
+priced cards in each batch. Browser validation uses the existing authenticated Tailscale site, and the
+comparison links open those same batches. No scan images are uploaded for analysis.
+Ignored evidence and the interactive sample comparison are in
+`Diagnostics/white-comparison/`. White is available per request; the normal scan
+and physical-button defaults remain black pending the user's comparison.
