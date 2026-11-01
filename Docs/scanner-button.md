@@ -24,8 +24,9 @@ service log (`~/Library/Logs/Scanner/service.jsonl`) and batch count before/afte
 A missing callback is a routing investigation result, not proof the physical button
 cannot work. Do not load cards or enable automatic jobs during this test.
 
-Status: diagnostic listener implemented; physical delivery and button-triggered
-batch creation are not yet hardware-verified.
+Status: physical Scan-button delivery to the headless service is hardware-verified
+with an open session (see result below). Button-triggered batch creation is not
+yet implemented or hardware-verified.
 
 ## Open-session diagnostic
 
@@ -42,7 +43,7 @@ pressing the button. The ADF is selected and the monitor feature is logged witho
 changing its value. No scan command, autolaunch setting or transport-safety change
 is issued. The documented open-session Objective-C button selector is logged if
 ImageCaptureCore delivers it; it is absent from the current protocol header, so
-its runtime delivery remains unverified. Autolaunch is only a discovery clue:
+its runtime delivery was subsequently verified on this installed driver. Autolaunch is only a discovery clue:
 Apple describes that property as launch-on-connect, not a button-target setting.
 
 While observation is active, service status reports paused and new scans and
@@ -50,3 +51,21 @@ hardware inspections are rejected. `v1.diagnostics.stopButtonMonitor` stops it
 and waits for session closure. Timeout, sleep and service shutdown also close
 the session. Unconfirmed cleanup keeps the hardware restart guard in force.
 These methods are local diagnostics, not automatic discovery or remote HTTP routes.
+
+## Physical result — 2026-11-01
+
+With one A4 sheet loaded and the session diagnostic ready, the user pressed
+Scan/Enter. At 10:12:07 UTC, ScannerService received `ICButtonTypeScan` through
+`device:didReceiveButtonPress:` from the fi-8170. The service issued no scan request
+and the job list remained unchanged. No GUI application was required by our
+listener. This verifies button-event delivery in the running per-user service;
+it does not yet verify automatic batch creation or a full button-driven scan.
+
+The diagnostic was explicitly stopped at 10:12:23 UTC. The driver confirmed
+session closure, and the service returned to unpaused/idle with no queued jobs.
+Evidence is ignored under `Diagnostics/scanner-button/`, particularly
+`session-after-press.jsonl` and `verified-button-event.json`.
+
+The production implementation still needs persistent idle-session ownership,
+exclusive handoff to the normal scan queue, configured button scan settings,
+debouncing/busy handling, reconnection and shutdown tests before enabling scans.
