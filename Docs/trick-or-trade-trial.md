@@ -32,11 +32,34 @@ set-code detector. Mimikyu has stable positive border evidence in all three
 measurement variants. The two normal estimates retain independent marker and
 catalogue evidence; absent texture itself does not establish normal.
 
-Physical finish labels are pending. These results do not establish accuracy.
+Physical finish labels were not available when these predictions were recorded.
 The sealed prediction SHA-256 is
 `2433687d08a22f0d9412736669e0870881e4261ca63d3ad2b516c75ac64d6cda`.
 Snapshots, predictions, physical feed confirmation and integrity results are
 retained in ignored `Diagnostics/trick-or-trade-20261101T205046Z/`.
+
+## Physical scoring
+
+The user subsequently confirmed that C-002 Mimikyu and C-006 Spectrier are the
+only holos. C-001 Greavard, C-003 Dusclops, C-004 Gastly and C-005 Drifblim are
+normal; no reverse holo was reported. These labels are stored separately in
+`physical-labels.json`; `physical-scoring.json` scores the unchanged sealed file.
+
+- Three cards received estimates, all correct: Greavard normal, Mimikyu holo and
+  Drifblim normal. No incorrect finish was issued.
+- Three cards remained unassessed: Dusclops, Gastly and Spectrier. This is 3/6
+  classification coverage (50%), with 3/3 correct among issued estimates.
+- One of the two physical holos was detected. Spectrier was unsupported, not
+  incorrectly called normal. There were no false holo calls among four normals.
+- With no physical reverse holos, this batch cannot evaluate reverse-holo detection.
+- The sample is too small for a general accuracy claim. The three abstentions
+  follow the detector's unsupported Sword & Shield scope, not a threshold that
+  was retuned after receiving the labels.
+
+The sealed prediction checksum remains unchanged. No scanner operation, detector
+change, catalogue-identity confirmation or manual finish/condition override was
+made while recording these physical test labels. The next coverage gap is older
+layouts and stamped-edition recognition, with their distinct catalogue variants.
 
 ## Edition limitation
 
