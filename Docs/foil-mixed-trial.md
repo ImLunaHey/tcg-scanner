@@ -68,12 +68,13 @@ suggestions, not reviewed identities.
 | C-018 | Dunsparce | No foil signal | normal |
 | C-019 | Larvesta | No foil signal | reverseHolo |
 
-Physical card-by-card comparison is pending. The candidate and threshold have
-not been adjusted using this batch. No new scan is needed for physical checking.
+Physical card-by-card comparison is recorded below. The candidate and threshold
+were not adjusted using this batch. No further scan was needed.
 
 The primary check found nine stable foil signals and ten cards with no signal,
 with no disagreements across variants. That matches the reported count of
-ordinary holos, but does not prove they are the correct nine cards. The existing
+ordinary holos; the count alone did not prove they were the correct nine cards.
+The later per-card physical check confirmed that they were. The existing
 set-code check suggested two reverse holos, conflicting with the original user
 total. Subsequent physical confirmation resolved that discrepancy in favour of
 the predictions: the original total was mistaken. No card was relabelled to
@@ -95,5 +96,44 @@ existing set-code estimates were therefore correct on these two examples.
 Neither produced the experimental border signal in any variant. This is direct
 evidence that the border check alone misses at least these reverse holos; it
 must not be described as a universal foil detector or used to establish non-holo
-from absence of a border signal. Ordinary-holo and remaining normal per-card
-labels are still awaiting confirmation; overall accuracy is not yet scored.
+from absence of a border signal.
+
+The user subsequently confirmed the complete breakdown from the physical cards:
+
+- C-001–C-009: holo (9).
+- C-010–C-011 and C-013–C-018: normal (8).
+- C-012 and C-019: reverse holo (2).
+
+## Scoring against the frozen predictions
+
+Prediction and measurement hashes were verified unchanged before scoring.
+`physical-labels.json` and `physical-scoring.json` in the diagnostic directory
+record the labels and per-card results separately from the original predictions.
+No thresholds or saved scanner finish values were changed.
+
+| Physical finish | Cards | Stable border signal | Existing definite correct finish | Existing unresolved finish |
+| --- | ---: | ---: | ---: | ---: |
+| Holo | 9 | 9 | 5 | 4 |
+| Normal | 8 | 0 | 7 | 1 |
+| Reverse holo | 2 | 0 | 2 | 0 |
+
+The border check detected 9/9 ordinary holos (100% on this batch) with zero
+false signals on eight normals. Both reverse holos lacked the signal. If treated
+as a detector of **any foil**, its recall is 9/11 (81.8%): nine true positives,
+two false negatives, zero false positives and eight true negatives. These binary
+counts treat absence as a negative solely for scoring; the application must not
+translate that absence into a confirmed normal label. No variant was unstable.
+
+The existing set-code/catalogue estimator issued fourteen definite finish
+estimates, all correct: five holo, seven normal and two reverse holo. Coverage
+was 14/19 (73.7%), with five unresolved cards. Its reverse-holo result was 2/2
+correct. C-010 remains outside its supported layout after the catalogue retry.
+Correctness among fourteen issued estimates is not overall 100% classification.
+
+Retrospectively, border evidence could resolve the four ordinary holos left
+ambiguous by the existing estimator, giving eighteen supported finish estimates;
+the energy card remains unresolved. **No combined decision rule was frozen or
+tested**, so 18/19 must not be advertised as validated pipeline accuracy. A future
+integration must preserve unsupported/uncertain outcomes, use the reverse-holo
+signal independently, and be checked on further fresh cards. This one small batch
+supports complementary signals, not a general accuracy guarantee.
