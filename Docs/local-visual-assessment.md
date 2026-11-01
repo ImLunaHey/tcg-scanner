@@ -288,3 +288,62 @@ non-estimate field and all 56 original/prepared file hashes. No new physical sca
 was started. These cards are now development/regression examples, not independent
 validation of v3; catalogue limitations and the need for physical review remain.
 Private before/after records are under ignored `Diagnostics/finish-estimator-v3/`.
+
+### Oversized OCR boxes and regular-variant ambiguity — v4
+
+B-016 contains 22 cards the user physically confirmed as non-holo. The v3
+estimator returned 18 normal estimates and four uncertain results for different
+reasons. Those physical labels are validation evidence, never detector inputs.
+
+- C-009 Bisharp: local OCR read `ASCEN`, but its character box also covered the
+  neighbouring regulation symbol. The sampled patch mixed the light surrounding
+  print with the dark code background. Enlarged OCR read the same code in a
+  narrower box and resolved the contrast as dark.
+- C-010 Erika's Tangela, C-011 Totodile and C-012 Charmander: the code was already
+  dark, but each catalogue record lists both normal and holo regular printings.
+  The detailed entries specifically include a cosmos-holo version. The marker
+  does not distinguish these alternatives, so choosing normal from the batch
+  label or from common rarity would not be an automatic finish detection.
+
+The catalogue was checked on 2026-11-01 using the public TCGdex records for
+[Erika's Tangela](https://api.tcgdex.net/v2/en/cards/me02.5-007),
+[Totodile](https://api.tcgdex.net/v2/en/cards/me02.5-041) and
+[Charmander](https://api.tcgdex.net/v2/en/cards/me02.5-020). TCGdex's
+[variant documentation](https://tcgdex.dev/faq)
+describes availability, not identification of a physical copy. No card image was
+sent to these endpoints. Full response snapshots remain in private diagnostics.
+
+`modern-set-code-polarity-v4` retries enlarged local OCR when a located marker has
+unresolved contrast. It requires a single reading of the same normalized code,
+a substantially smaller region (30–80% of the original area), and containment
+within the original box with a small coordinate tolerance. It retains the
+existing letter/location bounds and contrast thresholds. It does not retry to
+override conflicting contrast or catalogue ambiguity, and accepts a refined
+measurement only when a polarity is established. There are no card-name or
+batch-specific branches in the runtime detector.
+
+`FinishEstimate.uncertaintyReason` is an optional additive field distinguishing
+`ambiguousIdentity`, `markerNotFound`, `markerContrast`, `conflictingContrast`,
+`multipleRegularFinishes`, `missingRegularFinish` and `analysisFailed`. Legacy
+records remain readable. The web panel shows **Non-holo or holo** for a current
+printing with `multipleRegularFinishes`; it remains an uncertain result with no
+suggested finish. Reviewed values still take precedence.
+
+Saved-source tests cover B-009, B-013, B-014, B-015 and B-016. The B-016 fixture
+requires Bisharp and the other 18 resolvable fronts to estimate normal, while the
+three shared-code cases abstain. Earlier physically labelled normal/holo/reverse
+examples remain correct. Geometry tests reject a different code, unrelated or
+clipped regions, and an unchanged box. Conflict and legacy-decoding tests pass.
+The full Swift suite passed 107 tests, seven targeted finish tests passed with
+the saved fixtures, and all 23 web tests and release builds passed. These are
+development/regression examples, not an independent finish-accuracy benchmark.
+
+The signed service/CLI/MCP and HTTP/web builds were installed, then all 22 B-016
+front estimates were refreshed from saved sources: 19 normal, three unresolved
+normal-or-holo, and no foil prediction. Comparison preserved every non-estimate
+field, including condition checks and manual reviews; all 88 original/prepared
+PNG sizes and SHA-256 hashes matched. No new hardware scan was started. Live
+HTTPS browser checks verified Bisharp's updated label, the three explicit
+alternatives, no reintroduced manual/download links, real mark overlays, system
+light/dark and 320/390-pixel mobile layouts. Evidence and catalogue snapshots are
+under ignored `Diagnostics/finish-b016-investigation/`.
