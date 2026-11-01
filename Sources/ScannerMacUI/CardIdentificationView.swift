@@ -34,6 +34,12 @@ struct CardIdentificationView: View {
                     if !loading && (result == nil || [.failed, .noMatch, .rejected].contains(result!.state)) {
                         Button(result == nil ? "Identify this image" : "Try identification again") { identify() }.buttonStyle(.borderedProminent).disabled(saving)
                     }
+                    if let edition = result?.editionPresentation(for: selected.isEmpty ? nil : selected) {
+                        Text(edition.label).font(.callout).help(edition.detail)
+                    }
+                    if result?.state == .noMatch, result?.evidence != nil {
+                        Button("Refresh local stamp check") { estimateFinish() }.disabled(saving || processing)
+                    }
                     if !candidates.isEmpty, result?.state != .rejected {
                         Picker("Card and set", selection: $selected) {
                             Text("Choose a candidate…").tag("")
@@ -138,6 +144,32 @@ private extension CardCondition {
 }
 
 extension CardIdentification {
+    var editionPresentation: (label: String, detail: String)? {
+        editionPresentation(for: nil)
+    }
+
+    func editionPresentation(for selection: String?) -> (label: String, detail: String)? {
+        guard let edition = finishEstimate?.edition,
+              [.present, .uncertain].contains(edition.stamp.state) else { return nil }
+        let candidate: CardCandidate?
+        if let selection, [.confirmed, .reviewRequired].contains(state) {
+            candidate = evidence?.candidates.first { $0.id == selection }
+        } else if state == .confirmed {
+            candidate = evidence?.candidates.first { $0.id == selectedCardID }
+        } else {
+            candidate = state == .reviewRequired && evidence?.candidates.count == 1 ? evidence?.candidates.first : nil
+        }
+        let name = edition.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let matched = edition.stamp.state == .present && edition.state == .matched &&
+            name?.isEmpty == false && candidate != nil && edition.candidateID == candidate?.id
+        let label = matched ? name! : edition.stamp.state == .uncertain
+            ? "Possible pumpkin stamp" : "Pumpkin stamp · edition unresolved"
+        let limitation = matched
+            ? "The stamp and catalogue support this edition label. The stamp alone does not establish a printing year or finish."
+            : "The stamped edition is unresolved; its ordinary-printing finish and price cannot establish this variant."
+        return (label, (edition.stamp.evidence + edition.evidence + [limitation]).joined(separator: " "))
+    }
+
     var finishDescription: String {
         if finish != .unverified { return finish.displayName + " (reviewed)" }
         let candidate = selectedCardID ?? (evidence?.candidates.count == 1 ? evidence?.candidates.first?.id : nil)

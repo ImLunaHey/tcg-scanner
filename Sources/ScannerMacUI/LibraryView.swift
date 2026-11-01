@@ -136,6 +136,9 @@ private struct CardIdentitySummary: View {
                 case .confirmed: Text("Identity unavailable")
                 }
             }
+            if let edition = identification.editionPresentation {
+                Text(edition.label).foregroundStyle(.secondary).help(edition.detail)
+            }
         }.font(.caption)
     }
 }

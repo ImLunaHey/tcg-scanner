@@ -1,6 +1,9 @@
+import type { Batch } from "./models";
+
 export type CardValuation = {
   number: number;
   cardID?: string;
+  editionKey?: string;
   state: "priced" | "range" | "pending" | "unavailable";
   lowPence?: number;
   highPence?: number;
@@ -8,6 +11,35 @@ export type CardValuation = {
   reason: string;
   quotes: { updated?: string }[];
 };
+export function matchingCardPrice(
+  value: CardValuation | undefined,
+  cardID: string | undefined,
+  editionKey: string | undefined,
+): CardValuation | undefined {
+  return cardID && value?.cardID === cardID && value.editionKey === editionKey
+    ? value
+    : undefined;
+}
+
+/** Any edition change must invalidate prices even when base ID and finish agree. */
+export function pricingRevision(
+  batch?: Pick<Batch, "images" | "cardIdentifications">,
+): string {
+  return JSON.stringify([
+    batch?.images.map((image) => image.sequence),
+    batch?.cardIdentifications?.map((value) => [
+      value.request.id,
+      value.state,
+      value.selectedCardID,
+      value.finish,
+      value.finishEstimate?.candidateID,
+      value.finishEstimate?.state,
+      value.finishEstimate?.suggestedFinish,
+      value.finishEstimate?.uncertaintyReason,
+      value.finishEstimate?.edition,
+    ]),
+  ]);
+}
 export type BatchValuation = {
   batchID: string;
   cards: CardValuation[];

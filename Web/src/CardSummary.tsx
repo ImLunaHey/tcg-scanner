@@ -1,13 +1,14 @@
 import { ArrowUpRight, Check, CircleHelp, Clock3, Minus } from "lucide-react";
 import {
   conditions,
+  editionPresentation,
   finishPresentation,
   identityCard,
   IdentitySummary,
   type Identification,
 } from "./Identification";
 import type { ConditionCheck } from "./ConditionReview";
-import { CardPrice, type CardValuation } from "./Pricing";
+import { CardPrice, matchingCardPrice, type CardValuation } from "./Pricing";
 
 /** Compact gallery presentation. Detailed evidence stays in the review dialogs. */
 export function CardSummary({
@@ -31,6 +32,7 @@ export function CardSummary({
 }) {
   const card = identityCard(identification);
   const finish = finishPresentation(identification, pending);
+  const edition = editionPresentation(identification);
   const FinishIcon =
     finish.state === "resolved" || finish.state === "reviewed"
       ? Check
@@ -71,7 +73,11 @@ export function CardSummary({
           {incomplete && <span className="badge">Incomplete pair</span>}
         </div>
         <CardPrice
-          value={price?.cardID === card?.id ? price : undefined}
+          value={matchingCardPrice(
+            price,
+            card?.id,
+            identification?.finishEstimate?.edition?.pricingKey,
+          )}
           loading={pricingLoading}
         />
       </div>
@@ -85,6 +91,7 @@ export function CardSummary({
               {card.officialSetCount ? `/${card.officialSetCount}` : ""}
             </span>
           </p>
+          {edition && <p title={edition.detail}>{edition.label}</p>}
         </div>
       ) : (
         <div className="card-summary-identity">

@@ -18,6 +18,26 @@ export type CardCandidate = {
   category?: string;
   types?: string[];
 };
+export type EditionEvidence = {
+  state: "notDetected" | "matched" | "uncertain" | "unlisted" | "unavailable";
+  candidateID?: string;
+  name?: string;
+  pricingKey: string;
+  stamp: {
+    state: "present" | "absent" | "uncertain" | "unsupported";
+    kind: string;
+    method: string;
+    evidence: string[];
+  };
+  variants: {
+    id: string;
+    source: string;
+    finish: string;
+    stamps: string[];
+    years: number[];
+  }[];
+  evidence: string[];
+};
 export type FinishEstimate = {
   state: "estimated" | "uncertain" | "unsupported";
   suggestedFinish?: string;
@@ -26,6 +46,7 @@ export type FinishEstimate = {
   limitations: string[];
   method: string;
   uncertaintyReason?: string;
+  edition?: EditionEvidence;
 };
 export type Identification = {
   request: { id: string; sequence: number; language: string };
@@ -73,6 +94,39 @@ export type FinishPresentation = {
   state: "resolved" | "reviewed" | "uncertain" | "pending" | "unavailable";
   detail: string;
 };
+
+export function editionPresentation(
+  value?: Identification,
+):
+  | { label: string; state: "resolved" | "uncertain"; detail: string }
+  | undefined {
+  const edition = value?.finishEstimate?.edition;
+  if (!edition || !["present", "uncertain"].includes(edition.stamp.state))
+    return undefined;
+  const card = identityCard(value);
+  const matched =
+    edition.stamp.state === "present" &&
+    edition.state === "matched" &&
+    !!edition.name?.trim() &&
+    !!card &&
+    edition.candidateID === card.id;
+  const detail = [
+    ...edition.stamp.evidence,
+    ...edition.evidence,
+    matched
+      ? "The stamp and catalogue support this edition label. The stamp alone does not establish a printing year or finish."
+      : "The stamped edition is unresolved; its ordinary-printing finish and price cannot establish this variant.",
+  ].join(" ");
+  return {
+    label: matched
+      ? edition.name!
+      : edition.stamp.state === "uncertain"
+        ? "Possible pumpkin stamp"
+        : "Pumpkin stamp · edition unresolved",
+    state: matched ? "resolved" : "uncertain",
+    detail,
+  };
+}
 
 export function finishPresentation(
   value?: Identification,
@@ -130,11 +184,20 @@ export function finishPresentation(
       detail:
         "Both variants share this printed code; available image evidence has not resolved the finish.",
     };
+  const editionReasons: Record<string, string> = {
+    stampUncertain:
+      "A possible pumpkin stamp needs confirmation before the finish can be resolved.",
+    editionUnavailable:
+      "A pumpkin stamp was detected, but its catalogue edition is unresolved.",
+    multipleEditionFinishes:
+      "The possible stamped editions have different finishes. The physical finish needs review.",
+  };
   return {
     label: "Uncertain",
     state: "uncertain",
     detail: current
-      ? "The automatic check could not resolve the finish."
+      ? editionReasons[estimate.uncertaintyReason || ""] ||
+        "The automatic check could not resolve the finish."
       : "A finish result for the current card identification is not available.",
   };
 }
@@ -221,6 +284,11 @@ export function IdentificationReview({
   });
   const candidates = result?.evidence?.candidates || [];
   const chosen = candidates.find((candidate) => candidate.id === selected);
+  const edition = editionPresentation(
+    result && selected
+      ? { ...result, state: "confirmed", selectedCardID: selected }
+      : (result ?? undefined),
+  );
   const busy =
     identify.isPending ||
     review.isPending ||
@@ -295,6 +363,21 @@ export function IdentificationReview({
                     : result
                       ? "Try identification again"
                       : "Identify this image"}
+              </button>
+            )}
+            {edition && (
+              <p className="small" title={edition.detail}>
+                {edition.label}
+              </p>
+            )}
+            {result?.state === "noMatch" && result.evidence && (
+              <button
+                type="button"
+                className="text-button"
+                disabled={busy}
+                onClick={() => estimateFinish.mutate()}
+              >
+                Refresh local stamp check
               </button>
             )}
             {!!candidates.length && result?.state !== "rejected" && (
@@ -492,6 +575,7 @@ export function IdentitySummary({
       </p>
     );
   const card = identityCard(identification);
+  const edition = editionPresentation(identification);
   if (card)
     return (
       <p className="small">
@@ -504,6 +588,12 @@ export function IdentitySummary({
         <strong>{card.name}</strong> · {card.setName} · {card.localID}
         {card.officialSetCount ? `/${card.officialSetCount}` : ""}
         <br />
+        {edition && (
+          <>
+            <span title={edition.detail}>{edition.label}</span>
+            <br />
+          </>
+        )}
         {[
           card.category === "Pokemon" ? "Pokémon" : card.category,
           ...(card.types || []),
@@ -528,6 +618,12 @@ export function IdentitySummary({
               : identification.state === "rejected"
                 ? "Suggestions rejected"
                 : "Identity unavailable"}
+      {edition && (
+        <>
+          <br />
+          <span title={edition.detail}>{edition.label}</span>
+        </>
+      )}
     </p>
   );
 }

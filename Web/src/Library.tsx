@@ -18,7 +18,7 @@ import { ImageLightbox, type LightboxImage } from "./ImageLightbox";
 import { IdentificationReview, IdentitySummary } from "./Identification";
 import { CardSummary } from "./CardSummary";
 import { StoreTransfer } from "./StoreTransfer";
-import { BatchPrice, type BatchValuation } from "./Pricing";
+import { BatchPrice, pricingRevision, type BatchValuation } from "./Pricing";
 import { conditionImages } from "./conditionLightbox";
 import { imageBlob, saveBlob, saveJSON, type Api } from "./api";
 import {
@@ -222,23 +222,13 @@ export function BatchDetail({ id }: { id: string }) {
         ? 1500
         : false,
   });
-  // Identity/finish changes invalidate the valuation independently of image loading.
-  const pricingRevision = JSON.stringify([
-    batch.data?.images.map((image) => image.sequence),
-    batch.data?.cardIdentifications?.map((value) => [
-      value.request.id,
-      value.state,
-      value.selectedCardID,
-      value.finish,
-      value.finishEstimate?.candidateID,
-      value.finishEstimate?.state,
-      value.finishEstimate?.suggestedFinish,
-      value.finishEstimate?.uncertaintyReason,
-    ]),
-  ]);
-  const cardBatch = !!batch.data?.request.prepareCards || !!batch.data?.processedImages?.some((image) => image.cardPreparation);
+  // Edition checks can change the correct quote without changing name or finish.
+  const valuationRevision = pricingRevision(batch.data);
+  const cardBatch =
+    !!batch.data?.request.prepareCards ||
+    !!batch.data?.processedImages?.some((image) => image.cardPreparation);
   const pricing = useQuery({
-    queryKey: ["batch-pricing", id, pricingRevision],
+    queryKey: ["batch-pricing", id, valuationRevision],
     queryFn: ({ signal }) =>
       api.get<BatchValuation>(
         `batches/${encodeURIComponent(id)}/valuation`,
