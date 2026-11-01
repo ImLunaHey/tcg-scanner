@@ -239,3 +239,20 @@ about 1.8 MB instead of roughly 8 MB. These are this Mac's measurements, not a
 physical-phone or remote-link benchmark. WebKit does not cache the authenticated
 images on the insecure HTTP fixture, so its cache assertion uses the production
 HTTPS test instead. These checks created no scan jobs.
+
+### Compact navigation — 2026-11-01
+
+The breadcrumb/live-status top bar is removed; SSE subscriptions remain active.
+A reconnecting notice appears in the sidebar only during a connection failure.
+The sidebar is 200 px expanded or a 64 px icon rail on desktop. Its top button
+collapses/expands it and stores the choice in `scanner.sidebar.collapsed` in local
+browser storage. On phones the same control hides navigation labels, retaining
+all four touch targets. Icon links have accessible names and desktop tooltips.
+The workspace caption and sidebar brand subtitle are removed. Card summaries no
+longer show “Suggested match” or the “Auto” finish sublabel; evidence and finish
+colours are unchanged, and unresolved finishes remain labelled.
+
+Production build and 27 web tests passed. Browser checks cover both sidebar
+states at 1440, 768, 390 and 320 px, keyboard toggling, preference persistence,
+route selection, system themes, removed labels and connection recovery. Session
+screenshots and results are ignored under `Diagnostics/sidebar-ui/`.

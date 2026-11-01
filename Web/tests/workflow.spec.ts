@@ -33,7 +33,7 @@ test("authenticated browser workflow, retry, review, export and cancellation", a
   await expect(
     page.getByRole("button", { name: "Start scan", exact: true }),
   ).toBeDisabled();
-  await expect(page.getByText("Live updates", { exact: true })).toBeVisible();
+  await expect(page.locator(".topbar")).toHaveCount(0);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -217,7 +217,7 @@ test("recovers connection loss and clears a revoked session", async ({
   await page.getByRole("button", { name: "Open workspace" }).click();
   await expect(page.getByText("Reconnecting", { exact: true })).toBeVisible();
   await page.unroute("**/api/v1/events?**");
-  await expect(page.getByText("Live updates", { exact: true })).toBeVisible({
+  await expect(page.getByText("Reconnecting", { exact: true })).toBeHidden({
     timeout: 10_000,
   });
   await page.route("**/api/v1/status", (route) => route.abort("failed"));

@@ -40,13 +40,11 @@ export function CardSummary({
           ? Clock3
           : Minus;
   const finishBasis =
-    finish.state === "resolved"
-      ? "Auto"
-      : finish.state === "reviewed"
-        ? "Confirmed"
-        : finish.state === "uncertain"
-          ? "Unresolved"
-          : undefined;
+    finish.state === "reviewed"
+      ? "Confirmed"
+      : finish.state === "uncertain"
+        ? "Unresolved"
+        : undefined;
   const marks = check?.state === "checked" ? check.findings.length : 0;
   const borderStatus =
     check?.state === "checked"
@@ -67,12 +65,8 @@ export function CardSummary({
       <div className="card-summary-top">
         <div className="card-summary-meta">
           <span className="card-reference">{label}</span>
-          {card && (
-            <span className="card-match-state">
-              {identification?.state === "confirmed"
-                ? "Confirmed"
-                : "Suggested match"}
-            </span>
+          {card && identification?.state === "confirmed" && (
+            <span className="card-match-state">Confirmed</span>
           )}
           {incomplete && <span className="badge">Incomplete pair</span>}
         </div>

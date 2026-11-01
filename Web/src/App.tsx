@@ -6,6 +6,9 @@ import {
   LayoutDashboard,
   LockKeyhole,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  WifiOff,
   ScanLine,
   SlidersHorizontal,
 } from "lucide-react";
@@ -129,6 +132,22 @@ function Workspace() {
   const { logout } = useAuth();
   const connection = useLiveEvents();
   const [location] = useLocation();
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("scanner.sidebar.collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+  function toggleSidebar() {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      localStorage.setItem("scanner.sidebar.collapsed", String(next));
+    } catch {
+      /* Still works for this session when browser storage is disabled. */
+    }
+  }
   const navigation = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/library", label: "Library", icon: FolderOpen },
@@ -136,7 +155,7 @@ function Workspace() {
     { href: "/scanner", label: "Scanner", icon: ScanLine },
   ];
   return (
-    <div className="workspace">
+    <div className={`workspace${collapsed ? " sidebar-collapsed" : ""}`}>
       <a
         className="skip-link"
         href="#main-content"
@@ -148,13 +167,36 @@ function Workspace() {
         Skip to content
       </a>
       <aside className="sidebar">
-        <Brand />
-        <div className="nav-caption">WORKSPACE</div>
-        <nav aria-label="Main navigation">
+        <div className="sidebar-header">
+          <Brand />
+          <button
+            className="sidebar-toggle"
+            onClick={toggleSidebar}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!collapsed}
+            aria-controls="workspace-navigation"
+          >
+            {collapsed ? (
+              <PanelLeftOpen size={19} />
+            ) : (
+              <PanelLeftClose size={19} />
+            )}
+          </button>
+        </div>
+        <nav id="workspace-navigation" aria-label="Main navigation">
           {navigation.map(({ href, label, icon: Icon }) => (
             <Link
               href={href}
               key={href}
+              aria-label={label}
+              title={collapsed ? label : undefined}
+              aria-current={
+                location === href ||
+                (href === "/library" && location.startsWith("/batches/"))
+                  ? "page"
+                  : undefined
+              }
               className={`nav-link ${location === href || (href === "/library" && location.startsWith("/batches/")) ? "selected" : ""}`}
             >
               <Icon size={19} />
@@ -163,30 +205,28 @@ function Workspace() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <button className="nav-link logout" onClick={logout}>
+          {connection === "reconnecting" && (
+            <div
+              className="connection-warning"
+              role="status"
+              title="Reconnecting to live updates"
+            >
+              <WifiOff size={18} aria-hidden="true" />
+              <span>Reconnecting</span>
+            </div>
+          )}
+          <button
+            className="nav-link logout"
+            onClick={logout}
+            aria-label="Sign out"
+            title={collapsed ? "Sign out" : undefined}
+          >
             <LogOut size={18} />
             <span>Sign out</span>
           </button>
         </div>
       </aside>
       <div className="workspace-content">
-        <div className="topbar">
-          <span className="breadcrumb">
-            Scanner <span>/</span>{" "}
-            {location.startsWith("/batches/")
-              ? "Batch details"
-              : navigation.find((item) => item.href === location)?.label ||
-                "Workspace"}
-          </span>
-          <div className={`live-status ${connection}`} role="status">
-            <span className="status-dot" />
-            {connection === "live"
-              ? "Live updates"
-              : connection === "connecting"
-                ? "Connecting"
-                : "Reconnecting"}
-          </div>
-        </div>
         <main id="main-content" tabIndex={-1} className="main-content">
           <Switch>
             <Route path="/" component={Dashboard} />
