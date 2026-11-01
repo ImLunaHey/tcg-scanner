@@ -104,3 +104,131 @@ throughput; 600 DPI is an image-quality choice for detailed listings, with
 roughly four times the prepared storage in these samples. This pilot provides
 no justification for selecting 600 DPI solely to obtain reliable foil detection.
 The default profile was not changed.
+
+## Second experiment — independent border texture
+
+The first detector required the left and right borders' fine bands to correlate.
+That is unnecessarily restrictive when the visible foil pattern differs between
+sides. `FoilTexture.swift` measures twelve alternative cues without requiring
+matching phases: brightness bands, opponent-colour bands, mean chroma, colour
+spread and brightness spread on the borders, plus illustration/body bands.
+Eight-section medians also test whether a signal depends on one small area.
+All pixel processing remains native Swift/CoreGraphics/ImageIO on this Mac.
+`EvaluateFoil.py` is offline development analysis of JSON numbers, never a
+runtime dependency of the scanner or its clients.
+
+The baseline measures border strips at x=1.5–4% and 96–98.5%, y=12–86%.
+The `inset` variant narrows those strips to 2–3.5% and 96.5–98%; it is not a
+rotation or complete crop-perturbation test. The `630` variant reduces the
+maximum analysis dimension from 1260 to 630 pixels; it is not an actual
+300 DPI capture. Actual 300 DPI controls were evaluated separately below.
+ImageIO keeps smaller inputs at their existing size. The row smoothing window
+scales approximately with image height. Input and output limits prevent source
+image replacement; diagnostic outputs must be new files.
+
+Each feature's threshold is `max(calibration-negative baseline) * 1.25 + 0.001`.
+All variants and additional batches use that same threshold without refitting.
+All twelve results are retained, sorted by calibration positives detected only.
+The original name groups/splits are reused. Because those cards have already
+been inspected, these results are **exploratory**, not fresh holdout validation.
+Leave-name-group-out analysis likewise does not erase dataset selection bias.
+
+### B-024 and B-025 results
+
+| Feature | B-024 holos flagged / 16 | B-025 non-holos flagged / 16 |
+| --- | ---: | ---: |
+| Minimum of independent border brightness bands | 16 | 0 |
+| Maximum of independent border brightness bands | 16 | 0 |
+| Median-section border brightness bands | 16 | 0 |
+| Border mean chroma | 16 | 0 |
+| Border colour spread | 16 | 0 |
+| Border colour bands | 16 | 0 |
+| Median-section border colour bands | 16 | 0 |
+| Border brightness spread | 9 | 0 |
+| Illustration brightness bands | 2 | 0 |
+| Illustration colour bands | 1 | 0 |
+| Body brightness bands | 0 | 0 |
+| Body colour bands | 0 | 0 |
+
+These are baseline counts. The minimum-border brightness cue and all four
+colour cues kept the same outcomes in both variants. Maximum-border and
+median-section brightness cues each missed one holo after downsampling.
+Illustration/body colour or brightness sometimes falsely flagged a non-holo
+after downsampling. Whole-name exclusion also produced 16 positives and zero
+false positives for each of the seven strongest baseline border cues.
+
+### Additional controls expose misleading colour cues
+
+The user previously physically labelled B-014's 15, B-015's 14 and B-016's 22
+cards as non-holo, including the corrected Volcarona. Forty-nine had an upright
+prepared front opposite exactly one verified Pokémon back. B-015/C-006 and
+C-009 were excluded because their companion back orientation was unknown.
+These 300 DPI negative controls span eleven first-candidate sets, including
+sets represented among the positives. No new scan or finish override occurred.
+
+B-013/C-005–C-020 supplied sixteen additional 300 DPI foil-positive captures
+from the user's holo-or-reverse statement. Their printings largely match B-024
+in reverse order, so these are useful capture-repeatability checks, **not
+sixteen additional independent positive printings**. B-024's ambiguous Kilowattrel
+candidates differ from B-013's; physical foil labels do not depend on recognition.
+
+Applying the existing thresholds to these controls:
+
+| Feature | B-013 foil captures flagged / 16 | Older non-holos falsely flagged / 49 |
+| --- | ---: | ---: |
+| Minimum border brightness bands | 16 | 0 |
+| Maximum border brightness bands | 16 | 1 |
+| Median-section border brightness bands | 16 | 0 |
+| Border mean chroma | 16 | 47 |
+| Border colour spread | 16 | 49 |
+| Border colour bands | 16 | 49 |
+| Median-section border colour bands | 16 | 49 |
+
+The colour-only approaches therefore fail to generalise across these captures.
+The data do not isolate whether resolution, scanner processing, print texture,
+colour handling or crop differences cause the failure. Do not call the colour
+separation in B-024/B-025 a successful general detector.
+
+### Most promising candidate and remaining limits
+
+`borderMinimumBand`, threshold `0.008213026997467985`, currently performs best
+when requiring the signal on both borders. It detected all 16 B-024 holos and
+all 16 B-013 foil captures in all three variants. None of the 65 measured
+non-holos exceeded the threshold at the baseline position. Nine older non-holos
+crossed it only with the narrower strips: B-014/C-002 and C-013;
+B-015/C-002, C-004, C-005, C-007, C-010 and C-014; B-016/C-006.
+
+A conservative interpretation requires agreement across all variants: these
+nine are **unstable**, not confirmed foil or confirmed non-holo. The other 56
+non-holos have no foil signal in any variant. All 32 positive captures have a
+stable signal, but the weakest B-024 minimum is only `0.008477184617987788`,
+about 3% above the threshold. There is insufficient margin or independent data
+to advertise production accuracy. Absence of this signal is never proof of
+non-holo, and the check does not distinguish holo from reverse holo.
+
+Before deployment, freeze the candidate and test a fresh mixed batch including
+same-set normal/holo examples, weak-signal holos and the normal Volcarona. Include
+yellow-border, full-art and nonstandard layouts in separate scope tests; the
+current strips assume a conventional modern border. Preserve an uncertain
+outcome for crop-sensitive or out-of-scope cards. No production detector,
+saved finish estimate, profile default or Store staging record was changed.
+
+### Reproducing the measurements
+
+```sh
+swiftc -O -warnings-as-errors Scripts/Experiments/FoilTexture.swift -o /tmp/foil-texture
+/tmp/foil-texture --self-test
+python3 Scripts/Experiments/EvaluateFoil.py --self-test
+/tmp/foil-texture inputs.json new-measurements.json --variants
+python3 Scripts/Experiments/EvaluateFoil.py new-measurements.json groups.json new-evaluation.json
+python3 Scripts/Experiments/EvaluateFoil.py --apply new-evaluation.json extra-measurements.json extra-evaluation.json
+```
+
+The native synthetic checks cover flat, opposite-phase, chromatic and isolated
+bands. Evaluator checks cover calibration isolation, whole-name exclusion,
+fixed thresholds across variants, missing-variant rejection, all-positive
+control input and unstable outcomes. `--apply` never refits a threshold and
+requires the same complete variant set for every card. The real run measured
+97 prepared images in all three variants (291 measurement rows); source PNGs
+were only read. Complete results and control exclusions are retained in ignored
+`Diagnostics/foil-experiment/` alongside the first experiment.

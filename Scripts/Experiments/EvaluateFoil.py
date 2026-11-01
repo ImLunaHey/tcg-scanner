@@ -4,6 +4,7 @@
 Usage:
   python3 Scripts/Experiments/EvaluateFoil.py --self-test
   python3 Scripts/Experiments/EvaluateFoil.py measurements.json groups.json output.json
+  python3 Scripts/Experiments/EvaluateFoil.py --apply fitted.json measurements.json output.json
 
 Measurements: [{"input": {"id": "B-025/C-001", "label":
 "user-reported-non-holo", "printingIDs": [], "path": "/prepared.png"},
@@ -17,6 +18,11 @@ The reused holdout and leave-group-out results are exploratory, not independent
 validation. Rank only by calibration baseline positives detected, then name.
 Reads JSON measurements only: no image, network, scanner, database or label
 mutations. Output must be a new file, separate from both inputs.
+
+--apply uses saved thresholds without fitting and accepts single-class datasets.
+All cards must have the same complete variant set, including baseline. Stability
+is three-way: every variant above threshold => flaggedFoil; none above =>
+noFoilEvidence; disagreement => unstable. Neither latter status proves non-holo.
 """
 
 import copy
@@ -30,12 +36,12 @@ POSITIVE = "user-reported-holo"
 NEGATIVE = "user-reported-non-holo"
 
 
-def validate(measurements, groups):
+def validate(measurements, groups, require_calibration_negative=True):
     if not isinstance(measurements, list) or not 1 <= len(measurements) <= 10000:
         raise ValueError("Expected 1–10000 measurement rows")
     if not isinstance(groups, dict):
         raise ValueError("Expected a group mapping")
-    seen, baselines, rows, splits = set(), {}, [], {}
+    seen, baselines, rows, splits, card_variants = set(), {}, [], {}, {}
     feature_names = None
     for item in measurements:
         if not isinstance(item, dict) or not isinstance(item.get("input"), dict):
@@ -52,6 +58,7 @@ def validate(measurements, groups):
         if (ident, variant) in seen:
             raise ValueError("Duplicate card/variant")
         seen.add((ident, variant))
+        card_variants.setdefault(ident, set()).add(variant)
         grouping = groups[ident]
         if not isinstance(grouping, dict):
             raise ValueError("Invalid grouping metadata")
@@ -83,7 +90,10 @@ def validate(measurements, groups):
             raise ValueError("Each card needs a baseline measurement")
         if row["label"] != baselines[row["id"]]["label"]:
             raise ValueError("A card's physical label cannot change between variants")
-    if not any(r["label"] == NEGATIVE and r["split"] == "calibration" for r in baselines.values()):
+    expected_variants = set.union(*card_variants.values())
+    if any(variants != expected_variants for variants in card_variants.values()):
+        raise ValueError("Every card must have the same complete variant set")
+    if require_calibration_negative and not any(r["label"] == NEGATIVE and r["split"] == "calibration" for r in baselines.values()):
         raise ValueError("At least one calibration negative baseline is required")
     return rows, sorted(feature_names)
 
@@ -150,6 +160,69 @@ def evaluate(measurements, groups):
                 features=results)
 
 
+def stability(rows, feature, threshold):
+    cards = {}
+    for row in rows:
+        cards.setdefault(row["id"], []).append(row)
+    counts = {label: dict(flaggedFoil=0, noFoilEvidence=0, unstable=0)
+              for label in (POSITIVE, NEGATIVE)}
+    predictions = []
+    for ident, variants in sorted(cards.items()):
+        flags = [row["features"][feature] > threshold for row in variants]
+        status = "flaggedFoil" if all(flags) else "unstable" if any(flags) else "noFoilEvidence"
+        label = variants[0]["label"]
+        counts[label][status] += 1
+        predictions.append(dict(id=ident, label=label, status=status,
+                                values={row["variant"]: row["features"][feature]
+                                        for row in sorted(variants, key=lambda r: r["variant"])}))
+    return dict(countsByPhysicalLabel=counts, predictions=predictions)
+
+
+def apply_fitted(fitted, measurements):
+    if not isinstance(measurements, list):
+        raise ValueError("Expected measurement rows")
+    groups = {}
+    for row in measurements:
+        if not isinstance(row, dict) or not isinstance(row.get("input"), dict):
+            raise ValueError("Expected a measurement with input metadata")
+        ident = row["input"].get("id")
+        if not isinstance(ident, str) or not ident:
+            raise ValueError("Each measurement needs a nonempty ID")
+        groups[ident] = dict(group=ident, split="holdout")
+    rows, features = validate(measurements, groups, require_calibration_negative=False)
+    if not isinstance(fitted, dict) or fitted.get("schemaVersion") != 1:
+        raise ValueError("Expected a schemaVersion 1 fitted evaluation")
+    fitted_features = fitted.get("features")
+    if not isinstance(fitted_features, list) or not 1 <= len(fitted_features) <= 1000:
+        raise ValueError("Expected 1–1000 fitted feature thresholds")
+    thresholds = {}
+    for item in fitted_features:
+        if not isinstance(item, dict):
+            raise ValueError("Invalid fitted feature")
+        name, threshold = item.get("feature"), item.get("threshold")
+        if not isinstance(name, str) or not name or name in thresholds:
+            raise ValueError("Fitted feature names must be nonempty and unique")
+        if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not math.isfinite(threshold) or threshold < 0:
+            raise ValueError("Fitted thresholds must be finite and nonnegative")
+        thresholds[name] = threshold
+    if set(thresholds) != set(features):
+        raise ValueError("Measurements and fitted evaluation must have identical feature names")
+    variants = sorted({r["variant"] for r in rows})
+    results = []
+    for feature in features:
+        threshold = thresholds[feature]
+        results.append(dict(feature=feature, threshold=threshold,
+                            variants={variant: outcomes([r for r in rows if r["variant"] == variant], feature, threshold)
+                                      for variant in variants},
+                            stability=stability(rows, feature, threshold)))
+    return dict(schemaVersion=1, status="exploratory-fixed-threshold-application",
+                thresholdRule="Saved fitted thresholds; no fitting or ranking on this dataset",
+                caveats=["NoFoilEvidence does not establish non-holo; unstable is not forced negative.",
+                         "Dataset/design confounding and prior data inspection still limit validation.",
+                         "Physical labels are used only to report results, never to alter thresholds."],
+                features=results)
+
+
 def self_test():
     def row(ident, label, value, variant="baseline"):
         return dict(input=dict(id=ident, label=label), variant=variant, features={"signal": value})
@@ -169,7 +242,8 @@ def self_test():
     fold = next(f for f in result["leaveNameGroupOut"]["folds"] if f["group"] == "normal-a")
     assert fold["trainingNegativeIDs"] == ["n3"]
     assert {r["id"] for r in fold["predictions"]} == {"n1", "n2"}
-    changed = data + [row("n1", NEGATIVE, .5, "inset")]
+    changed = data + [row(r["input"]["id"], r["input"]["label"], r["features"]["signal"], "inset") for r in data]
+    changed[len(data)]["features"]["signal"] = .5
     variant = evaluate(changed, groups)["features"][0]
     assert variant["threshold"] == result["threshold"]
     assert variant["variants"]["inset"]["calibration"]["counts"]["FP"] == 1
@@ -182,6 +256,7 @@ def self_test():
         raise AssertionError("Invalid inputs were accepted")
 
     rejects(data + [row("n1", POSITIVE, .5, "inset")])
+    rejects(data + [row("n1", NEGATIVE, .5, "inset")])
     rejects(data + [row("n1", NEGATIVE, .5)])
     for value in (float("nan"), float("inf"), -1, True):
         changed = copy.deepcopy(data)
@@ -193,19 +268,39 @@ def self_test():
     changed_groups = copy.deepcopy(groups)
     changed_groups["n2"]["split"] = "holdout"
     rejects(data, changed_groups)
-    print("Evaluator checks passed: threshold isolation, grouped folds, fixed variant thresholds and input rejection.")
+
+    fitted = evaluate(data, groups)
+    positive_only = [row("p1", POSITIVE, .1), row("p1", POSITIVE, .01, "inset"),
+                     row("p2", POSITIVE, .1), row("p2", POSITIVE, .1, "inset")]
+    applied = apply_fitted(fitted, positive_only)["features"][0]
+    assert applied["threshold"] == result["threshold"]
+    assert applied["stability"]["countsByPhysicalLabel"][POSITIVE] == dict(flaggedFoil=1, noFoilEvidence=0, unstable=1)
+    assert applied["stability"]["predictions"][0]["status"] == "unstable"
+    negative_only = [row("n", NEGATIVE, .01), row("n", NEGATIVE, .01, "inset")]
+    assert apply_fitted(fitted, negative_only)["features"][0]["stability"]["countsByPhysicalLabel"][NEGATIVE]["noFoilEvidence"] == 1
+    negative_only[0]["features"]["signal"] = 1e6
+    assert apply_fitted(fitted, negative_only)["features"][0]["threshold"] == result["threshold"]
+    try:
+        apply_fitted(fitted, positive_only[:-1])
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Apply accepted incomplete variants")
+    print("Evaluator checks passed: threshold isolation, grouped folds, complete variants, fixed-threshold application and three-way stability.")
 
 
 def main(argv):
     if argv == ["--self-test"]:
         self_test()
         return
-    if len(argv) != 3:
-        raise ValueError("Usage: EvaluateFoil.py measurements.json groups.json output.json | --self-test")
-    measurements_path, groups_path, output_path = map(pathlib.Path, argv)
-    if output_path.resolve() in (measurements_path.resolve(), groups_path.resolve()):
+    applying = len(argv) == 4 and argv[0] == "--apply"
+    if len(argv) != 3 and not applying:
+        raise ValueError("Usage: EvaluateFoil.py measurements.json groups.json output.json | --apply fitted.json measurements.json output.json | --self-test")
+    first_path, second_path, output_path = map(pathlib.Path, argv[1:] if applying else argv)
+    if output_path.resolve() in (first_path.resolve(), second_path.resolve()):
         raise ValueError("Output must be separate from inputs")
-    result = evaluate(json.loads(measurements_path.read_text()), json.loads(groups_path.read_text()))
+    first, second = json.loads(first_path.read_text()), json.loads(second_path.read_text())
+    result = apply_fitted(first, second) if applying else evaluate(first, second)
     encoded = json.dumps(result, indent=2, sort_keys=True, allow_nan=False) + "\n"
     with output_path.open("x") as output:
         output.write(encoded)
