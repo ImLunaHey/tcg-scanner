@@ -101,3 +101,7 @@ no Store transfer was initiated. The SMB manifest matches the live identificatio
 records. Authenticated HTTPS returned all nineteen v5 estimates, and the clean
 batch URL returned HTTP 200. Evidence is retained in ignored
 `Diagnostics/combined-finish/`.
+
+The subsequent [saved-library refresh](finish-library-validation.md) applied this
+version to every eligible saved card identity and records remaining uncertainty,
+unsupported Energy/ex layouts and original-file integrity checks.
