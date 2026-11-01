@@ -4,12 +4,14 @@ public struct FinishEstimate: Codable, Sendable, Equatable {
     public enum State: String, Codable, Sendable { case estimated, uncertain, unsupported }
     public enum UncertaintyReason: String, Codable, Sendable {
         case ambiguousIdentity, markerNotFound, markerContrast, conflictingContrast, multipleRegularFinishes, missingRegularFinish, analysisFailed, conflictingFinishEvidence
+        case stampUncertain, editionUnavailable, multipleEditionFinishes
     }
     public var state: State
     public var suggestedFinish: CardFinish?
     public var candidateID: String?
     public var method = "modern-set-code-and-border-v5"
     public var borderEvidence: BorderFinishEvidence?
+    public var edition: CardEditionEvidence?
     public var uncertaintyReason: UncertaintyReason?
     public var evidence: [String]
     public var limitations: [String]

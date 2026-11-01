@@ -57,8 +57,10 @@ public actor CardRecognizer: CardRecognizing {
             if let total, match.totals.contains(total) { evidence.append("Printed set total " + String(total)) }
             let finishes: [CardFinish] = [("normal", CardFinish.normal), ("holo", .holo), ("reverse", .reverseHolo)]
                 .filter { detail.variants?[$0.0] == true }.map(\.1)
-            candidates.append(CardCandidate(id: detail.id, name: detail.name, localID: detail.localId,
-                setID: detail.set.id, setName: detail.set.name, officialSetCount: total, evidence: evidence, availableFinishes: finishes, category: detail.category, types: detail.types))
+            var candidate = CardCandidate(id: detail.id, name: detail.name, localID: detail.localId,
+                setID: detail.set.id, setName: detail.set.name, officialSetCount: total, evidence: evidence, availableFinishes: finishes, category: detail.category, types: detail.types)
+            candidate.printingVariants = detail.printingVariants
+            candidates.append(candidate)
             if candidates.count == 5 { break }
         }
         return candidates

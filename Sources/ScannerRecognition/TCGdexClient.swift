@@ -8,14 +8,30 @@ struct CatalogueCard: Decodable, Sendable {
     var image: String?
 }
 struct CatalogueDetail: Decodable, Sendable {
+    struct Variant: Decodable, Sendable {
+        var variantId: String?
+        var type: String
+        var size: String?
+        var stamp: [String]?
+        var subtype: String?
+    }
     struct CardSet: Decodable, Sendable {
         struct Counts: Decodable, Sendable { var official: Int? }
         var id: String; var name: String; var cardCount: Counts?
     }
     var id: String; var localId: String; var name: String; var set: CardSet
+    var image: String?
     var variants: [String: Bool]?
     var category: String?
     var types: [String]?
+    var variants_detailed: [Variant]?
+    var printingVariants: [CardPrintingVariant] {
+        (variants_detailed ?? []).compactMap { variant in
+            guard let id = variant.variantId, variant.size == "standard", variant.subtype == nil,
+                  let finish: CardFinish = ["normal": .normal, "holo": .holo, "reverse": .reverseHolo][variant.type] else { return nil }
+            return CardPrintingVariant(id: id, finish: finish, stamps: variant.stamp ?? [])
+        }
+    }
 }
 
 /// Only catalogue GETs to the fixed TCGdex HTTPS host. No scan or OCR text is uploaded.
@@ -50,7 +66,12 @@ actor TCGdexClient {
         guard detail.id == id, detail.localId.utf8.count <= 32, detail.name.utf8.count <= 128,
               detail.set.id.utf8.count <= 100, detail.set.name.utf8.count <= 256,
               (detail.category?.utf8.count ?? 0) <= 64, (detail.types?.count ?? 0) <= 8,
-              detail.types?.allSatisfy({ $0.utf8.count <= 64 }) != false else {
+              detail.types?.allSatisfy({ $0.utf8.count <= 64 }) != false,
+              (detail.variants_detailed?.count ?? 0) <= 100,
+              detail.variants_detailed?.allSatisfy({ variant in
+                  (variant.variantId?.utf8.count ?? 0) <= 128 && variant.type.utf8.count <= 64 &&
+                  (variant.stamp?.count ?? 0) <= 8 && variant.stamp?.allSatisfy({ $0.utf8.count <= 80 }) != false
+              }) != false else {
             throw ScannerError("catalogue", "Invalid or oversized card metadata.")
         }
         return detail

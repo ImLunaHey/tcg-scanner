@@ -45,6 +45,7 @@ public struct CardCandidate: Codable, Sendable, Equatable {
     public var category: String?
     public var types: [String]?
     public var availableFinishes: [CardFinish]
+    public var printingVariants: [CardPrintingVariant]?
     public init(id: String, name: String, localID: String, setID: String, setName: String, officialSetCount: Int? = nil, evidence: [String], availableFinishes: [CardFinish] = [], category: String? = nil, types: [String]? = nil) {
         self.id = id; self.name = name; self.localID = localID; self.setID = setID; self.setName = setName
         self.officialSetCount = officialSetCount; self.evidence = evidence
