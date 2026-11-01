@@ -35,14 +35,16 @@ public actor ScannerCoordinator {
     var identificationTasks: [UUID: Task<Void, Never>] = [:]
     let cardRecognizer: any CardRecognizing
     let database: ScannerDatabase
+    let pricingCache: PricingCache
     var scanTask: Task<Void, Never>?
     var activeScanID: UUID?
     let storageRoot: URL
     let validateStorage: @Sendable () throws -> Void
-    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil, validateStorage: @escaping @Sendable () throws -> Void = {}, cardRecognizer: any CardRecognizing = CardRecognizer()) throws {
+    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil, validateStorage: @escaping @Sendable () throws -> Void = {}, cardRecognizer: any CardRecognizing = CardRecognizer(), cardPricing: any CardPricingProviding = CardPricingProvider()) throws {
         self.backend = backend; self.storageRoot = storageRoot; self.validateStorage = validateStorage
         self.database = try database ?? ScannerDatabase()
         self.cardRecognizer = cardRecognizer
+        self.pricingCache = PricingCache(database: self.database, provider: cardPricing)
     }
     public func devices() async throws -> [Device] {
         let devices = try await backend.devices()

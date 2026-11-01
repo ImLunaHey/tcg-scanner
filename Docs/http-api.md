@@ -239,3 +239,9 @@ accepts `identificationID` and returns the current `CardIdentification` with
 including no-match backs, and preserves manual finish/condition reviews. Returned
 regions are candidate marks, not verified damage or a grade. See
 [scope, schema and validation](condition-checks.md).
+
+## Card price guides
+
+`GET /api/v1/batches/{id}/valuation` returns asynchronous cached Cardmarket GBP
+values, per-card ranges and a coverage-aware batch subtotal. See
+[pricing rules and schema](card-pricing.md). Authentication is required.

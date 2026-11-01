@@ -106,6 +106,15 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
         let job = try await httpPoll(client, id: requestID, headers: headers)
         #expect(job.state == .completed && job.images.count == 2 && job.request.format == .png)
         #expect(await backend.captures == 1)
+        let valuationPath = "/api/v1/batches/\(requestID)/valuation"
+        let valuation = try await client.execute(uri: valuationPath, method: .get, headers: headers)
+        #expect(valuation.status.code == 200 && valuation.headers[.cacheControl] == "no-store")
+        let price = try decode(valuation, as: BatchValuation.self)
+        #expect(price.batchID == requestID && price.currency == "GBP" && price.pricedCount == 0 && price.lowPence == nil)
+        #expect(try await client.execute(uri: valuationPath, method: .get, headers: [HTTPField.Name("Host")!: "127.0.0.1:8170"]).status.code == 401)
+        #expect(try await client.execute(uri: valuationPath + "?path=/tmp", method: .get, headers: headers).status.code == 400)
+        #expect(try await client.execute(uri: "/api/v1/batches/invalid/valuation", method: .get, headers: headers).status.code == 400)
+        #expect(await backend.captures == 1)
         for suffix in ["", "/manifest"] {
             let result = try await client.execute(uri: "/api/v1/batches/\(requestID)" + suffix, method: .get, headers: headers)
             #expect(try decode(result, as: ScanRecord.self).images.count == 2)

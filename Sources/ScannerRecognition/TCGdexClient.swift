@@ -45,9 +45,7 @@ actor TCGdexClient {
         return physical
     }
     func detail(_ id: String) async throws -> CatalogueDetail {
-        guard !id.isEmpty, id.utf8.count <= 100, id.utf8.allSatisfy({ (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) || $0 == 45 || $0 == 46 }) else {
-            throw ScannerError("catalogue", "Invalid catalogue card identifier.")
-        }
+        try validate(id)
         let detail = try JSONDecoder().decode(CatalogueDetail.self, from: await get(path: "cards/" + id, limit: 256 * 1024))
         guard detail.id == id, detail.localId.utf8.count <= 32, detail.name.utf8.count <= 128,
               detail.set.id.utf8.count <= 100, detail.set.name.utf8.count <= 256,
@@ -56,6 +54,19 @@ actor TCGdexClient {
             throw ScannerError("catalogue", "Invalid or oversized card metadata.")
         }
         return detail
+    }
+    func prices(_ id: String) async throws -> CardMarketPrices {
+        try validate(id)
+        let detail = try JSONDecoder().decode(PricingDetail.self, from: await get(path: "cards/" + id, limit: 256 * 1024))
+        guard detail.id == id, (detail.variants_detailed?.count ?? 0) <= 100 else {
+            throw ScannerError("catalogue", "Invalid pricing metadata.")
+        }
+        return detail.quotes()
+    }
+    private func validate(_ id: String) throws {
+        guard !id.isEmpty, id.utf8.count <= 100, id.utf8.allSatisfy({ (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) || $0 == 45 || $0 == 46 }) else {
+            throw ScannerError("catalogue", "Invalid catalogue card identifier.")
+        }
     }
     private func get(path: String, limit: Int) async throws -> Data {
         let url = URL(string: "https://api.tcgdex.net/v2/en/" + path)!

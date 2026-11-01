@@ -5,8 +5,8 @@ post-capture processing. Identification is also available as an explicit operati
 on an already saved original. It never
 starts the scanner, changes the original bytes or renames B/C labels. English is
 the first supported language. This feature was separately requested after the
-initial scanner milestones; inventory creation, pricing and selling integration
-remain out of scope.
+initial scanner milestones. [Cardmarket GBP price guides](card-pricing.md) were
+subsequently added; inventory creation and selling integration remain out of scope.
 
 ## Use it
 

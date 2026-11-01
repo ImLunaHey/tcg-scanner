@@ -61,6 +61,9 @@ public final class ScannerDatabase: Sendable {
         migrator.registerMigration("v4-identification-recovery") { db in
             try db.execute(sql: "CREATE TABLE pendingIdentifications (jobID TEXT PRIMARY KEY REFERENCES jobs(id))")
         }
+        migrator.registerMigration("v5-market-price-cache") { db in
+            try db.execute(sql: "CREATE TABLE marketPriceCache (key TEXT PRIMARY KEY, fetched REAL NOT NULL, record BLOB NOT NULL)")
+        }
         try migrator.migrate(queue)
     }
     public func reserveBatchNumber(for id: UUID) throws -> Int {

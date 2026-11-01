@@ -74,6 +74,8 @@ extension ScannerGateway {
                     rpc = parts[2]; params = ["deviceID": .string(parts[1])]
                 } else if parts.count == 2, ["profiles", "jobs", "batches"].contains(parts[0]) {
                     rpc = parts[0] + ".get"; params = ["id": .string(try uuid(parts[1]))]
+                } else if parts.count == 3, parts[0] == "batches", parts[2] == "valuation" {
+                    rpc = "batches.valuation"; params = ["id": .string(try uuid(parts[1]))]
                 } else if parts.count == 3, parts[0] == "batches", parts[2] == "manifest" {
                     rpc = "batches.get"; params = ["id": .string(try uuid(parts[1]))]
                 } else { throw GatewayError(404, "notFound", "Unknown API route.") }

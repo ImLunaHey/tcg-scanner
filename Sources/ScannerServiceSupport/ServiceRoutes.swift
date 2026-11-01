@@ -4,7 +4,7 @@ import ScannerCore
 
 extension DiagnosticRouter {
     func serviceResponse(_ request: RPCRequest) async throws -> RPCResponse? {
-        let methods: Set<String> = ["v1.jobs.list", "v1.batches.list", "v1.batches.get", "v1.jobs.get", "v1.jobs.cancel",
+        let methods: Set<String> = ["v1.jobs.list", "v1.batches.list", "v1.batches.get", "v1.batches.valuation", "v1.jobs.get", "v1.jobs.cancel",
             "v1.events", "v1.service.status", "v1.profiles.list", "v1.profiles.get", "v1.profiles.save", "v1.profiles.delete"]
         guard methods.contains(request.method) else { return nil }
         let params: [String: JSONValue]
@@ -14,6 +14,9 @@ extension DiagnosticRouter {
         } else { params = [:] }
         let result: JSONValue
         switch request.method {
+        case "v1.batches.valuation":
+            try only(params, keys: ["id"])
+            result = try .wrapping(await coordinator.batchValuation(uuid(params, "id")))
         case "v1.jobs.list", "v1.batches.list":
             try only(params, keys: ["limit", "offset"])
             result = try .wrapping(await coordinator.jobs(limit: integer(params, "limit", default: 50, range: 1...100),

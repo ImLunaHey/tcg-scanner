@@ -172,3 +172,9 @@ prevents conflicting service instances at different paths. Stale socket files ar
 replaced only after acquiring locks; regular files/symlinks are never substituted.
 No TCP API or arbitrary shell/filesystem access is provided. The MCP server uses
 this service boundary; a future HTTP gateway must do the same.
+
+## Card pricing
+
+`v1.batches.valuation`, params `{"id":"job UUID"}`, returns a versioned GBP market
+guide without accessing hardware or mutating images. Poll while `refreshing` is
+true. See [card pricing](card-pricing.md) for fields, coverage and cache rules.
