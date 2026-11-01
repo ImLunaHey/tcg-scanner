@@ -58,7 +58,6 @@ extension ScannerCoordinator {
     }
 
     private func renderPreparedCard(record: ScanRecord, image: OriginalImage, id: UUID) async throws -> ProcessedImage {
-        guard record.request.overscan != true else { throw ScannerError("unsupportedSetting", "Overscan backing and geometry require validation before automatic card preparation.") }
         guard image.bytes <= 32 * 1024 * 1024 else { throw ScannerError("resourceLimit", "Card source exceeds 32 MiB.") }
         let root = storageRoot
         let validate = validateStorage

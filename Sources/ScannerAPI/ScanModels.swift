@@ -27,8 +27,8 @@ public struct ScanRequest: Codable, Sendable, Equatable {
         self.overscan = overscan
     }
     public func validate() throws {
-        guard overscan != true || (background == nil && prepareCards != true) else {
-            throw ScannerError("invalidSettings", "Overscan is a separate driver cropping mode with unverified backing colour; omit background and disable automatic card preparation for this diagnostic.")
+        guard overscan != true || background != .white else {
+            throw ScannerError("invalidSettings", "The installed driver uses black backing for Overscan; white background cannot be combined with this mode.")
         }
         guard !(profileID != nil && useDeviceSettings == true) else { throw ScannerError("invalidSettings", "Choose either a profile or device defaults.") }
         guard (150...600).contains(dpi) else { throw ScannerError("invalidSettings", "DPI must be between 150 and 600 and supported by the scanner.") }

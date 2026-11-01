@@ -9,7 +9,7 @@ The service holds an idle ADF session and waits for `ICButtonTypeScan`. The driv
 must expose `scan_button_monitor` with current value `1` (On); no vendor settings
 are changed. Wait for `button-monitor: ARMED` in
 `~/Library/Logs/Scanner/service.jsonl`. A press with a loaded feeder closes the
-idle session, then creates one ordinary queued job: **300 DPI, duplex PNG, card
+idle session, then creates one ordinary queued job: **300 DPI, duplex PNG, Overscan with black backing, card
 preparation enabled**. It uses the configured storage root and next `B-NNN` folder,
 with the same cropping, orientation, recognition, finish/condition checks and
 pricing pipeline as a web scan. It does not use or modify saved device defaults.

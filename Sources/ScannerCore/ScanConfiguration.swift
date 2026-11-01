@@ -62,7 +62,7 @@ final class ScanConfiguration {
                 "pixelMode": .string("RGB"), "bitsPerChannel": .number(8), "format": .string(request.format.rawValue),
                 "scanAreaInches": .array([.number(0), .number(0), .number(size.width), .number(size.height)]),
                 "blankPageSkip": .number(0), "cropping": .number(Double(cropping)),
-                "background": .string(request.overscan == true ? "driverDetermined" : background.rawValue),
+                "background": .string(background.rawValue),
                 "overscan": .bool(request.overscan == true), "multifeed": .string("unchanged")]
     }
     private func setFeature(_ name: String, value: Int, on unit: ICScannerFunctionalUnit) throws {

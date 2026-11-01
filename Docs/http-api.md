@@ -214,7 +214,12 @@ operates on saved images (preferring prepared card copies) and never starts a
 physical scan.
 
 Scan requests also accept optional `prepareCards: true` to prepare captured images
-during processing. Defaults to false; feeder configuration is unaffected.
+during processing (omission defaults to false). Card preparation requests now
+default to black Overscan to preserve margin around the captured edges. Optional
+`overscan:false` opts out; `background:"white"` selects the white comparison mode
+unless Overscan is explicitly requested, which is an invalid combination. Both
+fields are accepted by POST jobs and recorded in its request. Transport-safety
+settings remain unchanged. See [Overscan validation](overscan.md).
 
 ## This installation's HTTPS entry point
 

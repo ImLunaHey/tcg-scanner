@@ -13,9 +13,10 @@ background is rejected. The service checks that the driver exposes and accepts
 the selected enumeration value, and restores its previous setting after capture.
 No multifeed or transport-safety settings are changed.
 
-This is initially a diagnostic option on the local API, not a new web/native/MCP
-control or saved profile field. Physical-button scans retain their existing black
-default. Set `"prepareCards":true` to run cropping, deskew, upright orientation,
+Background and overscan are available on local and HTTP job requests, not as
+a new web/native/MCP control or saved profile field. Card jobs and physical-button
+scans now default to black Overscan (see [overscan.md](overscan.md)); an explicit
+white request keeps the white comparison mode. Set `"prepareCards":true` to run cropping, deskew, upright orientation,
 local identification and finish/condition checks with the selected backing.
 For an existing batch, `v1.images.prepareCard` reads its original background
 selection; subsequent `v1.images.identify` uses the prepared image. A duplex batch
@@ -81,5 +82,5 @@ Desktop and 390px browser checks confirmed 19 paired panels, finish estimates an
 priced cards in each batch. Browser validation uses the existing authenticated Tailscale site, and the
 comparison links open those same batches. No scan images are uploaded for analysis.
 Ignored evidence and the interactive sample comparison are in
-`Diagnostics/white-comparison/`. White is available per request; the normal scan
-and physical-button defaults remain black pending the user's comparison.
+`Diagnostics/white-comparison/`. White remains available per request. The subsequent B-023 test established
+black Overscan as the new card-scan default; see [overscan.md](overscan.md).

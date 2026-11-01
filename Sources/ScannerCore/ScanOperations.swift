@@ -10,6 +10,11 @@ extension ScannerCoordinator {
         if let existing = try existingSubmission(submission) { return existing }
         try acceptingJobs()
         var request = submission
+        // Resolve new card jobs centrally so every client, including the physical
+        // button, preserves edges. Keep explicit white comparisons and opt-outs.
+        if request.overscan == nil, request.prepareCards == true, request.background != .white {
+            request.overscan = true
+        }
         let profile: ScanProfile?
         if let id = submission.profileID {
             guard let saved = try database.profile(id) else { throw ScannerError("profileNotFound", "Unknown scan profile.") }

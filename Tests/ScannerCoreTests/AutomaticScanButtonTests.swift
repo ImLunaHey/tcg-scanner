@@ -79,6 +79,7 @@ private func eventually(_ predicate: () async throws -> Bool) async throws {
     for _ in 0..<10 { await backend.press() }
     try await eventually { await backend.requests.count == 1 }
     let request = try #require(await backend.requests.first)
+    #expect(request.overscan == true)
     #expect(request.deviceID == "button" && request.dpi == 300 && request.duplex && request.format == .png && request.prepareCards == true)
     for _ in 0..<10 { await coordinator.maintainScanButton(); await backend.press() }
     #expect(try await coordinator.jobs().jobs.count == 1)
