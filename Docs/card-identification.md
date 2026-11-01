@@ -9,18 +9,62 @@ the physically reviewed finish field.
 Card scans with `prepareCards: true` automatically identify saved images during
 post-capture processing. Identification is also available as an explicit operation
 on an already saved original. It never
-starts the scanner, changes the original bytes or renames B/C labels. English is
-the first supported language. This feature was separately requested after the
+starts the scanner, changes the original bytes or renames B/C labels. English and
+Korean are supported as explicit batch settings. This feature was separately requested after the
 initial scanner milestones. [Cardmarket GBP price guides](card-pricing.md) were
 subsequently added; inventory creation and selling integration remain out of scope.
 
 ## Use it
 
-Enable **Auto-crop, orient and identify cards** when starting a card scan.
+Enable **Auto-crop, orient and identify cards** and select **Card language** when starting a card scan.
 After capture, each image is cropped/oriented and identified in sequence; results
 appear incrementally while the job is Processing. Both sides are analyzed so the
 service does not assume that capture parity identifies the front. Backs normally
 produce no match. General document scans with this option off do not run OCR.
+
+### Korean batches
+
+Choose `Korean` before starting the batch. HTTP/JSON-RPC and MCP accept
+`cardLanguage: "ko"` alongside `prepareCards: true`; the CLI accepts
+`scanner scan --duplex --dpi 600 --prepare-cards --card-language ko`.
+That command physically starts a scan and must only be run once the loaded test
+cards are confirmed ready. The physical Scan/Enter button still creates English
+batches; use an explicit software-started Korean job for these tests.
+
+Language is a batch configuration supplied by the operator, not automatically
+detected. A saved identification retry uses that same language; contradictory
+language requests are rejected. Existing pending requests retain their original
+language during retries. The setting is separate from saved hardware DPI/sides/
+format defaults.
+
+This Mac reports Vision support for `ko-KR`; Korean OCR and orientation use it
+alongside `en-US` for Latin set codes and numbers. A synthetic Korean-text image
+was correctly oriented at all four quarter-turns. This is a software check,
+not physical Korean-card validation. No Korean cards have been fed for this
+feature yet.
+
+On 2026-11-01, TCGdex's `/v2/ko/cards` returned 239 named cards, restricted to
+SV4K, SV4M and SV5K; its broader set list does not imply complete card coverage.
+Uncovered cards remain unmatched. Korean matching requires the exact Korean
+name and printed number, checks the total when available, rejects conflicting
+readable set codes, and cannot drop a visible ex/V-family suffix to select an
+ordinary printing. It never borrows an English catalogue entry.
+
+English foil/stamp rules have not been validated for Korean layouts and return
+`unsupported` with `languageUnsupported`. English market prices and reference
+images are not requested as substitutes. Local crop/deskew and condition
+observations still run; they do not establish a physical condition grade.
+Store export preserves `language: "ko"`, `languageSource:
+"scannerConfiguration"` and Korean suggestion language, and rejects inconsistent
+identity metadata. Store already accepts the canonical `ko` language code.
+
+The full suite passed 205 Swift tests; five targeted matching checks passed after
+adding the set/suffix safeguards. Web validation passed 37 tests and a production
+build. Relevant runtime research and deployment records are under ignored
+`Diagnostics/korean-20261101/` and `Diagnostics/korean-cards-20261101/`.
+
+Implementation: `a267b29` — `feat(recognition): add explicit Korean card processing`;
+`8f8279e` — `feat(clients): select and preserve card language per scan`.
 
 For an older scan or an explicit retry, choose **Identify card** beneath the front
 image in the web batch library, then **Identify this image**. In the native app, use **Identify / review card…**.
@@ -35,8 +79,10 @@ identity**. Finish and condition are independent, optional manual fields:
   Heavily played, Damaged.
 
 Catalogue finishes describe available printings, not the finish detected on the
-physical card. The application does not automatically determine foil, edition,
-condition, authenticity or professional grade. Inspect the actual card under
+physical card. Supported English [finish](combined-finish.md) and
+[pumpkin-stamp](stamped-editions.md) checks are estimates, not physical confirmation.
+Korean finish/stamp inference is explicitly unsupported until validated. The
+application does not establish authenticity or a professional grade. Inspect the actual card under
 appropriate lighting; a flat scan can miss dents, fine scratches and surface wear.
 These condition labels are user-entered descriptions, not a marketplace grading
 certification. Reject suggestions if none agrees with the card. A rejected or
@@ -45,14 +91,14 @@ failed identification can be explicitly rerun.
 ## How matching works
 
 Apple Vision reads text locally in four orientations, from a bounded image preview
-up to 2400 pixels on its longest edge. It uses accurate English recognition with
+up to 2400 pixels on its longest edge. It uses accurate recognition in the selected language with
 language correction disabled to preserve collector numbers. Analysis creates no
 processed image files. Sources are checksum-verified, limited to 32 MiB / 100
 megapixels, and must be a single image in configured scan storage.
 
-TCGdex supplies an English catalogue plus card details over HTTPS. Only catalogue
+TCGdex supplies the selected language's catalogue and card details over HTTPS. Only catalogue
 GETs and candidate IDs leave the Mac; images and OCR text are not uploaded. The
-catalogue is cached in memory for 24 hours. First lookup and detail lookups need
+catalogues have separate in-memory caches for 24 hours. There is no cross-language fallback. First lookup and detail lookups need
 network access. Requests have deadlines, response-size limits and a fixed host;
 redirects are refused. No API key is required.
 
@@ -94,7 +140,7 @@ clients cannot review a replaced result.
 
 | HTTP | JSON-RPC | Purpose |
 | --- | --- | --- |
-| `POST /api/v1/images/{jobID}:{sequence}/identification` | `v1.images.identify` | Start; body `id`, optional `language: "en"`; returns 202 |
+| `POST /api/v1/images/{jobID}:{sequence}/identification` | `v1.images.identify` | Start; body `id`, optional `language: "en"` or `"ko"`; omission uses the batch language; returns 202 |
 | `GET /api/v1/images/{jobID}:{sequence}/identification` | `v1.images.identification` | Poll; returns `{schemaVersion, identification}`; null before first attempt |
 | `PATCH /api/v1/images/{jobID}:{sequence}/identification` | `v1.images.review` | Review using `identificationID`, optional `cardID`, `finish`, `condition`; omit `cardID` to reject |
 

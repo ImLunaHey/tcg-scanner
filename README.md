@@ -10,10 +10,12 @@ live events and a batch library; see [web validation](Docs/milestone-7-validatio
 now includes an explicitly authorized single-card test and an 11-card duplex
 batch with clean feeding and no new damage reported. [Whole-card preparation](Docs/card-preparation.md) preserves
 originals while adding cropped and oriented PNG copies. Bulk feeding is not yet validated.
-Optional [English card identification](Docs/card-identification.md) now uses local
+Optional [English and Korean card identification](Docs/card-identification.md) uses local
 Apple Vision OCR and TCGdex to suggest a card and set. Card-preparation scans
-run identification automatically during processing. Finish and condition are
-recorded through manual review; no automatic foil detection or grading is claimed.
+run identification automatically during processing. Select the physical cards' language
+before scanning; Korean catalogue coverage is limited. Supported English finish
+checks provide estimates; Korean finish checks are not yet validated. Condition
+observations and estimates remain separate from physical review and grading.
 See [native app installation and workflow](Docs/native-app.md) and
 [milestone 6 validation](Docs/milestone-6-validation.md).
 See [MCP setup and agent workflow](Docs/mcp.md) and [milestone 4 validation](Docs/milestone-4-validation.md).
