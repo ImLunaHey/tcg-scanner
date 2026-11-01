@@ -105,3 +105,20 @@ Evidence is ignored under `Diagnostics/scanner-button/`, particularly
 
 The implementation described above adds the subsequent production handoff.
 Its physical scan acceptance test remains separate from this receive-only result.
+
+## Automatic listener deployment — 2026-11-01
+
+Installed the certificate-signed release with `--scan-button-device` persisted in
+the per-user LaunchAgent. The listener reported ARMED at 10:18:50 UTC. A normal
+`v1.capabilities` request then cancelled and closed the idle session successfully,
+completed its own inspection without errors, and reported a loaded ADF. The
+automatic listener rearmed at 10:19:10 UTC. Job history remained unchanged and
+service status was idle/unpaused. Signature verification passed.
+
+Validation: 123 Swift tests passed with warnings-as-errors; the eight focused
+button tests also passed after extending the rearm-after-cancel and wake cases.
+The release build and generated LaunchAgent option check passed. Local evidence
+is ignored under `Diagnostics/scanner-button/automatic-*`; the binary/database/
+LaunchAgent backup is under `~/Library/Application Support/Scanner/backups/` with
+prefix `scan-button-20261101T101847Z`. A physical button-driven A4 scan is still
+pending; installation and read-only inspection did not initiate a scan.
