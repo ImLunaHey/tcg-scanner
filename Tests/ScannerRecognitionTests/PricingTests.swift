@@ -106,6 +106,19 @@ private func ready(_ service: ScannerCoordinator, id: UUID) async throws -> Batc
     #expect(await stub.calls == 1)
 }
 
+@Test func retroactivelyPreparedDuplexCardsArePricedOncePerPair() async throws {
+    let db = try ScannerDatabase()
+    var record = try batch(db, finishes: [.normal, .normal])
+    record.request.prepareCards = false
+    var edit = ProcessedImage(request: ImageEditRequest(jobID: record.id, sequence: 1), sourceSHA256: "fixture", image: record.images[0])
+    edit.cardPreparation = CardPreparation(crop: ImageCrop(x: 0, y: 0, width: 1, height: 1), quarterTurns: 0, orientationVerified: true, warnings: [])
+    record.processedImages = [edit]
+    try db.save(record)
+    let service = try ScannerCoordinator(backend: PricingNoHardware(), database: db, cardPricing: PriceStub())
+    let value = try await ready(service, id: record.id)
+    #expect(value.totalCount == 2 && value.pricedCount == 2 && value.lowPence == 6)
+}
+
 @Test func missingFinishQuoteMakesCardUnavailableNotAnIncompleteRange() async throws {
     let db = try ScannerDatabase()
     let record = try batch(db, finishes: [nil, .normal])

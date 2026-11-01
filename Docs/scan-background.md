@@ -15,9 +15,19 @@ No multifeed or transport-safety settings are changed.
 
 This is initially a diagnostic option on the local API, not a new web/native/MCP
 control or saved profile field. Physical-button scans retain their existing black
-default. The card boundary detector currently assumes a dark background: use
-`"prepareCards":false` for the initial white comparison to preserve full captures
-without applying that detector. White-background cropping needs separate validation.
+default. Set `"prepareCards":true` to run cropping, deskew, upright orientation,
+local identification and finish/condition checks with the selected backing.
+For an existing batch, `v1.images.prepareCard` reads its original background
+selection; subsequent `v1.images.identify` uses the prepared image. A duplex batch
+prepared after capture is grouped/priced as card pairs even if automatic preparation
+was disabled in the original scan request. Original request history is not rewritten.
+
+The white detector estimates backing brightness from both outside margins of each
+row, allowing the driver's grey-to-white transition. Darker or chromatic connected
+foreground includes the grey/coloured card border. The existing component-size,
+aspect-ratio and multiple-object guards, conservative enclosing crop, deskew and
+orientation logic remain in force. White-on-white borders and unusually pale media
+still need review; this is validated on the current card batch, not every card design.
 
 ## Physical validation — B-022, 2026-11-01
 

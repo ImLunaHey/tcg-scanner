@@ -4,10 +4,10 @@ import ImageIO
 import ScannerAPI
 import Vision
 
-/// Conservative bounding crop for individual cards against the scanner's black background.
+/// Conservative bounding crop for individual cards against the selected scanner background.
 /// Connected foreground includes the card border, unlike an artwork-only rectangle detector.
 public enum CardProcessor {
-    public static func analyze(_ data: Data) throws -> CardPreparation {
+    public static func analyze(_ data: Data, background: ScanBackground = .black) throws -> CardPreparation {
         guard data.count <= 32 * 1024 * 1024,
               let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
               CGImageSourceGetCount(source) == 1,
@@ -27,7 +27,7 @@ public enum CardProcessor {
             throw ScannerError("image", "Cannot inspect card boundaries.")
         }
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-        let boundary = try foregroundBoundary(rgba: rgba, width: width, height: height)
+        let boundary = try foregroundBoundary(rgba: rgba, width: width, height: height, background: background)
         let geometry = CardDeskew.analyze(points: boundary.points, width: width, height: height)
         let crop = geometry.crop
         let request = ImageEditRequest(jobID: UUID(), sequence: 1, crop: crop, deskewDegrees: geometry.degrees)
@@ -42,17 +42,35 @@ public enum CardProcessor {
     }
 
     struct Component { var count: Int; var minX: Int; var maxX: Int; var minY: Int; var maxY: Int }
-    static func foregroundCrop(rgba: [UInt8], width: Int, height: Int) throws -> ImageCrop {
-        let boundary = try foregroundBoundary(rgba: rgba, width: width, height: height)
+    static func foregroundCrop(rgba: [UInt8], width: Int, height: Int, background: ScanBackground = .black) throws -> ImageCrop {
+        let boundary = try foregroundBoundary(rgba: rgba, width: width, height: height, background: background)
         return CardDeskew.bounds(points: boundary.points, width: width, height: height, degrees: 0)
     }
 
-    private static func foregroundBoundary(rgba: [UInt8], width: Int, height: Int) throws -> (points: [CGPoint], touchesEdge: Bool) {
+    private static func foregroundBoundary(rgba: [UInt8], width: Int, height: Int, background: ScanBackground) throws -> (points: [CGPoint], touchesEdge: Bool) {
         var bestPixels: [Int] = []
         var mask = [UInt8](repeating: 0, count: width * height)
+        let backing: [Double] = background == .white ? (0..<height).map { y in
+            let margin = max(1, width / 10)
+            let values = (Array(0..<margin) + Array((width - margin)..<width)).map { x in
+                let i = (y * width + x) * 4
+                return Double(Int(rgba[i]) + Int(rgba[i + 1]) + Int(rgba[i + 2])) / 3
+            }.sorted()
+            return values[values.count / 2]
+        } : []
         for pixel in mask.indices {
             let i = pixel * 4
-            if max(rgba[i], rgba[i + 1], rgba[i + 2]) > 50 && Int(rgba[i]) + Int(rgba[i + 1]) + Int(rgba[i + 2]) > 70 { mask[pixel] = 1 }
+            let red = Int(rgba[i]), green = Int(rgba[i + 1]), blue = Int(rgba[i + 2])
+            let maximum = max(red, green, blue), minimum = min(red, green, blue)
+            if background == .black {
+                if maximum > 50 && red + green + blue > 70 { mask[pixel] = 1 }
+            } else {
+                // Estimate backing brightness per row from both outside margins.
+                // This follows the real driver's grey backing / white padding transition.
+                let reference = backing[pixel / width]
+                let brightness = Double(red + green + blue) / 3
+                if reference - brightness > 45 || maximum - minimum > 45 { mask[pixel] = 1 }
+            }
         }
         var components: [Component] = []
         var queue: [Int] = []; queue.reserveCapacity(width * height / 4)
@@ -74,7 +92,7 @@ public enum CardProcessor {
             if c.count > width * height / 500 { components.append(c) }
             if c.count > bestPixels.count { bestPixels = queue }
         }
-        guard let card = components.max(by: { $0.count < $1.count }) else { throw ScannerError("cardNotFound", "No clear card boundary found against a black background. Original retained.") }
+        guard let card = components.max(by: { $0.count < $1.count }) else { throw ScannerError("cardNotFound", "No clear card boundary found against the selected background. Original retained.") }
         let w = Double(card.maxX - card.minX + 1), h = Double(card.maxY - card.minY + 1)
         let ratio = min(w, h) / max(w, h)
         guard (0.60...0.83).contains(ratio), w * h >= Double(width * height) * 0.015, w * h < Double(width * height) * 0.85 else {

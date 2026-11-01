@@ -4,7 +4,7 @@ import ScannerAPI
 extension ScannerCoordinator {
     public func batchValuation(_ id: UUID) async throws -> BatchValuation {
         let record = try await scanStatus(id)
-        let paired = record.request.duplex && record.request.prepareCards == true
+        let paired = record.request.duplex && (record.request.prepareCards == true || record.processedImages?.contains(where: { $0.cardPreparation != nil }) == true)
         let groups = Dictionary(grouping: record.images, by: { paired ? ($0.sequence + 1) / 2 : $0.sequence })
         let identities = record.cardIdentifications ?? []
         var selected: [Int: (CardIdentification, CardCandidate)] = [:]

@@ -235,6 +235,7 @@ export function BatchDetail({ id }: { id: string }) {
       value.finishEstimate?.uncertaintyReason,
     ]),
   ]);
+  const cardBatch = !!batch.data?.request.prepareCards || !!batch.data?.processedImages?.some((image) => image.cardPreparation);
   const pricing = useQuery({
     queryKey: ["batch-pricing", id, pricingRevision],
     queryFn: ({ signal }) =>
@@ -242,7 +243,7 @@ export function BatchDetail({ id }: { id: string }) {
         `batches/${encodeURIComponent(id)}/valuation`,
         signal,
       ),
-    enabled: !!batch.data?.request.prepareCards,
+    enabled: cardBatch,
     staleTime: 60_000,
     refetchInterval: (query) => (query.state.data?.refreshing ? 1500 : 60_000),
   });
@@ -298,7 +299,7 @@ export function BatchDetail({ id }: { id: string }) {
   if (!batch.data) return <ErrorNote error={batch.error} />;
   const record = batch.data;
   const finished = isTerminal(record.state);
-  const grouped = record.request.duplex && record.request.prepareCards === true;
+  const grouped = record.request.duplex && cardBatch;
   function tile(image: OriginalImage, edit?: EditedImage, side?: string) {
     const prepared = !edit
       ? record.processedImages
@@ -475,7 +476,7 @@ export function BatchDetail({ id }: { id: string }) {
             {dateLabel(record.createdAt)}
           </p>
         </div>
-        {record.request.prepareCards && (
+        {cardBatch && (
           <BatchPrice value={pricing.data} loading={pricing.isPending} />
         )}
       </header>

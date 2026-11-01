@@ -65,7 +65,7 @@ extension ScannerCoordinator {
             try Task.checkCancellation(); try validate()
             let original = try OriginalReader.read(root: root, record: record, image: image, offset: 0, length: image.bytes)
             guard original.chunkSHA256 == image.sha256, let data = Data(base64Encoded: original.base64) else { throw ScannerError("storage", "Original checksum verification failed.") }
-            let plan = try CardProcessor.analyze(data)
+            let plan = try CardProcessor.analyze(data, background: record.request.background ?? .black)
             let request = ImageEditRequest(id: id, jobID: record.id, sequence: image.sequence, crop: plan.crop, quarterTurns: plan.quarterTurns, deskewDegrees: plan.deskewDegrees)
             if var recovered = try BatchFiles.recover(request, original: image, root: root, record: record) {
                 recovered.cardPreparation = plan; return recovered
