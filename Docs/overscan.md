@@ -83,4 +83,5 @@ and the automatic button listener rearmed. Ignored evidence is stored under
 
 The user subsequently noticed slight residual tilt on C-001. Upright orientation
 verification establishes quarter-turn direction, not sub-degree straightness;
-fine deskew is being investigated separately using these saved originals.
+fine deskew was subsequently fixed and the batch refreshed from these saved
+originals (see [fine-deskew validation](card-preparation.md#fine-deskew--b-023-2026-11-01)).

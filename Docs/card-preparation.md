@@ -445,3 +445,20 @@ Regression tests cover rounded rasterized cards at ±0.3° and zero, each in all
 four orientations, plus original corner enclosure, isolated edge noise and the
 saved six-image B-023 fixture. The native pipeline performs this correction
 automatically for future scans; it is not a manually entered card rotation.
+
+Deployed the signed release and regenerated all six B-023 preparations from the
+unchanged originals. C-001 now receives approximately +0.321° on its back and
+−0.314° on its front, automatically calculated from the edges. C-002 retains zero
+correction; C-003 receives +0.530° / −0.463°. All six remain upright with no boundary
+warnings. Refreshed identification, finish and condition checks against the new
+prepared-image hashes: the same three identities, normal-finish estimates and
+zero back-border findings remain. Previous prepared copies are also retained.
+
+Validation: the 133-test suite (including the explicitly enabled six-image
+hardware-result fixture), a separate added edge-noise regression and release
+build passed. Original and all prepared-image hashes, source provenance and
+manifest agreement passed. All six production thumbnails/lightboxes and the
+three paired panels, finish checks and prices passed desktop/mobile browser
+checks. The service returned to idle/unpaused. Private evidence remains ignored
+under `Diagnostics/overscan/fine-deskew/`; signed deployment backups use
+`fine-deskew-`. This validation used saved images and did not feed the scanner.
