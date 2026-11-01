@@ -250,3 +250,12 @@ regions are candidate marks, not verified damage or a grade. See
 `GET /api/v1/batches/{id}/valuation` returns asynchronous cached Cardmarket GBP
 values, per-card ranges and a coverage-aware batch subtotal. See
 [pricing rules and schema](card-pricing.md). Authentication is required.
+
+## Store staging transfers
+
+`GET /api/v1/batches/{id}/store` reads persistent transfer progress;
+`POST /api/v1/batches/{id}/store` with an empty body starts or safely retries it
+(202). Existing scanner authentication is required. Store credentials and the
+remote destination are service-only configuration. This stages paired card PNGs
+for review, never approves or publishes inventory. See
+[configuration, identity mapping and validation](store-integration.md).

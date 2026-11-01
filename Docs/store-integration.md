@@ -81,3 +81,33 @@ Store contracts: [OpenAPI](https://lake.tail3275e2.ts.net:5189/api/v1/openapi.js
 Only `POST /api/v1/admin/scan-batches` and
 `POST /api/v1/admin/scan-cards/{id}/photos` are used for writes. Approval and
 publication are intentionally performed in Store.
+
+## Live validation — B-023, 2026-11-01
+
+Validated against the deployed Store OpenAPI contract, installed the signed
+Swift service/HTTP gateway and web assets, and clicked **Send to Store** on B-023
+through the authenticated Tailscale dashboard. Store created one Scan Inbox batch
+(`01a19783-752e-760e-8b5e-3aea1e478978`) containing C-001 Claydol, C-002 Deoxys
+and C-003 Ferrothorn. All three retained their exact scanner labels, source batch
+UUID and scanner instance identity. All six staged PNG hashes and byte counts
+matched the correct latest prepared front/back copies.
+
+Every card remained `pending`, with no confirmed values or inventory ID. Anonymous
+requests for all six private previews were rejected. Inventory and public-product
+counts stayed at zero. Repeating the scanner send command returned its saved
+receipt without creating another card or uploading photos again. The entire scan
+record and every original/prepared file hash remained unchanged.
+
+The production browser check confirmed the button, completed status, same-origin
+Store review link, desktop and 390px mobile layouts, and persistence after reload.
+Only one browser send request occurred; browser traffic never contacted Store
+with the credential. Service status returned idle/unpaused. No physical scan or
+Store approval/publication was performed.
+
+Validation: 140 Swift tests and 27 web tests passed, along with release builds and
+signature verification. Regression coverage includes lost upload responses,
+unchanged pair numbers, swapped capture sides, unknown sides, shutdown/restart,
+private credential files, hostile review links, upstream error redaction,
+reviewed-photo conflicts and gateway authentication/input boundaries. Local
+runtime evidence stays ignored under `Diagnostics/store-integration/`; deployment
+backups use `store-integration-` and the corresponding versioned web backup.
