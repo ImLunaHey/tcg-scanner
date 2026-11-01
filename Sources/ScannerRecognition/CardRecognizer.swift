@@ -22,7 +22,7 @@ public actor CardRecognizer: CardRecognizing {
         let ranked = orientations.map { ($0, CardMatcher.rank(lines: $0.lines, catalogue: cards)) }
         var best = ranked.max { ($0.1.first?.score ?? 0) < ($1.1.first?.score ?? 0) }!
         var candidates = try await candidates(for: best.1)
-        var warnings = ["Suggestions require manual confirmation. Finish estimates are not verified finishes; edition and condition are not assessed."]
+        var warnings = ["Suggestions require manual confirmation. A base-card catalogue match alone does not establish finish, stamped edition or condition."]
         if candidates.isEmpty, !best.1.isEmpty {
             // A rarity symbol can merge with a set total in whole-card OCR.
             // Re-read the footer pixels; never trim digits to fit the catalogue.
