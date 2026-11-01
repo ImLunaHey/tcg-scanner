@@ -13,14 +13,14 @@ can cause false positives. No flagged marks does not establish Near Mint.
 
 ## Use
 
-Checks run automatically during card processing. In the web batch gallery, click
-the visible-marks result to inspect it in the lightbox. Candidate marks have red
-boxes; a checked image without candidates explicitly says there are no boxes to
-show. Unsupported and inconclusive results show their reason and are not presented
-as clear results. Switch sides to see scope/limitations. **Review / refresh checks**
-opens the detailed panel, where **Refresh visible checks** re-analyzes the saved
-source without feeding hardware. The native scan library provides **Check condition…**
-per side with the same observations and marked image.
+Checks run automatically during card processing. In the web batch gallery, the
+card name and set appear above separate finish and back-border results. Only a
+result with candidate marks is clickable; it opens the lightbox with red boxes.
+A checked image without candidates shows plain **No marks flagged** text.
+Unsupported, inconclusive and pending checks remain distinct from clear results.
+The gallery does not show per-card manual review, refresh, edit or download
+controls. Scan warnings remain available under **Scan notes**. The native scan
+library provides **Check condition…** per side with the observations and marked image.
 
 New automatic card identifications run the check before the catalogue lookup,
 including backs that produce no identity match. A catalogue outage therefore does

@@ -399,6 +399,20 @@ export function IdentificationReview({
   );
 }
 
+export function identityCard(
+  identification?: Identification,
+): CardCandidate | undefined {
+  if (!identification) return undefined;
+  return identification.state === "confirmed"
+    ? identification.evidence?.candidates.find(
+        (value) => value.id === identification.selectedCardID,
+      )
+    : identification.state === "reviewRequired" &&
+        identification.evidence?.candidates.length === 1
+      ? identification.evidence.candidates[0]
+      : undefined;
+}
+
 export function IdentitySummary({
   identification,
   pending = false,
@@ -414,15 +428,7 @@ export function IdentitySummary({
           : "Not identified yet"}
       </p>
     );
-  const card =
-    identification.state === "confirmed"
-      ? identification.evidence?.candidates.find(
-          (value) => value.id === identification.selectedCardID,
-        )
-      : identification.state === "reviewRequired" &&
-          identification.evidence?.candidates.length === 1
-        ? identification.evidence.candidates[0]
-        : undefined;
+  const card = identityCard(identification);
   if (card)
     return (
       <p className="small">

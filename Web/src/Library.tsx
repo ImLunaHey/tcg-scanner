@@ -18,7 +18,7 @@ import { useAuth } from "./auth";
 import { Modal } from "./Modal";
 import { ImageLightbox, type LightboxImage } from "./ImageLightbox";
 import { IdentificationReview, IdentitySummary } from "./Identification";
-import { ConditionReview, conditionSummary } from "./ConditionReview";
+import { CardSummary } from "./CardSummary";
 import { conditionImages } from "./conditionLightbox";
 import { imageBlob, saveBlob, saveJSON, type Api } from "./api";
 import {
@@ -229,10 +229,6 @@ export function BatchDetail({ id }: { id: string }) {
   const [comparison, setComparison] = useState<number[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
   const [editing, setEditing] = useState<OriginalImage>();
-  const [conditionPair, setConditionPair] = useState<{
-    sides: { sequence: number; label: string }[];
-    initial: number;
-  }>();
   const [identifying, setIdentifying] = useState<number>();
   const queries = useQueryClient();
   const [preparationIDs, setPreparationIDs] = useState<Record<number, string>>(
@@ -550,10 +546,6 @@ export function BatchDetail({ id }: { id: string }) {
                   sides.find((s) => s.label === "Back")?.image?.sequence,
               ),
             );
-            const reviewImage =
-              sides.find(
-                (side) => side.image?.sequence === identity?.request.sequence,
-              )?.image || sides[0].image;
             const warnings = [
               ...new Set(
                 views.flatMap(
@@ -602,34 +594,19 @@ export function BatchDetail({ id }: { id: string }) {
                   ))}
                 </div>
                 <div className="paired-info">
-                  <div className="section-heading">
-                    <h2>{captureLabel(pair.number)}</h2>
-                    {(!pair.first || !pair.second) && (
-                      <span className="badge">Incomplete pair</span>
-                    )}
-                  </div>
-                  <IdentitySummary
+                  <CardSummary
+                    label={captureLabel(pair.number)}
                     identification={identity}
                     pending={!finished && record.request.prepareCards === true}
-                  />
-                  <button
-                    className="text-button condition-result-link"
-                    disabled={!conditionViews.length}
-                    onClick={() =>
+                    incomplete={!pair.first || !pair.second}
+                    check={conditionViews[conditionStart]?.conditionCheck}
+                    openMarks={() =>
                       setLightbox({
                         images: conditionViews,
                         initial: conditionStart,
                       })
                     }
-                  >
-                    {conditionViews.length
-                      ? conditionSummary(
-                          conditionViews[conditionStart].conditionCheck,
-                        )
-                      : finished
-                        ? "Visible marks: not checked"
-                        : "Visible marks: automatic check pending"}
-                  </button>
+                  />
                   {sideWarning && <p className="small muted">{sideWarning}</p>}
                   {record.state !== "completed" && (
                     <p className="small muted">
@@ -640,116 +617,16 @@ export function BatchDetail({ id }: { id: string }) {
                           : "Scanning…"}
                     </p>
                   )}
-                  <div className="paired-actions">
-                    <button
-                      className="text-button"
-                      disabled={!finished}
-                      onClick={() => {
-                        const items = sides
-                          .filter((s) => s.image)
-                          .map((s) => ({
-                            sequence: s.image!.sequence,
-                            label: s.label,
-                          }));
-                        setConditionPair({
-                          sides: items,
-                          initial:
-                            items.find((s) => s.label === "Back")?.sequence ||
-                            items[0].sequence,
-                        });
-                      }}
-                    >
-                      Review / refresh checks
-                    </button>
-                    {reviewImage && (
-                      <button
-                        className="text-button"
-                        disabled={!finished}
-                        onClick={() => setIdentifying(reviewImage.sequence)}
-                      >
-                        {identity ? "Review identity" : "Identify card"}
-                      </button>
-                    )}
-                    {views
-                      .filter((view) => view.display)
-                      .map((view) => (
-                        <button
-                          key={view.label}
-                          className="text-button"
-                          disabled={download.isPending || archive.isPending}
-                          onClick={() =>
-                            download.mutate({
-                              image: view.display!,
-                              editID: view.prepared?.request.id,
-                            })
-                          }
-                        >
-                          Download {view.label.toLowerCase()}
-                        </button>
+                  {!!warnings.length && (
+                    <details className="pair-details">
+                      <summary>Scan notes ({warnings.length})</summary>
+                      {warnings.map((warning) => (
+                        <p key={warning} className="small muted">
+                          {warning}
+                        </p>
                       ))}
-                  </div>
-                  <details className="pair-details">
-                    <summary>
-                      Edit, originals & checks
-                      {warnings.length ? ` (${warnings.length})` : ""}
-                    </summary>
-                    {views
-                      .filter((view) => view.image)
-                      .map((view) => (
-                        <div className="paired-actions" key={view.label}>
-                          <span className="small">{view.label}</span>
-                          <button
-                            className="text-button"
-                            disabled={!finished}
-                            onClick={() => setIdentifying(view.image!.sequence)}
-                          >
-                            Identify / review
-                          </button>
-                          <button
-                            className="text-button"
-                            disabled={!finished}
-                            onClick={() => setEditing(view.image)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="text-button"
-                            disabled={download.isPending || archive.isPending}
-                            onClick={() =>
-                              download.mutate({ image: view.image! })
-                            }
-                          >
-                            Original
-                          </button>
-                          {!view.prepared && (
-                            <button
-                              className="text-button"
-                              disabled={!finished || prepare.isPending}
-                              onClick={() => {
-                                const requestID =
-                                  preparationIDs[view.image!.sequence] ||
-                                  uuid();
-                                setPreparationIDs({
-                                  ...preparationIDs,
-                                  [view.image!.sequence]: requestID,
-                                });
-                                prepare.mutate({
-                                  sequence: view.image!.sequence,
-                                  requestID,
-                                });
-                              }}
-                            >
-                              Prepare card
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    {warnings.map((warning) => (
-                      <p key={warning} className="small muted">
-                        {warning}
-                      </p>
-                    ))}
-                  </details>
+                    </details>
+                  )}
                 </div>
               </section>
             );
@@ -836,14 +713,6 @@ export function BatchDetail({ id }: { id: string }) {
           batchID={id}
           image={editing}
           close={() => setEditing(undefined)}
-        />
-      )}
-      {conditionPair && (
-        <ConditionReview
-          batch={record}
-          sides={conditionPair.sides}
-          initial={conditionPair.initial}
-          close={() => setConditionPair(undefined)}
         />
       )}
       {identifying !== undefined && (
