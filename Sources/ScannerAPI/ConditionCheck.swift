@@ -13,7 +13,7 @@ public struct ConditionCheck: Codable, Sendable, Equatable {
             self.kind = kind; self.region = region; self.explanation = explanation
         }
     }
-    public var method = "blue-back-visible-marks-v2"
+    public var method = "blue-back-visible-marks-v3"
     public var state: State
     public var findings: [Finding]
     public var limitations: [String]

@@ -13,6 +13,7 @@ public enum ConditionInspector {
 
     public static func analyze(_ data: Data, preparation: CardPreparation?) throws -> ConditionCheck {
         let limits = ["Experimental candidate marks, not confirmed damage or a condition grade.",
+            "Light areas connected to the image boundary are excluded as possible backing; wear merging into a white background cannot be reliably assessed.",
             "Checks only the blue outer border of a prepared standard back. Fronts, artwork, the outermost rim and hidden surfaces are not assessed.",
             "Dust, print variation and scan artifacts can resemble wear. Fine scratches, dents and creases may be invisible; no flagged marks does not mean Near Mint."]
         guard let preparation else {
@@ -54,6 +55,7 @@ public enum ConditionInspector {
 
     static func inspect(_ pixels: [UInt8], width w: Int, height h: Int) -> ConditionCheck {
         var mask = [UInt8](repeating: 0, count: w * h)
+        let exterior = exteriorLight(pixels, width: w, height: h)
         var border = 0, blue = 0
         let landscape = w > h
         let insetX = landscape ? 0.006 : 0.008, insetY = landscape ? 0.008 : 0.006
@@ -61,9 +63,11 @@ public enum ConditionInspector {
         for y in 0..<h { for x in 0..<w {
             let nx = Double(x) / Double(w), ny = Double(y) / Double(h)
             // Exclude the very outer rim (normal paper edge/antialiasing) and all
-            // interior printing. Rounded black corners never pass the light test.
+            // interior printing. White backing outside rounded corners is excluded
+            // by connectivity to the canvas boundary, not assumed to be damage.
             guard nx >= insetX, nx <= 1 - insetX, ny >= insetY, ny <= 1 - insetY,
                   nx < bandX || nx > 1 - bandX || ny < bandY || ny > 1 - bandY else { continue }
+            guard exterior[y * w + x] == 0 else { continue }
             let i = (y * w + x) * 4
             let r = Int(pixels[i]), g = Int(pixels[i + 1]), b = Int(pixels[i + 2])
             border += 1
@@ -109,5 +113,28 @@ public enum ConditionInspector {
             limitations: found.count > 24 ? ["Showing the 24 largest candidate marks; inspect the entire card."] : [])
         result.analyzedWidth = w; result.analyzedHeight = h
         return result
+    }
+
+    private static func exteriorLight(_ pixels: [UInt8], width w: Int, height h: Int) -> [UInt8] {
+        var visited = [UInt8](repeating: 0, count: w * h)
+        var queue: [Int] = []
+        func light(_ p: Int) -> Bool {
+            let i = p * 4
+            let r = Int(pixels[i]), g = Int(pixels[i + 1]), b = Int(pixels[i + 2])
+            return min(r, g, b) > 145 && max(r, g, b) - min(r, g, b) < 55
+        }
+        func add(_ p: Int) {
+            if visited[p] == 0 && light(p) { visited[p] = 1; queue.append(p) }
+        }
+        for x in 0..<w { add(x); add((h - 1) * w + x) }
+        for y in 0..<h { add(y * w); add(y * w + w - 1) }
+        var head = 0
+        while head < queue.count {
+            let p = queue[head]; head += 1
+            let x = p % w, y = p / w
+            if x > 0 { add(p - 1) }; if x + 1 < w { add(p + 1) }
+            if y > 0 { add(p - w) }; if y + 1 < h { add(p + w) }
+        }
+        return visited
     }
 }

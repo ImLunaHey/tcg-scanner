@@ -16,6 +16,18 @@ private func paint(_ pixels: inout [UInt8], x: Int, y: Int, width: Int, height: 
         pixels[i] = 225; pixels[i + 1] = 225; pixels[i + 2] = 225
     } }
 }
+@Test func whiteBackingIsNotMistakenForWearButInternalMarksRemain() {
+    var pixels = backPixels()
+    paint(&pixels, x: 0, y: 0, width: 10, height: 1000)
+    paint(&pixels, x: 690, y: 0, width: 10, height: 1000)
+    paint(&pixels, x: 0, y: 0, width: 20, height: 18)
+    paint(&pixels, x: 680, y: 0, width: 20, height: 18)
+    let clean = ConditionInspector.inspect(pixels, width: 700, height: 1000)
+    #expect(clean.state == .checked && clean.findings.isEmpty)
+    paint(&pixels, x: 15, y: 60, width: 7, height: 7)
+    let marked = ConditionInspector.inspect(pixels, width: 700, height: 1000)
+    #expect(marked.findings.count == 1 && marked.findings[0].kind == .cornerWhitening)
+}
 @Test func conditionMarksExcludeArtworkNoiseAndPaperRim() {
     var pixels = backPixels()
     paint(&pixels, x: 80, y: 100, width: 500, height: 800) // White printed artwork is excluded.
