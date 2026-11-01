@@ -14,11 +14,19 @@ extension StoreTransferLedger {
             let number = offset / 2 + 1
             let pair = Array(images[offset...offset + 1])
             let edits = try pair.map { original -> ProcessedImage in
-                guard let edit = record.processedImages?.last(where: { $0.request.sequence == original.sequence && $0.cardPreparation != nil }),
-                      edit.cardPreparation?.orientationVerified == true, edit.image.uniformType == "public.png",
-                      edit.image.bytes > 0, edit.image.bytes <= 10 * 1024 * 1024,
+                let label = "C-\(BatchNaming.number(number)), capture \(original.sequence)"
+                guard let edit = record.processedImages?.last(where: { $0.request.sequence == original.sequence && $0.cardPreparation != nil }) else {
+                    throw ScannerError("storeNotReady", "\(label) has no prepared image. Run card preparation first.")
+                }
+                guard edit.cardPreparation?.orientationVerified == true else {
+                    throw ScannerError("storeNotReady", "\(label) has uncertain orientation. Refresh card preparation and identification before sending.")
+                }
+                guard edit.image.uniformType == "public.png" else {
+                    throw ScannerError("storeNotReady", "\(label) must be prepared as PNG.")
+                }
+                guard edit.image.bytes > 0, edit.image.bytes <= 10 * 1024 * 1024,
                       (100...8000).contains(edit.image.width), (100...8000).contains(edit.image.height) else {
-                    throw ScannerError("storeNotReady", "C-\(BatchNaming.number(number)) needs upright prepared front/back PNGs within Store's size limits.")
+                    throw ScannerError("storeNotReady", "\(label) exceeds Store's prepared PNG limits: 10 MiB and 100–8000 pixels per axis.")
                 }
                 if let identity = record.cardIdentifications?.first(where: { $0.request.sequence == original.sequence }) {
                     guard identity.state != .processing, identity.sourceSHA256 == edit.image.sha256 else {
@@ -39,7 +47,7 @@ extension StoreTransferLedger {
             else { throw ScannerError("storeNotReady", "C-\(BatchNaming.number(number)) has uncertain front/back sides. Review the pair before sending.") }
             let identity = identities[front]
             let candidates = [.confirmed, .reviewRequired].contains(identity?.state ?? .noMatch) ? (identity?.evidence?.candidates ?? []) : []
-            let suggestions = candidates.prefix(10).map { StoreReview.Suggestion(name: $0.name, setName: $0.setName, collectorNumber: $0.localID, language: "English") }
+            let suggestions = candidates.prefix(10).map { StoreReview.Suggestion(provider: "tcgdex", externalId: $0.id, name: $0.name, setName: $0.setName, collectorNumber: $0.localID, language: "en") }
             var findings = edits.flatMap { $0.cardPreparation?.warnings ?? [] }
             if let check = identities[1 - front]?.conditionCheck {
                 findings += check.findings.map { "Back: " + $0.explanation }
@@ -55,7 +63,8 @@ extension StoreTransferLedger {
             let price = quote?.state == .priced && quote?.stale == false && quote?.lowPence == quote?.highPence ? quote?.lowPence : nil
             inputs.append(StoreCardInput(cardNumber: "C-" + BatchNaming.number(number), review: StoreReview(
                 recognitionSuggestions: suggestions, finishEstimate: finish, conditionEstimate: nil,
-                borderFindings: Array(findings.prefix(30)).map { String($0.prefix(500)) }, suggestedPriceGbp: price)))
+                borderFindings: Array(findings.prefix(30)).map { String($0.prefix(500)) }, suggestedPriceGbp: price),
+                game: "pokemon", language: "en", gameSource: "scannerConfiguration", languageSource: "scannerConfiguration"))
             cards.append(StorePlannedCard(number: number, front: edits[front].image, back: edits[1 - front].image))
         }
         var status = StoreTransferStatus(jobID: record.id, configured: true)

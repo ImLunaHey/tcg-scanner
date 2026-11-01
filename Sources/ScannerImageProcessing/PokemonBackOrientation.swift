@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import ImageIO
+import Vision
 
 /// Conservative orientation cue for the standard international blue Pokémon back.
 /// This is neither card identification nor an authenticity/condition assessment.
@@ -8,8 +9,19 @@ enum PokemonBackOrientation {
     static func rotation(_ data: Data, words: [String]) throws -> Int? {
         // Logos alone are rotationally ambiguous. Require both logo evidence and
         // the blue border, yellow end logos, and central red/white ball layout.
-        guard words.contains(where: resemblesLogo) else { return nil }
-        return try patternRotation(data)
+        guard let turns = try patternRotation(data) else { return nil }
+        if words.contains(where: resemblesLogo) { return turns }
+        // An inverted stylized logo can fail OCR even when the layout is clear.
+        // Verify text again in the layout's proposed orientation, retaining both
+        // independent checks rather than weakening fuzzy-logo matching.
+        guard turns != 0 else { return nil }
+        let orientations: [CGImagePropertyOrientation] = [.up, .right, .down, .left]
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.recognitionLanguages = ["en-US"]; request.usesLanguageCorrection = false
+        try VNImageRequestHandler(data: data, orientation: orientations[turns]).perform([request])
+        let uprightWords = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
+        return uprightWords.contains(where: resemblesLogo) ? turns : nil
     }
 
     /// Independent colour/layout evidence for orientation-invariant border checks.

@@ -119,3 +119,12 @@ func subtleTiltOnRasterizedRoundedCardIsCorrected(angle: Double, quarterTurns: I
     #expect(result.crop.x * 400 < 95)
     #expect((result.crop.x + result.crop.width) * 400 > 230)
 }
+
+@Test(.enabled(if: ProcessInfo.processInfo.environment["SCANNER_UNCERTAIN_BACK"] != nil))
+func invertedBackRetriesLogoOCRInPatternOrientation() throws {
+    let path = try #require(ProcessInfo.processInfo.environment["SCANNER_UNCERTAIN_BACK"])
+    let bytes = try Data(contentsOf: URL(fileURLWithPath: path))
+    #expect(!PokemonBackOrientation.resemblesLogo("PaKCMOy"))
+    #expect(try PokemonBackOrientation.patternRotation(bytes) == 2)
+    #expect(try PokemonBackOrientation.rotation(bytes, words: ["PaKCMOy"]) == 2)
+}

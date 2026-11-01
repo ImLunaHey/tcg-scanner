@@ -10,9 +10,22 @@ public struct StoreImport: Codable, Sendable {
 public struct StoreCardInput: Codable, Sendable {
     public var cardNumber: String
     public var review: StoreReview
+    public var game: String? = nil
+    public var language: String? = nil
+    public var gameSource: String? = nil
+    public var languageSource: String? = nil
+    enum CodingKeys: String, CodingKey { case cardNumber, review, game, language, gameSource, languageSource }
+    public func encode(to encoder: any Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(cardNumber, forKey: .cardNumber); try values.encode(review, forKey: .review)
+        try values.encode(game, forKey: .game); try values.encode(language, forKey: .language)
+        try values.encode(gameSource, forKey: .gameSource); try values.encode(languageSource, forKey: .languageSource)
+    }
 }
 public struct StoreReview: Codable, Sendable {
     public struct Suggestion: Codable, Sendable {
+        public var provider: String? = nil
+        public var externalId: String? = nil
         public var name: String
         public var setName: String
         public var collectorNumber: String

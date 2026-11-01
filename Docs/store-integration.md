@@ -111,3 +111,21 @@ private credential files, hostile review links, upstream error redaction,
 reviewed-photo conflicts and gateway authentication/input boundaries. Local
 runtime evidence stays ignored under `Diagnostics/store-integration/`; deployment
 backups use `store-integration-` and the corresponding versioned web backup.
+
+## Orientation errors and metadata contract — 2026-11-01
+
+B-016/C-011 failed the orientation gate, not the upload size limit. Its back
+(capture 22) was an inverted prepared PNG with unverified orientation: OCR read
+`PaKCMOy`, outside the bounded logo matcher. The preparer now verifies logo OCR
+again in the orientation proposed by the independent back colour/layout detector.
+Both checks remain required. Export errors distinguish missing preparation,
+unverified orientation, non-PNG output and actual size limits, naming the capture.
+
+The updated Store contract requires card-level game/language metadata. New
+transfers include `game:pokemon`, `language:en` and both sources as
+`scannerConfiguration`, including cards without recognition matches. Suggestions
+include `provider:tcgdex` and the exact catalogue candidate's `externalId`.
+These are configured workflow values, not automatic game/language detection.
+Persisted transfer receipts remain readable; a retry upgrades only its frozen
+local submission, never replacing Store reviewer changes. No older wire client
+contract is supported.

@@ -108,6 +108,10 @@ private func waitForTransfer(_ coordinator: ScannerCoordinator, id: UUID) async 
     #expect(payload.batchNumber == "B-023" && payload.cards[0].cardNumber == "C-001")
     #expect(payload.sourceBatchId == fixture.record.id && payload.cards[0].review.recognitionSuggestions[0].name == "Claydol")
     #expect(payload.cards[0].review.conditionEstimate == nil)
+    #expect(payload.cards[0].game == "pokemon" && payload.cards[0].language == "en")
+    #expect(payload.cards[0].gameSource == "scannerConfiguration" && payload.cards[0].languageSource == "scannerConfiguration")
+    #expect(payload.cards[0].review.recognitionSuggestions[0].provider == "tcgdex")
+    #expect(payload.cards[0].review.recognitionSuggestions[0].externalId == "me04-047")
     let remote = try #require(await store.cards.first)
     #expect(remote.front?.sha256 == fixture.record.images[1].sha256)
     #expect(remote.back?.sha256 == fixture.record.images[0].sha256)
@@ -198,5 +202,18 @@ private func waitForTransfer(_ coordinator: ScannerCoordinator, id: UUID) async 
     for origin in ["http://store.example", "https://user:pass@store.example", "https://store.example/path", "https://store.example/?token=x"] {
         config.baseURL = origin
         #expect(throws: ScannerError.self) { try config.validatedURL() }
+    }
+}
+
+@Test func storeReportsOrientationFailureSeparatelyFromPNGSize() throws {
+    let fixture = try StoreFixture(); defer { try? FileManager.default.removeItem(at: fixture.root) }
+    var record = fixture.record
+    record.processedImages?[1].cardPreparation?.orientationVerified = false
+    do {
+        _ = try StoreTransferLedger.make(record: record, store: StagingMock(), valuation: nil)
+        Issue.record("Expected unverified orientation to block export")
+    } catch let error as ScannerError {
+        #expect(error.message.contains("capture 2") && error.message.contains("uncertain orientation"))
+        #expect(!error.message.contains("size limits"))
     }
 }

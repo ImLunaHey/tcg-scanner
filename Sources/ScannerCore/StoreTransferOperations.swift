@@ -26,6 +26,16 @@ extension ScannerCoordinator {
             let valuation = try await batchValuation(id)
             ledger = try StoreTransferLedger.make(record: record, store: client, valuation: valuation)
         }
+        // Upgrade only a frozen local transfer snapshot, never Store reviewer data.
+        // Older persisted receipts remain readable; all new requests use the current contract.
+        if ledger.submission.cards.contains(where: { $0.game == nil || $0.language == nil }) {
+            let refreshed = try StoreTransferLedger.make(record: ledger.snapshot, store: client, valuation: nil)
+            for index in ledger.submission.cards.indices {
+                var updated = refreshed.submission.cards[index]
+                updated.review.suggestedPriceGbp = ledger.submission.cards[index].review.suggestedPriceGbp
+                ledger.submission.cards[index] = updated
+            }
+        }
         guard ledger.origin == client.origin, ledger.submission.scannerInstanceId == client.scannerInstanceID else {
             throw ScannerError("storeConflict", "This transfer belongs to a different Store configuration. Restore the original connection before retrying.")
         }
