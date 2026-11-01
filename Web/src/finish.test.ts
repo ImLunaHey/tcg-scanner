@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { finishDescription, type Identification } from "./Identification";
+import {
+  finishDescription,
+  finishPresentation,
+  type Identification,
+} from "./Identification";
 const result: Identification = {
   request: { id: "fixture", sequence: 1, language: "en" },
   sourceSHA256: "fixture",
@@ -57,4 +61,44 @@ it("explains shared-code ambiguity without assigning a finish or overriding revi
   expect(finishDescription({ ...ambiguous, selectedCardID: "other" })).toBe(
     "Needs review",
   );
+});
+
+it("uses resolved styling only for a current result and distinguishes human review", () => {
+  expect(finishPresentation(result)).toMatchObject({
+    label: "Reverse holo",
+    state: "resolved",
+  });
+  expect(finishPresentation({ ...result, finish: "normal" })).toMatchObject({
+    label: "Non-holo",
+    state: "reviewed",
+  });
+  expect(finishPresentation({ ...result, selectedCardID: "other" }).state).toBe(
+    "uncertain",
+  );
+  expect(finishPresentation({ ...result, state: "rejected" }).state).toBe(
+    "uncertain",
+  );
+});
+it("keeps pending and unsupported checks separate from unresolved finishes", () => {
+  expect(finishPresentation(undefined, true).state).toBe("pending");
+  expect(finishPresentation({ ...result, state: "processing" }).state).toBe(
+    "pending",
+  );
+  expect(finishPresentation(undefined).state).toBe("unavailable");
+  expect(
+    finishPresentation({
+      ...result,
+      finishEstimate: { ...result.finishEstimate!, state: "unsupported" },
+    }).state,
+  ).toBe("unavailable");
+  expect(
+    finishPresentation({
+      ...result,
+      finishEstimate: {
+        ...result.finishEstimate!,
+        state: "uncertain",
+        suggestedFinish: undefined,
+      },
+    }),
+  ).toMatchObject({ label: "Uncertain", state: "uncertain" });
 });

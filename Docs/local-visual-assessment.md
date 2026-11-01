@@ -347,3 +347,24 @@ HTTPS browser checks verified Bisharp's updated label, the three explicit
 alternatives, no reintroduced manual/download links, real mark overlays, system
 light/dark and 320/390-pixel mobile layouts. Evidence and catalogue snapshots are
 under ignored `Diagnostics/finish-b016-investigation/`.
+
+### Finish status colours and reference-image availability
+
+The web card panel uses a green finish badge for a current resolved automatic
+result or reviewed finish, amber for an unresolved result, and neutral grey for
+pending/unavailable checks. Text/icons distinguish these states without relying
+on colour. **Auto** and **Confirmed** retain the distinction between automatic
+inference and physical review; the panel omits the parenthetical “estimated”.
+Rejected or stale identification results cannot receive resolved styling.
+
+For the three B-016 alternatives above, the TCGdex responses contain one
+card-level `image` URL and no separate image URLs in `variants_detailed`. The
+[documented asset URL](https://tcgdex.dev/assets) selects image quality/format,
+not finish. That artwork may be useful for alignment, but is not a verified
+normal-versus-cosmos reference pair. Confirmed physical samples remain necessary
+to validate an image-based distinction.
+
+The 25-test web suite and TypeScript/Vite build pass. Browser verification checks
+the resolved/unresolved badges, absence of the suffix and manual/download links,
+light/dark contrast of at least 4.5:1, mark lightboxes and 320/390-pixel layouts.
+Private screenshots and verification are in `Diagnostics/finish-colours-ui/`.

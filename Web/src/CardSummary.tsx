@@ -1,7 +1,7 @@
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Check, CircleHelp, Clock3, Minus } from "lucide-react";
 import {
   conditions,
-  finishDescription,
+  finishPresentation,
   identityCard,
   IdentitySummary,
   type Identification,
@@ -25,7 +25,23 @@ export function CardSummary({
   openMarks: () => void;
 }) {
   const card = identityCard(identification);
-  const finish = identification ? finishDescription(identification) : undefined;
+  const finish = finishPresentation(identification, pending);
+  const FinishIcon =
+    finish.state === "resolved" || finish.state === "reviewed"
+      ? Check
+      : finish.state === "uncertain"
+        ? CircleHelp
+        : finish.state === "pending"
+          ? Clock3
+          : Minus;
+  const finishBasis =
+    finish.state === "resolved"
+      ? "Auto"
+      : finish.state === "reviewed"
+        ? "Confirmed"
+        : finish.state === "uncertain"
+          ? "Unresolved"
+          : undefined;
   const marks = check?.state === "checked" ? check.findings.length : 0;
   const borderStatus =
     check?.state === "checked"
@@ -74,13 +90,15 @@ export function CardSummary({
         <div>
           <dt>Finish</dt>
           <dd>
-            {finish
-              ? finish === "Needs review"
-                ? "Uncertain"
-                : finish
-              : pending
-                ? "Checking…"
-                : "Not checked"}
+            <span
+              className={`finish-pill finish-${finish.state}`}
+              title={finish.detail}
+            >
+              <FinishIcon size={13} aria-hidden="true" />
+              <span>{finish.label}</span>
+              <span className="sr-only">. {finish.detail}</span>
+            </span>
+            {finishBasis && <span className="finish-basis">{finishBasis}</span>}
           </dd>
         </div>
         <div>

@@ -68,28 +68,84 @@ export const conditions: Record<string, string> = {
   damaged: "Damaged",
 };
 
-export function finishDescription(value: Identification): string {
-  if (value.finish !== "unverified")
-    return `${finishes[value.finish] || value.finish} (reviewed)`;
-  const estimate = value.finishEstimate;
+export type FinishPresentation = {
+  label: string;
+  state: "resolved" | "reviewed" | "uncertain" | "pending" | "unavailable";
+  detail: string;
+};
+
+export function finishPresentation(
+  value?: Identification,
+  pending = false,
+): FinishPresentation {
+  if (value && value.finish !== "unverified")
+    return {
+      label: finishes[value.finish] || value.finish,
+      state: "reviewed",
+      detail: "Physically reviewed finish.",
+    };
+  if ((!value && pending) || value?.state === "processing")
+    return {
+      label: "Checking…",
+      state: "pending",
+      detail: "Automatic finish analysis is pending.",
+    };
+  const estimate = value?.finishEstimate;
+  if (!estimate)
+    return {
+      label: "Not checked",
+      state: "unavailable",
+      detail: "No automatic finish result is available.",
+    };
   const cardID =
-    value.selectedCardID ||
-    (value.evidence?.candidates.length === 1
+    value?.selectedCardID ||
+    (value?.evidence?.candidates.length === 1
       ? value.evidence.candidates[0].id
       : undefined);
-  if (
-    estimate?.state === "estimated" &&
-    estimate.suggestedFinish &&
-    estimate.candidateID === cardID
-  )
-    return `${finishes[estimate.suggestedFinish] || estimate.suggestedFinish} (estimated)`;
-  if (
-    estimate?.state === "uncertain" &&
+  const current =
+    !!cardID &&
     estimate.candidateID === cardID &&
+    (value?.state === "reviewRequired" || value?.state === "confirmed");
+  if (current && estimate.state === "estimated" && estimate.suggestedFinish)
+    return {
+      label: finishes[estimate.suggestedFinish] || estimate.suggestedFinish,
+      state: "resolved",
+      detail:
+        "Automatic result from printed-marker and catalogue evidence; not physically confirmed.",
+    };
+  if (current && estimate.state === "unsupported")
+    return {
+      label: "Not assessed",
+      state: "unavailable",
+      detail: "This printing is outside the automatic finish check's scope.",
+    };
+  if (
+    current &&
+    estimate.state === "uncertain" &&
     estimate.uncertaintyReason === "multipleRegularFinishes"
   )
-    return "Non-holo or holo";
-  return estimate ? "Needs review" : "Not verified";
+    return {
+      label: "Non-holo or holo",
+      state: "uncertain",
+      detail:
+        "Both variants share this printed code; the automatic check cannot distinguish them.",
+    };
+  return {
+    label: "Uncertain",
+    state: "uncertain",
+    detail: current
+      ? "The automatic check could not resolve the finish."
+      : "A finish result for the current card identification is not available.",
+  };
+}
+
+export function finishDescription(value: Identification): string {
+  const result = finishPresentation(value);
+  if (result.state === "resolved") return `${result.label} (estimated)`;
+  if (result.state === "reviewed") return `${result.label} (reviewed)`;
+  if (result.state === "uncertain" && result.label !== "Uncertain")
+    return result.label;
+  return value.finishEstimate ? "Needs review" : "Not verified";
 }
 
 export function IdentificationReview({
