@@ -21,7 +21,7 @@ enum CardMatcher {
         let suffix = value.dropFirst(prefix.count)
         return String(prefix) + (Int(suffix).map(String.init) ?? String(suffix))
     }
-    static func rank(lines: [RecognizedLine], catalogue: [CatalogueCard]) -> [Ranked] {
+    static func rank(lines: [RecognizedLine], catalogue: [CatalogueCard], language: CardLanguage = .english) -> [Ranked] {
         let readable = lines.filter { $0.confidence >= 0.35 }
         let titles = readable.filter { $0.y + $0.height > 0.65 && $0.height < 0.15 }.map { " " + normalized($0.text) + " " }
         let footers = readable.filter { $0.y < 0.30 && $0.height <= 0.10 }.map(\.text)
@@ -50,15 +50,37 @@ enum CardMatcher {
             let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
             return value.count == 3 && value.allSatisfy(\.isNumber) ? number(value) : nil
         })
+        // A limited translated catalogue must not override a clear printed set
+        // or card-class suffix just because another printing shares its number.
+        let setPattern = try! NSRegularExpression(pattern: #"(?i)(?<![A-Z0-9])((?:SV|SM|XY|BW|S)[0-9]{1,3}[A-Z]{0,3}\+?)(?![A-Z0-9])"#)
+        let printedSets: Set<String> = language == .korean ? Set(footers.flatMap { text in
+            setPattern.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap { match in
+                Range(match.range(at: 1), in: text).map { String(text[$0]).uppercased() }
+            }
+        }) : []
+        let classSuffixes: Set<String> = ["ex", "gx", "v", "vmax", "vstar", "break"]
+        let printedSuffixes = Set(titles.flatMap { $0.split(separator: " ").map(String.init).filter(classSuffixes.contains) })
         return catalogue.compactMap { card -> Ranked? in
             let name = normalized(card.name)
-            guard name.count >= 3 else { return nil }
+            guard !name.isEmpty else { return nil }
             let local = number(card.localId)
             let energyNumber = energyTitle && sveCode && standalone.count == 1 && standalone.contains(local) && card.id.hasPrefix("sve-")
             let numbered = numbers.contains(local) || energyNumber
+            // Valid Korean names can be only one or two Hangul syllables. Their
+            // exact title still needs independent printed-number evidence.
+            let hasHangul = name.unicodeScalars.contains { (0xAC00...0xD7A3).contains($0.value) }
+            guard name.count >= 3 || (language == .korean && hasHangul && numbered) else { return nil }
+            guard language != .korean || numbered else { return nil }
+            if language == .korean {
+                let set = card.id.split(separator: "-").dropLast().joined(separator: "-").uppercased()
+                guard printedSets.isEmpty || printedSets == [set] else { return nil }
+                let suffix = name.split(separator: " ").last.map(String.init)
+                let expected: Set<String> = suffix.map { classSuffixes.contains($0) ? [$0] : [] } ?? []
+                guard printedSuffixes.isEmpty || printedSuffixes == expected else { return nil }
+            }
             let exactName = titles.contains { $0.contains(" " + name + " ") }
             let base = name.hasSuffix(" ex") ? String(name.dropLast(3)) : ""
-            let uncertainSuffix = numbered && !base.isEmpty && titles.contains { title in
+            let uncertainSuffix = language == .english && numbered && !base.isEmpty && titles.contains { title in
                 [" x ", " cx "].contains { title.contains(" " + base + $0) }
             }
             guard exactName || uncertainSuffix || energyNumber else { return nil }

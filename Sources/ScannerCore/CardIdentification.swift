@@ -9,6 +9,9 @@ extension ScannerCoordinator {
         guard !stopping else { throw ScannerError("busy", "Service is shutting down.") }
         try validateStorage()
         var record = try await scanStatus(request.jobID)
+        guard request.language == record.request.resolvedCardLanguage.rawValue else {
+            throw ScannerError("invalidParams", "Identification language must match the batch's configured physical card language (\(record.request.resolvedCardLanguage.rawValue)).")
+        }
         guard record.state.terminal, scans[record.id] == nil else { throw ScannerError("busy", "Wait until the scan finishes before identifying images.") }
         guard let original = record.images.first(where: { $0.sequence == request.sequence }) else { throw ScannerError("imageNotFound", "Original image not found.") }
         if let existing = record.cardIdentifications?.first(where: { $0.request.id == request.id }) {
@@ -95,6 +98,10 @@ extension ScannerCoordinator {
     func recognizeCard(_ pending: CardIdentification, record snapshot: ScanRecord, image: OriginalImage) async -> CardIdentification {
         var result = pending
         do {
+            guard let language = CardLanguage(rawValue: pending.request.language),
+                  language == snapshot.request.resolvedCardLanguage else {
+                throw ScannerError("invalidParams", "Identification language does not match the batch's configured card language.")
+            }
             guard image.bytes <= 32 * 1024 * 1024 else { throw ScannerError("resourceLimit", "OCR source exceeds 32 MiB.") }
             try validateStorage()
             let root = storageRoot
@@ -114,11 +121,11 @@ extension ScannerCoordinator {
             try Task.checkCancellation()
             // Local stamp evidence survives unavailable OCR/catalogue services and unknown cards.
             result.finishEstimate = await finishAnalyzer.estimate(data,
-                evidence: RecognitionEvidence(lines: [], candidates: []), preparation: preparation)
+                evidence: RecognitionEvidence(lines: [], candidates: []), preparation: preparation, language: language)
             try Task.checkCancellation()
-            result.evidence = try await cardRecognizer.recognize(data)
+            result.evidence = try await cardRecognizer.recognize(data, language: language)
             if let evidence = result.evidence {
-                result.finishEstimate = await finishAnalyzer.estimate(data, evidence: evidence, preparation: preparation)
+                result.finishEstimate = await finishAnalyzer.estimate(data, evidence: evidence, preparation: preparation, language: language)
                 try Task.checkCancellation()
             }
             try Task.checkCancellation()

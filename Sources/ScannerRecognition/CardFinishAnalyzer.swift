@@ -11,8 +11,9 @@ public actor CardFinishAnalyzer {
         self.catalogue = catalogue; self.references = references
     }
 
-    public func estimate(_ data: Data, evidence: RecognitionEvidence, preparation: CardPreparation?) async -> FinishEstimate {
-        do { return try await analyze(data, evidence: evidence, preparation: preparation) }
+    public func estimate(_ data: Data, evidence: RecognitionEvidence, preparation: CardPreparation?, language: CardLanguage = .english) async -> FinishEstimate {
+        guard language == .english else { return Self.unsupportedLanguage(evidence: evidence, language: language) }
+        do { return try await analyze(data, evidence: evidence, preparation: preparation, language: language) }
         catch {
             let id = evidence.candidates.count == 1 ? evidence.candidates.first?.id : nil
             var result = FinishEstimate(state: .uncertain, candidateID: id,
@@ -23,8 +24,9 @@ public actor CardFinishAnalyzer {
         }
     }
 
-    public func analyze(_ data: Data, evidence: RecognitionEvidence, preparation: CardPreparation?) async throws -> FinishEstimate {
+    public func analyze(_ data: Data, evidence: RecognitionEvidence, preparation: CardPreparation?, language: CardLanguage = .english) async throws -> FinishEstimate {
         try Task.checkCancellation()
+        guard language == .english else { return Self.unsupportedLanguage(evidence: evidence, language: language) }
         // Scanner frames, bad crops and backs cannot establish the expected mark location.
         guard preparation?.orientationVerified == true, preparation?.orientationBasis == "text" else {
             return try await ordinary(data, evidence: evidence, preparation: preparation)
@@ -72,6 +74,16 @@ public actor CardFinishAnalyzer {
             catch { border = BorderFinishEvidence(state: .failed, threshold: BorderFoilMeasurement.calibratedThreshold) }
         }
         return Self.decision(edition: edition, border: border)
+    }
+
+    private static func unsupportedLanguage(evidence: RecognitionEvidence, language: CardLanguage) -> FinishEstimate {
+        var result = FinishEstimate(state: .unsupported,
+            candidateID: evidence.candidates.count == 1 ? evidence.candidates.first?.id : nil,
+            evidence: ["Automatic finish and stamp checks have not been validated for \(language.displayName) cards."],
+            limitations: ["English set-code, border and stamped-printing rules are not applied to other languages. Inspect the physical card for its finish."],
+            uncertaintyReason: .languageUnsupported)
+        result.method = "language-scope-v1"
+        return result
     }
 
     private func ordinary(_ data: Data, evidence: RecognitionEvidence, preparation: CardPreparation?) async throws -> FinishEstimate {

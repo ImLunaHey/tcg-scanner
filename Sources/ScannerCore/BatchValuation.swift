@@ -19,7 +19,17 @@ extension ScannerCoordinator {
                 selected[number] = (matches[0], card)
             }
         }
-        let snapshot = try await pricingCache.snapshot(Set(selected.values.map { $0.1.id }))
+        // Current market data is scoped to English printings. A translated name
+        // or matching collector number cannot establish a Korean market quote.
+        guard record.request.resolvedCardLanguage == .english else {
+            let cards = groups.keys.sorted().map { number in
+                var value = CardValuation(number: number, reason: "Pricing is not yet supported for \(record.request.resolvedCardLanguage.displayName) printings; English prices are not substituted.")
+                value.cardID = selected[number]?.1.id
+                return value
+            }
+            return BatchValuation(batchID: id, cards: cards, exchangeRate: nil, refreshing: false)
+        }
+        let snapshot = try await pricingCache.snapshot(Set(selected.values.filter { $0.0.request.language == "en" }.map { $0.1.id }))
         let cards = groups.keys.sorted().map { number -> CardValuation in
             guard let (identity, card) = selected[number] else {
                 return CardValuation(number: number, reason: "A single card match and complete pair are needed.")
@@ -39,6 +49,9 @@ extension ScannerCoordinator {
     private static func value(number: Int, identity: CardIdentification, card: CardCandidate, snapshot: PricingCache.Snapshot) -> CardValuation {
         var result = CardValuation(number: number, reason: "Price unavailable.")
         result.cardID = card.id
+        guard identity.request.language == "en" else {
+            result.reason = "Identification language does not match the English pricing source."; return result
+        }
         let edition = identity.finishEstimate?.edition
         result.editionKey = edition?.pricingKey
         var editionVariants: [CardPrintingVariant]?

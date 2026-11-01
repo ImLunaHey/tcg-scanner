@@ -46,7 +46,8 @@ extension ScannerCoordinator {
                 let current = await store.snapshot()
                 let prepared = current.processedImages?.last { $0.request.sequence == image.sequence && $0.cardPreparation != nil }
                 let source = prepared?.image ?? image
-                var pending = CardIdentification(request: IdentificationRequest(jobID: current.id, sequence: image.sequence), sourceSHA256: source.sha256)
+                var pending = CardIdentification(request: IdentificationRequest(jobID: current.id, sequence: image.sequence,
+                    language: current.request.resolvedCardLanguage.rawValue), sourceSHA256: source.sha256)
                 pending.sourceEditID = prepared?.id
                 try await store.saveIdentification(pending)
                 let result = await recognizeCard(pending, record: current, image: source)
@@ -65,7 +66,7 @@ extension ScannerCoordinator {
             try Task.checkCancellation(); try validate()
             let original = try OriginalReader.read(root: root, record: record, image: image, offset: 0, length: image.bytes)
             guard original.chunkSHA256 == image.sha256, let data = Data(base64Encoded: original.base64) else { throw ScannerError("storage", "Original checksum verification failed.") }
-            let plan = try CardProcessor.analyze(data, background: record.request.background ?? .black)
+            let plan = try CardProcessor.analyze(data, background: record.request.background ?? .black, language: record.request.resolvedCardLanguage)
             let request = ImageEditRequest(id: id, jobID: record.id, sequence: image.sequence, crop: plan.crop, quarterTurns: plan.quarterTurns, deskewDegrees: plan.deskewDegrees)
             if var recovered = try BatchFiles.recover(request, original: image, root: root, record: record) {
                 recovered.cardPreparation = plan; return recovered

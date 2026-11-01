@@ -90,7 +90,7 @@ extension ScannerGateway {
             try path.only([])
             if parts == ["jobs"], method == .post {
                 rpc = "jobs.create"; status = 202
-                try only(body, ["requestID", "deviceID", "profileID", "useDeviceSettings", "dpi", "duplex", "format", "prepareCards", "background", "overscan"])
+                try only(body, ["requestID", "deviceID", "profileID", "useDeviceSettings", "dpi", "duplex", "format", "prepareCards", "background", "overscan", "cardLanguage"])
                 if let key = request.headers[HTTPField.Name("Idempotency-Key")!] {
                     let id = try uuid(key)
                     if let supplied = body["requestID"] {

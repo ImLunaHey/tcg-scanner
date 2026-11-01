@@ -18,6 +18,9 @@ extension ScannerCoordinator {
               [.reviewRequired, .confirmed, .noMatch].contains(identity.state), var evidence = identity.evidence else {
             throw ScannerError("conflict", "A completed, current card identification is required.")
         }
+        guard let language = CardLanguage(rawValue: identity.request.language), language == snapshot.request.resolvedCardLanguage else {
+            throw ScannerError("conflict", "Identification language does not match the batch's configured card language.")
+        }
         if let selected = identity.selectedCardID { evidence.candidates = evidence.candidates.filter { $0.id == selected } }
         let source: OriginalImage?
         let prepared = snapshot.processedImages?.first { $0.id == identity.sourceEditID && $0.request.sequence == sequence }
@@ -31,7 +34,7 @@ extension ScannerCoordinator {
             try Task.checkCancellation()
             let chunk = try OriginalReader.read(root: root, record: snapshot, image: source, offset: 0, length: source.bytes)
             guard chunk.chunkSHA256 == source.sha256, let data = Data(base64Encoded: chunk.base64) else { throw ScannerError("storage", "Source checksum verification failed.") }
-            let result = await analyzer.estimate(data, evidence: input, preparation: prepared?.cardPreparation)
+            let result = await analyzer.estimate(data, evidence: input, preparation: prepared?.cardPreparation, language: language)
             try Task.checkCancellation()
             return result
         }

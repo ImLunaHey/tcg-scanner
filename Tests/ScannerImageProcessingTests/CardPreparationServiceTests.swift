@@ -12,7 +12,7 @@ private actor AutomaticRecognition: CardRecognizing {
     let fail: Bool
     let delay: Duration
     init(fail: Bool = false, delay: Duration = .zero) { self.fail = fail; self.delay = delay }
-    func recognize(_ data: Data) async throws -> RecognitionEvidence {
+    func recognize(_ data: Data, language: CardLanguage) async throws -> RecognitionEvidence {
         calls += 1
         try await Task.sleep(for: delay)
         if fail { throw ScannerError("catalogueUnavailable", "Offline test") }

@@ -4,36 +4,42 @@ import ScannerAPI
 import Vision
 
 public protocol CardRecognizing: Sendable {
-    func recognize(_ data: Data) async throws -> RecognitionEvidence
+    func recognize(_ data: Data, language: CardLanguage) async throws -> RecognitionEvidence
 }
 
 public actor CardRecognizer: CardRecognizing {
-    private let catalogue = TCGdexClient()
+    private let catalogues: [CardLanguage: TCGdexClient] = [
+        .english: TCGdexClient(language: .english), .korean: TCGdexClient(language: .korean)
+    ]
     public init() {}
-    public func recognize(_ data: Data) async throws -> RecognitionEvidence {
-        let ocr = Task.detached(priority: .utility) { try CardOCR.read(data) }
+    public func recognize(_ data: Data, language: CardLanguage = .english) async throws -> RecognitionEvidence {
+        let ocr = Task.detached(priority: .utility) { try CardOCR.read(data, language: language) }
         let orientations = try await withTaskCancellationHandler { try await ocr.value } onCancel: { ocr.cancel() }
         try Task.checkCancellation()
         // Avoid a network lookup for blank pages, card backs or other images with no readable text.
         guard orientations.contains(where: { !$0.lines.isEmpty }) else {
             return RecognitionEvidence(lines: [], candidates: [], warnings: ["No readable card text. Select the front image."])
         }
+        guard let catalogue = catalogues[language] else { throw ScannerError("unsupportedLanguage", "No catalogue client is configured for this card language.") }
         let cards = try await catalogue.catalogue()
-        let ranked = orientations.map { ($0, CardMatcher.rank(lines: $0.lines, catalogue: cards)) }
+        let ranked = orientations.map { ($0, CardMatcher.rank(lines: $0.lines, catalogue: cards, language: language)) }
         var best = ranked.max { ($0.1.first?.score ?? 0) < ($1.1.first?.score ?? 0) }!
-        var candidates = try await candidates(for: best.1)
+        var candidates = try await candidates(for: best.1, catalogue: catalogue)
         var warnings = ["Suggestions require manual confirmation. A base-card catalogue match alone does not establish finish, stamped edition or condition."]
+        if language == .korean {
+            warnings.append("Korean catalogue coverage is limited. Only Korean names and numbered Korean catalogue entries are considered; no English printing is substituted.")
+        }
         if candidates.isEmpty, !best.1.isEmpty {
             // A rarity symbol can merge with a set total in whole-card OCR.
             // Re-read the footer pixels; never trim digits to fit the catalogue.
             let reading = best.0
-            let retry = Task.detached(priority: .utility) { try CardOCR.refineFooter(data, reading: reading) }
+            let retry = Task.detached(priority: .utility) { try CardOCR.refineFooter(data, reading: reading, language: language) }
             let refined = try await withTaskCancellationHandler { try await retry.value } onCancel: { retry.cancel() }
             let previousIDs = Set(best.1.map(\.card.id))
-            let refinedRank = CardMatcher.rank(lines: refined.lines, catalogue: cards).filter {
+            let refinedRank = CardMatcher.rank(lines: refined.lines, catalogue: cards, language: language).filter {
                 previousIDs.contains($0.card.id) && !$0.totals.isEmpty
             }
-            let refinedCandidates = try await self.candidates(for: refinedRank)
+            let refinedCandidates = try await self.candidates(for: refinedRank, catalogue: catalogue)
             if !refinedCandidates.isEmpty {
                 best = (refined, refinedRank)
                 candidates = refinedCandidates
@@ -45,7 +51,7 @@ public actor CardRecognizer: CardRecognizing {
         return RecognitionEvidence(lines: best.0.lines, candidates: candidates, warnings: warnings, orientation: best.0.rotation)
     }
 
-    private func candidates(for ranked: [CardMatcher.Ranked]) async throws -> [CardCandidate] {
+    private func candidates(for ranked: [CardMatcher.Ranked], catalogue: TCGdexClient) async throws -> [CardCandidate] {
         var candidates: [CardCandidate] = []
         for match in ranked.prefix(8) {
             try Task.checkCancellation()
@@ -69,6 +75,18 @@ public actor CardRecognizer: CardRecognizing {
 
 enum CardOCR {
     struct Reading: Sendable { var rotation: Int; var lines: [RecognizedLine] }
+    static func request(language: CardLanguage) throws -> VNRecognizeTextRequest {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        let supported = try request.supportedRecognitionLanguages()
+        guard language.recognitionLanguages.allSatisfy({ supported.contains($0) }) else {
+            throw ScannerError("unsupportedLanguage", "This Mac's Vision framework does not support \(language.displayName) OCR.")
+        }
+        request.recognitionLanguages = language.recognitionLanguages
+        request.automaticallyDetectsLanguage = false
+        request.usesLanguageCorrection = false // Preserve collector numbers and Pokémon spelling.
+        return request
+    }
     private static func image(_ data: Data) throws -> CGImage {
         guard data.count <= 32 * 1024 * 1024,
               let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
@@ -84,14 +102,11 @@ enum CardOCR {
         }
         return image
     }
-    static func read(_ data: Data) throws -> [Reading] {
+    static func read(_ data: Data, language: CardLanguage = .english) throws -> [Reading] {
         let image = try image(data)
         return try [CGImagePropertyOrientation.up, .right, .down, .left].enumerated().map { rotation, orientation in
             try Task.checkCancellation()
-            let request = VNRecognizeTextRequest()
-            request.recognitionLevel = .accurate
-            request.recognitionLanguages = ["en-US"]
-            request.usesLanguageCorrection = false // Preserve collector numbers and Pokémon spelling.
+            let request = try Self.request(language: language)
             try VNImageRequestHandler(cgImage: image, orientation: orientation).perform([request])
             let lines = (request.results ?? []).prefix(48).compactMap { observation -> RecognizedLine? in
                 guard let text = observation.topCandidates(1).first, text.confidence >= 0.35 else { return nil }
@@ -121,9 +136,8 @@ enum CardOCR {
             guard let enlarged = context.makeImage() else { throw ScannerError("recognition", "Cannot read enlarged set-code evidence.") }
             input = enlarged
         }
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate; request.recognitionLanguages = ["en-US"]
-        request.usesLanguageCorrection = false; request.minimumTextHeight = 0
+        let request = try Self.request(language: .english)
+        request.minimumTextHeight = 0
         let region = CGRect(x: 0.03, y: 0.015, width: 0.25, height: 0.075)
         request.regionOfInterest = region
         try VNImageRequestHandler(cgImage: input, orientation: orientations[rotation]).perform([request])
@@ -141,14 +155,11 @@ enum CardOCR {
         }
     }
 
-    static func refineFooter(_ data: Data, reading: Reading) throws -> Reading {
+    static func refineFooter(_ data: Data, reading: Reading, language: CardLanguage = .english) throws -> Reading {
         try Task.checkCancellation()
         let orientations: [CGImagePropertyOrientation] = [.up, .right, .down, .left]
         guard orientations.indices.contains(reading.rotation) else { throw ScannerError("recognition", "Invalid OCR orientation.") }
-        let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate
-        request.recognitionLanguages = ["en-US"]
-        request.usesLanguageCorrection = false
+        let request = try Self.request(language: language)
         request.minimumTextHeight = 0
         let numbered = reading.lines.filter { $0.y < 0.15 && $0.height < 0.1 && $0.text.range(of: #"[0-9]\s*/\s*[A-Za-z]{0,5}[0-9]"#, options: .regularExpression) != nil }
         guard numbered.count == 1, let number = numbered.first, number.width <= 0.45 else { return reading }

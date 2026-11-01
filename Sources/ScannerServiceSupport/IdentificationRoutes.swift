@@ -22,7 +22,9 @@ extension DiagnosticRouter {
         case "v1.images.identify":
             try only(params, keys: ["id", "jobID", "sequence", "language"])
             let id = try uuid(params, "id")
-            let language = try optionalIdentifier(params, "language") ?? "en"
+            let language: String
+            if let specified = try optionalIdentifier(params, "language") { language = specified }
+            else { language = try await coordinator.scanStatus(jobID).request.resolvedCardLanguage.rawValue }
             result = try .wrapping(await coordinator.identifyCard(IdentificationRequest(id: id, jobID: jobID, sequence: sequence, language: language)))
         case "v1.images.review":
             try only(params, keys: ["identificationID", "jobID", "sequence", "cardID", "finish", "condition"])

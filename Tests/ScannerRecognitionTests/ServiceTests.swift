@@ -17,7 +17,7 @@ private actor RecognitionStub: CardRecognizing {
     var calls = 0
     var fail: Bool
     init(fail: Bool = false) { self.fail = fail }
-    func recognize(_ data: Data) async throws -> RecognitionEvidence {
+    func recognize(_ data: Data, language: CardLanguage) async throws -> RecognitionEvidence {
         calls += 1
         try await Task.sleep(for: .milliseconds(200))
         if fail { throw ScannerError("catalogueUnavailable", "Offline fixture") }

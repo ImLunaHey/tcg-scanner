@@ -38,7 +38,10 @@ struct CatalogueDetail: Decodable, Sendable {
 actor TCGdexClient {
     private var cache: (Date, [CatalogueCard])?
     private let session: URLSession
-    init() {
+    private let language: CardLanguage
+    private let load: (@Sendable (URL, Int) async throws -> Data)?
+    init(language: CardLanguage = .english, load: (@Sendable (URL, Int) async throws -> Data)? = nil) {
+        self.language = language; self.load = load
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 12
         configuration.timeoutIntervalForResource = 20
@@ -85,12 +88,17 @@ actor TCGdexClient {
         return detail.quotes()
     }
     private func validate(_ id: String) throws {
-        guard !id.isEmpty, id.utf8.count <= 100, id.utf8.allSatisfy({ (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) || $0 == 45 || $0 == 46 }) else {
+        guard !id.isEmpty, id.utf8.count <= 100, id.utf8.allSatisfy({ (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) || $0 == 43 || $0 == 45 || $0 == 46 }) else {
             throw ScannerError("catalogue", "Invalid catalogue card identifier.")
         }
     }
     private func get(path: String, limit: Int) async throws -> Data {
-        let url = URL(string: "https://api.tcgdex.net/v2/en/" + path)!
+        let url = URL(string: "https://api.tcgdex.net/v2/" + language.rawValue + "/" + path)!
+        if let load {
+            let data = try await load(url, limit)
+            guard data.count <= limit else { throw ScannerError("catalogue", "TCGdex response exceeds the size limit.") }
+            return data
+        }
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Scanner/1 (local card identification)", forHTTPHeaderField: "User-Agent")

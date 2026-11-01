@@ -7,7 +7,7 @@ import Vision
 /// Conservative bounding crop for individual cards against the selected scanner background.
 /// Connected foreground includes the card border, unlike an artwork-only rectangle detector.
 public enum CardProcessor {
-    public static func analyze(_ data: Data, background: ScanBackground = .black) throws -> CardPreparation {
+    public static func analyze(_ data: Data, background: ScanBackground = .black, language: CardLanguage = .english) throws -> CardPreparation {
         guard data.count <= 32 * 1024 * 1024,
               let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
               CGImageSourceGetCount(source) == 1,
@@ -32,7 +32,7 @@ public enum CardProcessor {
         let crop = geometry.crop
         let request = ImageEditRequest(jobID: UUID(), sequence: 1, crop: crop, deskewDegrees: geometry.degrees)
         let cropped = try ImageProcessor.render(data, request: request)
-        let orientation = try uprightRotation(cropped.data)
+        let orientation = try uprightRotation(cropped.data, language: language)
         var warnings = orientation.verified ? [] : ["Orientation is uncertain (unrecognized or ambiguous card back). Inspect the prepared image and rotate manually if needed."]
         if boundary.touchesEdge {
             warnings.append("Card is close to a scan boundary. Check that the original captured the entire edge; cropping cannot restore missing pixels.")
@@ -117,9 +117,14 @@ public enum CardProcessor {
         return (points, card.minX == 0 || card.minY == 0 || card.maxX == width - 1 || card.maxY == height - 1)
     }
 
-    private static func uprightRotation(_ data: Data) throws -> (turns: Int, verified: Bool, basis: String) {
+    static func uprightRotation(_ data: Data, language: CardLanguage = .english) throws -> (turns: Int, verified: Bool, basis: String) {
         let request = VNRecognizeTextRequest()
-        request.recognitionLevel = .accurate; request.recognitionLanguages = ["en-US"]; request.usesLanguageCorrection = false
+        request.recognitionLevel = .accurate
+        let supported = try request.supportedRecognitionLanguages()
+        guard language.recognitionLanguages.allSatisfy(supported.contains) else {
+            throw ScannerError("languageUnsupported", "This Mac cannot read the selected card language for automatic orientation.")
+        }
+        request.recognitionLanguages = language.recognitionLanguages; request.usesLanguageCorrection = false
         try VNImageRequestHandler(data: data).perform([request])
         var votes = [Double](repeating: 0, count: 4)
         var lines = [Int](repeating: 0, count: 4)

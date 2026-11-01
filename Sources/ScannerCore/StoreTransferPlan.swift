@@ -43,6 +43,9 @@ extension StoreTransferLedger {
                     guard identity.state != .processing, identity.sourceSHA256 == edit.image.sha256 else {
                         throw ScannerError("storeNotReady", "C-\(BatchNaming.number(number)) has unfinished or outdated checks. Refresh its identification before sending.")
                     }
+                    guard identity.request.language == record.request.resolvedCardLanguage.rawValue else {
+                        throw ScannerError("storeNotReady", "C-\(BatchNaming.number(number)) has identification evidence for a different card language. Refresh its identification before sending.")
+                    }
                 }
                 return edit
             }
@@ -58,7 +61,7 @@ extension StoreTransferLedger {
             else { throw ScannerError("storeNotReady", "C-\(BatchNaming.number(number)) has uncertain front/back sides. Review the pair before sending.") }
             let identity = identities[front]
             let candidates = [.confirmed, .reviewRequired].contains(identity?.state ?? .noMatch) ? (identity?.evidence?.candidates ?? []) : []
-            let suggestions = candidates.prefix(10).map { StoreReview.Suggestion(provider: "tcgdex", externalId: $0.id, name: $0.name, setName: $0.setName, collectorNumber: $0.localID, language: "en") }
+            let suggestions = candidates.prefix(10).map { StoreReview.Suggestion(provider: "tcgdex", externalId: $0.id, name: $0.name, setName: $0.setName, collectorNumber: $0.localID, language: identity?.request.language) }
             // Store uses these observations to prefill condition notes. Capture
             // warnings and empty-check summaries describe the scan, not the card.
             var findings: [String] = []
@@ -70,12 +73,14 @@ extension StoreTransferLedger {
             }
             let finish = identity.flatMap { item -> String? in
                 if item.finish != .unverified { return item.finish.rawValue }
-                guard item.finishEstimate?.state == .estimated,
+                guard record.request.resolvedCardLanguage == .english,
+                      item.finishEstimate?.state == .estimated,
                       item.finishEstimate?.candidateID == ScannerCoordinator.pricedCandidate(item)?.id else { return nil }
                 return item.finishEstimate?.suggestedFinish?.rawValue
             }
             let currentCardID = identity.flatMap { ScannerCoordinator.pricedCandidate($0)?.id }
             let quote = valuation?.cards.first {
+                record.request.resolvedCardLanguage == .english &&
                 $0.number == number && currentCardID != nil && $0.cardID == currentCardID &&
                 $0.editionKey == identity?.finishEstimate?.edition?.pricingKey
             }
@@ -83,7 +88,7 @@ extension StoreTransferLedger {
             inputs.append(StoreCardInput(cardNumber: "C-" + BatchNaming.number(number), review: StoreReview(
                 recognitionSuggestions: suggestions, finishEstimate: finish, conditionEstimate: nil,
                 borderFindings: Array(findings.prefix(30)), suggestedPriceGbp: price),
-                game: "pokemon", language: "en", gameSource: "scannerConfiguration", languageSource: "scannerConfiguration"))
+                game: "pokemon", language: record.request.resolvedCardLanguage.rawValue, gameSource: "scannerConfiguration", languageSource: "scannerConfiguration"))
             cards.append(StorePlannedCard(number: number, front: edits[front].image, back: edits[1 - front].image))
         }
         var status = StoreTransferStatus(jobID: record.id, configured: true)

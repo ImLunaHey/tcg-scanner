@@ -5,6 +5,7 @@ public struct FinishEstimate: Codable, Sendable, Equatable {
     public enum UncertaintyReason: String, Codable, Sendable {
         case ambiguousIdentity, markerNotFound, markerContrast, conflictingContrast, multipleRegularFinishes, missingRegularFinish, analysisFailed, conflictingFinishEvidence
         case stampUncertain, editionUnavailable, multipleEditionFinishes
+        case languageUnsupported
     }
     public var state: State
     public var suggestedFinish: CardFinish?
