@@ -122,6 +122,10 @@ describe("stamped edition presentation", () => {
     expect(editionPresentation({ ...identity, state: "rejected" })?.state).toBe(
       "uncertain",
     );
+    expect(
+      editionPresentation({ ...identity, state: "rejected" }, "sv02-097")
+        ?.state,
+    ).toBe("uncertain");
   });
   it("keeps absent, uncertain and unlisted marks separate", () => {
     expect(

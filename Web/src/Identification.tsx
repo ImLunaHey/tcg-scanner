@@ -97,13 +97,19 @@ export type FinishPresentation = {
 
 export function editionPresentation(
   value?: Identification,
+  selection?: string,
 ):
   | { label: string; state: "resolved" | "uncertain"; detail: string }
   | undefined {
   const edition = value?.finishEstimate?.edition;
   if (!edition || !["present", "uncertain"].includes(edition.stamp.state))
     return undefined;
-  const card = identityCard(value);
+  const card =
+    selection && value && ["confirmed", "reviewRequired"].includes(value.state)
+      ? value.evidence?.candidates.find(
+          (candidate) => candidate.id === selection,
+        )
+      : identityCard(value);
   const matched =
     edition.stamp.state === "present" &&
     edition.state === "matched" &&
@@ -285,9 +291,8 @@ export function IdentificationReview({
   const candidates = result?.evidence?.candidates || [];
   const chosen = candidates.find((candidate) => candidate.id === selected);
   const edition = editionPresentation(
-    result && selected
-      ? { ...result, state: "confirmed", selectedCardID: selected }
-      : (result ?? undefined),
+    result ?? undefined,
+    selected || undefined,
   );
   const busy =
     identify.isPending ||
