@@ -222,6 +222,7 @@ python3 Scripts/Experiments/EvaluateFoil.py --self-test
 /tmp/foil-texture inputs.json new-measurements.json --variants
 python3 Scripts/Experiments/EvaluateFoil.py new-measurements.json groups.json new-evaluation.json
 python3 Scripts/Experiments/EvaluateFoil.py --apply new-evaluation.json extra-measurements.json extra-evaluation.json
+python3 Scripts/Experiments/EvaluateFoil.py --predict new-evaluation.json unlabelled-measurements.json predictions.json
 ```
 
 The native synthetic checks cover flat, opposite-phase, chromatic and isolated
@@ -232,3 +233,15 @@ requires the same complete variant set for every card. The real run measured
 97 prepared images in all three variants (291 measurement rows); source PNGs
 were only read. Complete results and control exclusions are retained in ignored
 `Diagnostics/foil-experiment/` alongside the first experiment.
+
+For a blind trial, input manifests use `label: "unlabelled"`. `--predict` rejects
+physical labels, applies existing thresholds, and records per-card consensus
+without accuracy or confusion counts. Aggregate user-provided finish counts
+never enter the predictor. Compare against physical per-card labels only after
+saving the predictions. The first such trial is [B-026](foil-mixed-trial.md).
+
+That trial supplies a concrete scope limit: physically confirmed reverse-holo
+Pangoro and Larvesta both lacked the border signal, while the independent
+set-code estimator suggested reverse holo for both. Thus the border signal is
+not a general test for every foil treatment. Any future combination must retain
+the subtype inference and must never equate absent border texture with non-holo.
