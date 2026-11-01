@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""Offline development analysis; never called by ScannerService.
+
+Usage:
+  python3 Scripts/Experiments/EvaluateFoil.py --self-test
+  python3 Scripts/Experiments/EvaluateFoil.py measurements.json groups.json output.json
+
+Measurements: [{"input": {"id": "B-025/C-001", "label":
+"user-reported-non-holo", "printingIDs": [], "path": "/prepared.png"},
+"variant": "baseline", "features": {"borderChroma": 0.02}}].
+Groups: {"B-025/C-001": {"group": "claydol", "split": "calibration"}}.
+
+For every feature, fit max(calibration-negative baseline values) * 1.25 +
+0.001. Apply that SAME threshold to every variant and report all outcomes.
+Also leave each whole name group out, fitting other baseline negatives only.
+The reused holdout and leave-group-out results are exploratory, not independent
+validation. Rank only by calibration baseline positives detected, then name.
+Reads JSON measurements only: no image, network, scanner, database or label
+mutations. Output must be a new file, separate from both inputs.
+"""
+
+import copy
+import json
+import math
+import pathlib
+import sys
+
+
+POSITIVE = "user-reported-holo"
+NEGATIVE = "user-reported-non-holo"
+
+
+def validate(measurements, groups):
+    if not isinstance(measurements, list) or not 1 <= len(measurements) <= 10000:
+        raise ValueError("Expected 1–10000 measurement rows")
+    if not isinstance(groups, dict):
+        raise ValueError("Expected a group mapping")
+    seen, baselines, rows, splits = set(), {}, [], {}
+    feature_names = None
+    for item in measurements:
+        if not isinstance(item, dict) or not isinstance(item.get("input"), dict):
+            raise ValueError("Expected a measurement with input metadata")
+        ident = item["input"].get("id")
+        label = item["input"].get("label")
+        variant = item.get("variant")
+        if not isinstance(ident, str) or not ident or ident not in groups:
+            raise ValueError("Each measurement needs an ID present in groups")
+        if label not in (POSITIVE, NEGATIVE):
+            raise ValueError("Labels must be physical user-reported holo/non-holo")
+        if not isinstance(variant, str) or not variant:
+            raise ValueError("Each measurement needs a variant")
+        if (ident, variant) in seen:
+            raise ValueError("Duplicate card/variant")
+        seen.add((ident, variant))
+        grouping = groups[ident]
+        if not isinstance(grouping, dict):
+            raise ValueError("Invalid grouping metadata")
+        group, split = grouping.get("group"), grouping.get("split")
+        if not isinstance(group, str) or not group or split not in ("calibration", "holdout"):
+            raise ValueError("Group name and calibration/holdout split required")
+        if group in splits and splits[group] != split:
+            raise ValueError("A name group cannot cross splits")
+        splits[group] = split
+        features = item.get("features")
+        if not isinstance(features, dict) or not features or len(features) > 1000:
+            raise ValueError("Expected 1–1000 features per row")
+        for name, value in features.items():
+            if not isinstance(name, str) or not name or isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError("Expected numeric named features")
+            if not math.isfinite(value) or value < 0:
+                raise ValueError("Features must be finite and nonnegative")
+        if feature_names is None:
+            feature_names = set(features)
+        if set(features) != feature_names:
+            raise ValueError("Every row must have identical feature names")
+        row = dict(id=ident, label=label, variant=variant, group=group,
+                   split=split, features=features)
+        rows.append(row)
+        if variant == "baseline":
+            baselines[ident] = row
+    for row in rows:
+        if row["id"] not in baselines:
+            raise ValueError("Each card needs a baseline measurement")
+        if row["label"] != baselines[row["id"]]["label"]:
+            raise ValueError("A card's physical label cannot change between variants")
+    if not any(r["label"] == NEGATIVE and r["split"] == "calibration" for r in baselines.values()):
+        raise ValueError("At least one calibration negative baseline is required")
+    return rows, sorted(feature_names)
+
+
+def threshold_for(rows, feature):
+    negatives = [r["features"][feature] for r in rows if r["label"] == NEGATIVE]
+    if not negatives:
+        return None
+    threshold = max(negatives) * 1.25 + 0.001
+    if not math.isfinite(threshold):
+        raise ValueError("Feature magnitude overflows threshold calculation")
+    return threshold
+
+
+def outcomes(rows, feature, threshold):
+    counts = dict(TP=0, FN=0, FP=0, TN=0)
+    predictions = []
+    for row in sorted(rows, key=lambda r: r["id"]):
+        flagged = row["features"][feature] > threshold
+        outcome = ("T" if flagged == (row["label"] == POSITIVE) else "F") + ("P" if flagged else "N")
+        counts[outcome] += 1
+        predictions.append(dict(id=row["id"], group=row["group"],
+                                label=row["label"], value=row["features"][feature],
+                                flaggedFoil=flagged, outcome=outcome))
+    return dict(counts=counts, predictions=predictions)
+
+
+def evaluate(measurements, groups):
+    rows, features = validate(measurements, groups)
+    baseline = [r for r in rows if r["variant"] == "baseline"]
+    calibration = [r for r in baseline if r["split"] == "calibration"]
+    variants = sorted({r["variant"] for r in rows})
+    results = []
+    for feature in features:
+        threshold = threshold_for(calibration, feature)
+        scores = {
+            variant: {
+                split: outcomes([r for r in rows if r["variant"] == variant and r["split"] == split], feature, threshold)
+                for split in ("calibration", "holdout")
+            } for variant in variants
+        }
+        folds, aggregate, skipped = [], dict(TP=0, FN=0, FP=0, TN=0), []
+        for group in sorted({r["group"] for r in baseline}):
+            training = [r for r in baseline if r["group"] != group]
+            held_out = [r for r in baseline if r["group"] == group]
+            fold_threshold = threshold_for(training, feature)
+            if fold_threshold is None:
+                skipped.append(group)
+                continue
+            score = outcomes(held_out, feature, fold_threshold)
+            for key, value in score["counts"].items():
+                aggregate[key] += value
+            folds.append(dict(group=group, threshold=fold_threshold,
+                              trainingNegativeIDs=sorted(r["id"] for r in training if r["label"] == NEGATIVE), **score))
+        results.append(dict(feature=feature, threshold=threshold, variants=scores,
+                            leaveNameGroupOut=dict(counts=aggregate, folds=folds, skippedGroups=skipped)))
+    results.sort(key=lambda r: (-r["variants"]["baseline"]["calibration"]["counts"]["TP"], r["feature"]))
+    return dict(schemaVersion=1, status="exploratory-not-independent-validation",
+                thresholdRule="max(calibration-negative baseline) * 1.25 + 0.001; flag strictly greater",
+                ranking="calibration baseline TP descending, feature name ascending",
+                caveats=["Holdout has already been inspected and is reused; it is not fresh validation.",
+                         "Leave-name-group-out also reuses this dataset; it does not remove set or artwork confounding.",
+                         "All features are reported; no production finish labels are changed."],
+                features=results)
+
+
+def self_test():
+    def row(ident, label, value, variant="baseline"):
+        return dict(input=dict(id=ident, label=label), variant=variant, features={"signal": value})
+    data = [row("n1", NEGATIVE, .01), row("n2", NEGATIVE, .02),
+            row("n3", NEGATIVE, .03), row("h1", POSITIVE, .1), row("h2", POSITIVE, .1)]
+    groups = {"n1": dict(group="normal-a", split="calibration"),
+              "n2": dict(group="normal-a", split="calibration"),
+              "n3": dict(group="normal-b", split="holdout"),
+              "h1": dict(group="holo-a", split="calibration"),
+              "h2": dict(group="holo-b", split="holdout")}
+    result = evaluate(data, groups)["features"][0]
+    assert abs(result["threshold"] - .026) < 1e-12
+    assert result["variants"]["baseline"]["holdout"]["counts"] == dict(TP=1, FN=0, FP=1, TN=0)
+    changed = copy.deepcopy(data)
+    changed[2]["features"]["signal"] = 1e6
+    assert evaluate(changed, groups)["features"][0]["threshold"] == result["threshold"]
+    fold = next(f for f in result["leaveNameGroupOut"]["folds"] if f["group"] == "normal-a")
+    assert fold["trainingNegativeIDs"] == ["n3"]
+    assert {r["id"] for r in fold["predictions"]} == {"n1", "n2"}
+    changed = data + [row("n1", NEGATIVE, .5, "inset")]
+    variant = evaluate(changed, groups)["features"][0]
+    assert variant["threshold"] == result["threshold"]
+    assert variant["variants"]["inset"]["calibration"]["counts"]["FP"] == 1
+
+    def rejects(rows, grouping=groups):
+        try:
+            evaluate(rows, grouping)
+        except ValueError:
+            return
+        raise AssertionError("Invalid inputs were accepted")
+
+    rejects(data + [row("n1", POSITIVE, .5, "inset")])
+    rejects(data + [row("n1", NEGATIVE, .5)])
+    for value in (float("nan"), float("inf"), -1, True):
+        changed = copy.deepcopy(data)
+        changed[0]["features"]["signal"] = value
+        rejects(changed)
+    changed = copy.deepcopy(data)
+    changed[0]["input"]["label"] = "guessed-holo"
+    rejects(changed)
+    changed_groups = copy.deepcopy(groups)
+    changed_groups["n2"]["split"] = "holdout"
+    rejects(data, changed_groups)
+    print("Evaluator checks passed: threshold isolation, grouped folds, fixed variant thresholds and input rejection.")
+
+
+def main(argv):
+    if argv == ["--self-test"]:
+        self_test()
+        return
+    if len(argv) != 3:
+        raise ValueError("Usage: EvaluateFoil.py measurements.json groups.json output.json | --self-test")
+    measurements_path, groups_path, output_path = map(pathlib.Path, argv)
+    if output_path.resolve() in (measurements_path.resolve(), groups_path.resolve()):
+        raise ValueError("Output must be separate from inputs")
+    result = evaluate(json.loads(measurements_path.read_text()), json.loads(groups_path.read_text()))
+    encoded = json.dumps(result, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    with output_path.open("x") as output:
+        output.write(encoded)
+    print(f"Evaluated {len(result['features'])} features; exploratory results only; finish labels unchanged.")
+
+
+if __name__ == "__main__":
+    try:
+        main(sys.argv[1:])
+    except (ValueError, OSError, TypeError) as error:
+        print(f"EvaluateFoil: {error}", file=sys.stderr)
+        sys.exit(1)
