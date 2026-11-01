@@ -17,6 +17,7 @@ class ImageCaptureConnection: NSObject, @preconcurrency ICScannerDeviceDelegate 
     private var closing = false
     private var closeCompleted = false
     private var originalUnit: ICScannerFunctionalUnitType?
+    private var lastLoggedDocumentLoaded: Bool?
 
     init(scanner: ICScannerDevice, log: @escaping @Sendable (String) -> Void) { self.scanner = scanner; self.log = log }
     func connect() async throws {
@@ -79,7 +80,17 @@ class ImageCaptureConnection: NSObject, @preconcurrency ICScannerDeviceDelegate 
     @objc(device:didReceiveButtonPress:)
     func device(_ device: ICDevice, didReceiveButtonPress button: String) {
         log("button-monitor: device button event=\(button); id=\(device.uuidString ?? "unknown"); listener=\(onButton == nil ? "diagnostic" : "automatic")")
+        traceButtonFeederState(force: true)
         onButton?(button)
+    }
+    /// Logs the driver's reported state, which may lag the physical paper sensor.
+    /// This is observation only: a feeder transition never requests a scan.
+    func traceButtonFeederState(force: Bool = false) {
+        guard let feeder = scanner.selectedFunctionalUnit as? ICScannerFunctionalUnitDocumentFeeder else { return }
+        let loaded = feeder.documentLoaded
+        guard force || lastLoggedDocumentLoaded != loaded else { return }
+        lastLoggedDocumentLoaded = loaded
+        log("button-monitor: driver feeder state; documentLoaded=\(loaded); scanInProgress=\(feeder.scanInProgress)")
     }
     func device(_ device: ICDevice, didCloseSessionWithError error: Error?) {
         closeCompleted = true

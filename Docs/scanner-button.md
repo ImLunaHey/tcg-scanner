@@ -30,11 +30,11 @@ shell process or second hardware owner is involved. Discovery itself never scans
 
 Automated mocks cover one job per press, busy presses, exact job settings, manual
 client handoff, empty/non-Scan event filtering, sleep/shutdown, reconnect/backoff,
-explicit opt-in and failed-closure protection. **The automatic batch handoff still
-requires a physical A4 test**; only event delivery has been hardware-verified so far.
-Load one expendable A4 sheet, wait for ARMED, press Scan/Enter once, and verify one
-new batch with two original PNGs, confirmed session closure and subsequent rearming.
-Do not use cards for this first test.
+explicit opt-in and failed-closure protection. **The complete automatic batch
+handoff is hardware-verified with the marked A4 sheet**, including loading before
+pressing (see B-020 below). For further timing tests, use one expendable A4 sheet,
+wait for ARMED, press Scan/Enter once, and verify one new batch with two original
+PNGs, confirmed session closure and subsequent rearming.
 
 ## Investigation history
 
@@ -104,7 +104,7 @@ Evidence is ignored under `Diagnostics/scanner-button/`, particularly
 `session-after-press.jsonl` and `verified-button-event.json`.
 
 The implementation described above adds the subsequent production handoff.
-Its physical scan acceptance test remains separate from this receive-only result.
+Its physical scan acceptance test is recorded separately below.
 
 ## Automatic listener deployment — 2026-11-01
 
@@ -120,5 +120,28 @@ button tests also passed after extending the rearm-after-cancel and wake cases.
 The release build and generated LaunchAgent option check passed. Local evidence
 is ignored under `Diagnostics/scanner-button/automatic-*`; the binary/database/
 LaunchAgent backup is under `~/Library/Application Support/Scanner/backups/` with
-prefix `scan-button-20261101T101847Z`. A physical button-driven A4 scan is still
-pending; installation and read-only inspection did not initiate a scan.
+prefix `scan-button-20261101T101847Z`. At deployment the physical button-driven A4
+scan was pending; installation and read-only inspection did not initiate a scan.
+
+## Load-before-press check — 2026-11-01
+
+The first automatic tests produced B-018 and B-019, each with two original PNGs,
+no scan errors and confirmed session closure. Original file sizes and SHA-256
+hashes matched the saved records. The user reported that pressing before loading
+worked, while pressing with paper already loaded appeared ineffective. Both
+recorded callbacks were accepted; neither was rejected by the empty-feeder gate.
+The logs did not establish the timing of the unsuccessful presses or their cause.
+
+A controlled retry waited until the listener was idle, loaded the marked A4 sheet,
+waited three seconds, then pressed Scan/Enter. The user confirmed this order
+scanned successfully. At 10:21:46 UTC the callback arrived; B-020 completed at
+10:21:56 UTC with two original PNGs, no scan errors and confirmed session closure.
+This verifies load-before-press and the complete button-to-batch path. The earlier
+failure is not reproduced or explained by this result. Presses during processing
+or listener handoff are still not queued.
+
+Additional diagnostic logging records the driver's reported `documentLoaded`
+and `scanInProgress` values at each button event, plus changes to `documentLoaded`
+while the automatic or diagnostic listener waits. These are driver observations,
+not independent measurements of physical loading. No triggering policy, scanner
+setting or feeding behaviour was changed in response to the timing report.

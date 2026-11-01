@@ -40,6 +40,7 @@ final class ImageCaptureSession {
             }
             connection.log("button-monitor: ARMED; Scan starts a 300 DPI duplex PNG card batch when paper is loaded")
             while !trigger.accepted {
+                connection.traceButtonFeederState()
                 try Task.checkCancellation()
                 if let error = connection.failure { throw error }
                 try await Task.sleep(for: .milliseconds(50))
@@ -67,6 +68,7 @@ final class ImageCaptureSession {
             connection.log("button-monitor: SESSION READY for \(seconds) seconds; no scan command or driver setting change")
             let deadline = ContinuousClock.now + .seconds(seconds)
             while ContinuousClock.now < deadline {
+                connection.traceButtonFeederState()
                 try Task.checkCancellation()
                 if let failure = connection.failure { throw failure }
                 try await Task.sleep(for: .milliseconds(250))
