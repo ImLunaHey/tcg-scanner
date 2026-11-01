@@ -39,9 +39,8 @@ format defaults.
 
 This Mac reports Vision support for `ko-KR`; Korean OCR and orientation use it
 alongside `en-US` for Latin set codes and numbers. A synthetic Korean-text image
-was correctly oriented at all four quarter-turns. This is a software check,
-not physical Korean-card validation. No Korean cards have been fed for this
-feature yet.
+was correctly oriented at all four quarter-turns. That software check is separate
+from the B-028 physical test recorded below.
 
 On 2026-11-01, TCGdex's `/v2/ko/cards` returned 239 named cards, restricted to
 SV4K, SV4M and SV5K; its broader set list does not imply complete card coverage.
@@ -65,6 +64,45 @@ build. Relevant runtime research and deployment records are under ignored
 
 Implementation: `a267b29` — `feat(recognition): add explicit Korean card processing`;
 `8f8279e` — `feat(clients): select and preserve card language per scan`.
+
+#### B-028 physical validation — 2026-11-01
+
+The operator confirmed ten expendable Korean cards were loaded, then authorized
+one software-started job with `cardLanguage: "ko"`, 600 DPI, duplex, PNG, black
+background and overscan. Job `EBDA860A-F945-46F8-9D92-550D8053F8AF` completed
+with no scanner errors. Multifeed configuration was left unchanged. The operator
+reported all ten cards reached the output tray cleanly, with no jams, overlapping
+feeds or new damage. This single test does not establish general media safety.
+
+- Saved 20 original PNGs and 20 automatically cropped/oriented PNGs in
+  `/Volumes/scans/B-028`. All 40 file sizes and SHA-256 checksums matched the
+  persisted records; the disk manifest, local service and authenticated HTTPS job
+  response agreed. Prepared images and identification records referenced the
+  correct source hashes and edits. Originals remain unchanged.
+- Every prepared side reported verified orientation: the ten backs used the
+  Pokémon back pattern and the ten fronts used text. Consecutive captures form
+  ten complete pairs, each containing one front and one back. This does not
+  independently prove the identity of visually identical backs. Sampled front
+  images were upright with complete edges and narrow overscan margins; no manual
+  rotation or cropping was applied.
+- All identification records retained `ko`. Korean OCR read names and collector
+  numbers, including `조로아` / `096/187` and `로토무` / `037/106`. Some small set
+  codes and titles were missed, so this is not a perfect OCR result.
+- None of the ten fronts matched a catalogue entry. The scans include printed
+  `sv8a` and `sv8` set codes, both absent from the queried Korean set list and
+  card catalogue. Direct Korean lookups for `SV8a`, `SV8`, `SV8a-096` and
+  `SV8-037` returned HTTP 404. The catalogue coverage gap prevents matching even
+  when OCR reads the name and number correctly. English or Japanese identities
+  were not substituted.
+- Finish analysis returned `unsupported` / `languageUnsupported`, as designed;
+  English foil/stamp rules were not used to label these Korean cards.
+
+The ignored `Diagnostics/korean-20261101/` directory contains the request,
+completed record, physical feed confirmation, catalogue responses and
+`integrity.json`. These saved images can be reprocessed when Korean catalogue
+coverage improves; another physical scan is not required to investigate matching.
+
+### Reviewing identifications
 
 For an older scan or an explicit retry, choose **Identify card** beneath the front
 image in the web batch library, then **Identify this image**. In the native app, use **Identify / review card…**.
