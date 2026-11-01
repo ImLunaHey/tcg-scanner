@@ -106,6 +106,15 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
         let job = try await httpPoll(client, id: requestID, headers: headers)
         #expect(job.state == .completed && job.images.count == 2 && job.request.format == .png)
         #expect(await backend.captures == 1)
+        let storePath = "/api/v1/batches/\(requestID)/store"
+        let storeStatus = try await client.execute(uri: storePath, method: .get, headers: headers)
+        #expect(storeStatus.status.code == 200)
+        #expect(try decode(storeStatus, as: StoreTransferStatus.self).configured == false)
+        #expect(try await client.execute(uri: storePath, method: .post, headers: headers).status.code == 503)
+        #expect(try await client.execute(uri: storePath, method: .post, headers: [HTTPField.Name("Host")!: "127.0.0.1:8170"]).status.code == 401)
+        #expect(try await client.execute(uri: storePath, method: .post, headers: headers,
+            body: buffer(.object(["url": .string("https://evil.example")]))).status.code == 400)
+        #expect(try await client.execute(uri: storePath + "?token=forbidden", method: .get, headers: headers).status.code == 400)
         let valuationPath = "/api/v1/batches/\(requestID)/valuation"
         let valuation = try await client.execute(uri: valuationPath, method: .get, headers: headers)
         #expect(valuation.status.code == 200 && valuation.headers[.cacheControl] == "no-store")

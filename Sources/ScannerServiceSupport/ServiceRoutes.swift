@@ -4,7 +4,7 @@ import ScannerCore
 
 extension DiagnosticRouter {
     func serviceResponse(_ request: RPCRequest) async throws -> RPCResponse? {
-        let methods: Set<String> = ["v1.diagnostics.buttonMonitor", "v1.diagnostics.stopButtonMonitor", "v1.jobs.list", "v1.batches.list", "v1.batches.get", "v1.batches.valuation", "v1.jobs.get", "v1.jobs.cancel",
+        let methods: Set<String> = ["v1.diagnostics.buttonMonitor", "v1.diagnostics.stopButtonMonitor", "v1.jobs.list", "v1.batches.list", "v1.batches.get", "v1.batches.valuation", "v1.batches.storeStatus", "v1.batches.sendToStore", "v1.jobs.get", "v1.jobs.cancel",
             "v1.events", "v1.service.status", "v1.profiles.list", "v1.profiles.get", "v1.profiles.save", "v1.profiles.delete"]
         guard methods.contains(request.method) else { return nil }
         let params: [String: JSONValue]
@@ -23,6 +23,11 @@ extension DiagnosticRouter {
             try only(params, keys: [])
             await coordinator.stopButtonObservation()
             result = .object(["schemaVersion": .number(1), "state": .string("stopped")])
+        case "v1.batches.storeStatus", "v1.batches.sendToStore":
+            try only(params, keys: ["id"])
+            let id = try uuid(params, "id")
+            result = try .wrapping(request.method == "v1.batches.storeStatus"
+                ? await coordinator.storeTransferStatus(id) : await coordinator.sendToStore(id))
         case "v1.batches.valuation":
             try only(params, keys: ["id"])
             result = try .wrapping(await coordinator.batchValuation(uuid(params, "id")))

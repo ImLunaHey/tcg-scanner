@@ -104,6 +104,9 @@ extension ScannerCoordinator {
     }
     public func shutdownScans() async {
         stopping = true
+        let storeTask = storeTransferTask
+        storeTask?.cancel()
+        await storeTask?.value
         try? await releaseAutomaticButton()
         await stopButtonObservation()
         let identificationWorkers = Array(identificationTasks.values)
@@ -113,6 +116,9 @@ extension ScannerCoordinator {
     }
     public func prepareForSleep() async {
         paused = true
+        let storeTask = storeTransferTask
+        storeTask?.cancel()
+        await storeTask?.value
         try? await releaseAutomaticButton()
         await stopButtonObservation()
         try? database.event("service.sleep", payload: .null)

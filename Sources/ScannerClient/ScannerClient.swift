@@ -33,6 +33,8 @@ public struct ScannerClient: Sendable {
     public func device(_ id: String) async throws -> DeviceStatus { try await call("v1.device.get", params: .object(["deviceID": .string(id)])) }
     public func jobs(offset: Int = 0) async throws -> JobPage { try await call("v1.jobs.list", params: .object(["limit": .number(50), "offset": .number(Double(offset))])) }
     public func job(_ id: UUID) async throws -> ScanRecord { try await call("v1.jobs.get", params: .object(["id": .string(id.uuidString)])) }
+    public func storeStatus(_ id: UUID) async throws -> StoreTransferStatus { try await call("v1.batches.storeStatus", params: .object(["id": .string(id.uuidString)])) }
+    public func sendToStore(_ id: UUID) async throws -> StoreTransferStatus { try await call("v1.batches.sendToStore", params: .object(["id": .string(id.uuidString)])) }
     public func cancel(_ id: UUID) async throws -> ScanRecord { try await call("v1.jobs.cancel", params: .object(["id": .string(id.uuidString)])) }
     public func start(_ request: ScanRequest) async throws -> ScanRecord { try await call("v1.jobs.create", params: .wrapping(request)) }
     public func events(after: Int64) async throws -> EventPage { try await call("v1.events", params: .object(["after": .number(Double(after)), "waitSeconds": .number(10)])) }

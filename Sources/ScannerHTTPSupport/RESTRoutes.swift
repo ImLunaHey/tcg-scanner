@@ -16,6 +16,12 @@ extension ScannerGateway {
             }
             if method == .delete { try await access.revoke(principal); return try jsonResponse(.object(["revoked": .bool(true)])) }
         }
+        if parts.count == 3, parts[0] == "batches", parts[2] == "store" {
+            try path.only([]); try only(body, [])
+            guard method == .get || method == .post else { throw GatewayError(405, "methodNotAllowed", "Use GET or POST for Store transfers.") }
+            return try jsonResponse(await service.call(method == .get ? "batches.storeStatus" : "batches.sendToStore",
+                ["id": .string(try uuid(parts[1]))]), status: method == .post ? 202 : 200)
+        }
         if parts == ["events"], method == .get { return try await events(request, path: path, principal: principal) }
         if parts.count == 3, parts[0] == "images", parts[2] == "prepare-card", method == .post {
             try path.only([]); try only(body, ["id"])

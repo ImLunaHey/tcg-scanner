@@ -29,6 +29,9 @@ public extension ScannerBackend {
 /// while the first request is suspended awaiting a driver callback.
 public actor ScannerCoordinator {
     let backend: any ScannerBackend
+    let storeClient: (any StoreStaging)?
+    var storeTransferTask: Task<Void, Never>?
+    var preparingStoreTransfer = false
     var inspecting = false
     var buttonMonitorTask: Task<Void, Never>?
     var automaticButtonTask: Task<Void, Never>?
@@ -54,12 +57,20 @@ public actor ScannerCoordinator {
     var activeScanID: UUID?
     let storageRoot: URL
     let validateStorage: @Sendable () throws -> Void
-    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil, validateStorage: @escaping @Sendable () throws -> Void = {}, cardRecognizer: any CardRecognizing = CardRecognizer(), cardPricing: any CardPricingProviding = CardPricingProvider(), scanButtonDeviceID: String? = nil) throws {
+    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil, validateStorage: @escaping @Sendable () throws -> Void = {}, cardRecognizer: any CardRecognizing = CardRecognizer(), cardPricing: any CardPricingProviding = CardPricingProvider(), scanButtonDeviceID: String? = nil, storeClient: (any StoreStaging)? = nil) throws {
+        self.storeClient = storeClient
         self.scanButtonDeviceID = scanButtonDeviceID
         self.backend = backend; self.storageRoot = storageRoot; self.validateStorage = validateStorage
         self.database = try database ?? ScannerDatabase()
         self.cardRecognizer = cardRecognizer
         self.pricingCache = PricingCache(database: self.database, provider: cardPricing)
+        for data in try self.database.interruptedStoreTransfers() {
+            var ledger = try Wire.decoder().decode(StoreTransferLedger.self, from: data)
+            ledger.status.state = .failed
+            ledger.status.error = ScannerError("storeInterrupted", "Service restarted during transfer. Retry sending to resume safely.")
+            ledger.status.updatedAt = Date()
+            try self.database.saveStoreTransfer(ledger.status, record: Wire.encoder().encode(ledger))
+        }
     }
     public func devices() async throws -> [Device] {
         let devices = try await backend.devices()

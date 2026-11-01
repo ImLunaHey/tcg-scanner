@@ -64,7 +64,10 @@ enum ServiceMain {
             let backend = ImageCaptureBackend { message in
                 if verbose || message.hasPrefix("button-monitor:") { log(message) }
             }
-            let coordinator = try ScannerCoordinator(backend: backend, storageRoot: URL(fileURLWithPath: storage.storageRoot), database: database, validateStorage: storage.validate, scanButtonDeviceID: options.scanButtonDevice)
+            var storeClient: StoreClient?
+            do { if let configuration = try StoreConfiguration.load() { storeClient = try StoreClient(configuration: configuration) } }
+            catch { log("Store integration disabled: check private Store configuration and token permissions.") }
+            let coordinator = try ScannerCoordinator(backend: backend, storageRoot: URL(fileURLWithPath: storage.storageRoot), database: database, validateStorage: storage.validate, scanButtonDeviceID: options.scanButtonDevice, storeClient: storeClient)
             let router = DiagnosticRouter(coordinator: coordinator)
             let server = UnixServer(path: options.socket, log: log, handler: router.respond)
             let lifetime = ServiceLifetime(server: server, coordinator: coordinator, log: log)
