@@ -19,4 +19,25 @@ default. The card boundary detector currently assumes a dark background: use
 `"prepareCards":false` for the initial white comparison to preserve full captures
 without applying that detector. White-background cropping needs separate validation.
 
-White is driver-exposed, but a physical white scan has not yet been validated.
+## Physical validation — B-022, 2026-11-01
+
+Job `883B48A3-E246-42BD-8E51-A83793322063` scanned 19 loaded cards at 300 DPI,
+duplex PNG with `background:white` and `prepareCards:false`. It completed from
+13:14:58 to 13:15:45 UTC with 38 original PNGs in `/Volumes/scans/B-022`, no scan
+errors and confirmed session closure. The recorded applied settings show
+`cropping:1`, `background:white` and unchanged multifeed settings. The user
+confirmed all 19 cards reached the tray cleanly with no new damage.
+
+All 38 image signatures, byte counts and SHA-256 hashes were verified; sequences
+1–38 are present and the manifest matches the service record. First front/back
+and last front samples visibly have a pale backing with some shading/shadow,
+rather than a perfectly uniform white area immediately around the card. The
+unused lower A4 region is white. Originals retain their capture orientation and
+full scan area. No automatic white-background crop, orientation correction,
+identification, finish or condition assessment was attempted in this comparison.
+
+The release build and 125 Swift tests passed. The signed service was installed
+with its existing physical-button configuration preserved. That button and
+ordinary requests without a background override still use black. Hardware-test
+evidence is ignored in `Diagnostics/white-background/`; the deployment backup is
+`~/Library/Application Support/Scanner/backups/white-background-20261101T131452Z`.
