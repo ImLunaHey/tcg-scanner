@@ -61,3 +61,26 @@ SCANNER_OVERSCAN_FIXTURE=/Volumes/scans/B-023 swift test --filter savedOverscanC
 ```
 
 This check reads saved originals only and never feeds the scanner.
+
+## Automatic processing — B-023, 2026-11-01
+
+Enabled the production pipeline for Overscan and installed the signed service
+and HTTP gateway. All 132 automated Swift tests and release builds passed.
+Reprocessed the six saved originals through the service without scanning again.
+All six received cropped, upright PNG copies with no scan-boundary warnings.
+The paired identities are C-001 Claydol (`me04-047`), C-002 Deoxys (`me04-032`)
+and C-003 Ferrothorn (`me04-063`). Each front received a normal-finish estimate;
+each back passed the limited blue-border check with zero candidate marks.
+This is not a condition grade or verification of finish. All three were priced
+by the existing Cardmarket/GBP guide (7p combined at validation time).
+
+Verified original records and hashes unchanged, all six prepared-image hashes,
+identification provenance and manifest agreement. The authenticated Tailscale UI
+shows three paired panels, names, finish checks and prices on desktop and 390px
+mobile. All six thumbnails and lightboxes loaded. Service is idle/unpaused,
+and the automatic button listener rearmed. Ignored evidence is stored under
+`Diagnostics/overscan/processing/`; deployment backups use `overscan-default-`.
+
+The user subsequently noticed slight residual tilt on C-001. Upright orientation
+verification establishes quarter-turn direction, not sub-degree straightness;
+fine deskew is being investigated separately using these saved originals.
