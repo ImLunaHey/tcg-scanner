@@ -10,9 +10,9 @@ public enum ImageProcessor {
               let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
               let width = properties[kCGImagePropertyPixelWidth] as? Int, let height = properties[kCGImagePropertyPixelHeight] as? Int,
-              width > 0, height > 0, width <= 20000, height <= 20000, width * height <= 40_000_000,
+              width > 0, height > 0, width <= 20000, height <= 20000, width * height <= 48_000_000,
               let original = CIImage(data: data, options: [.applyOrientationProperty: true]) else {
-            throw ScannerError("resourceLimit", "Editing supports images up to 32 MiB and 40 megapixels.")
+            throw ScannerError("resourceLimit", "Editing supports source images up to 32 MiB and 48 megapixels.")
         }
         let deskewed = original.transformed(by: CGAffineTransform(rotationAngle: -(request.deskewDegrees ?? 0) * .pi / 180))
         let e = deskewed.extent; let c = request.crop

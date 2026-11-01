@@ -14,11 +14,11 @@ public enum CardProcessor {
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
               let fullWidth = properties[kCGImagePropertyPixelWidth] as? Int,
               let fullHeight = properties[kCGImagePropertyPixelHeight] as? Int,
-              fullWidth > 0, fullHeight > 0, fullWidth <= 20000, fullHeight <= 20000, fullWidth * fullHeight <= 40_000_000,
+              fullWidth > 0, fullHeight > 0, fullWidth <= 20000, fullHeight <= 20000, fullWidth * fullHeight <= 48_000_000,
               let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
                 kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true,
                 kCGImageSourceThumbnailMaxPixelSize: 1200] as CFDictionary) else {
-            throw ScannerError("image", "Card preparation requires one image up to 32 MiB and 40 megapixels.")
+            throw ScannerError("image", "Card preparation requires one image up to 32 MiB and 48 megapixels.")
         }
         let width = image.width, height = image.height
         var rgba = [UInt8](repeating: 0, count: width * height * 4)
