@@ -178,3 +178,24 @@ summary strings from all 22 untouched B-016 pending Store drafts using optimisti
 revision checks. Preserved photos, recognition, price, finish, metadata and review
 state; C-011's computed condition notes are now empty. No approval or publication
 was performed. Before/after evidence is ignored under `Diagnostics/store-c011/`.
+
+## Resync validation — 2026-11-01
+
+Installed the signed service and web update. Clicked **Resync to Store** on B-023
+through the authenticated Tailscale dashboard. All three existing pending cards
+received current recognition IDs, Pokémon/English metadata and scan-note cleanup.
+Their card IDs and all six photo IDs, hashes and sizes stayed unchanged; no
+duplicate cards or image uploads were created. A second explicit resync produced
+no Store changes, including revisions. Scanner records and original hashes were
+unchanged. No hardware scan, approval or publication occurred.
+
+The browser check verified the enabled resync action after completion, progress,
+Store link, desktop and 390px mobile layouts, and reload without a write request.
+The browser contacted only ScannerService for syncing, never Store credentials.
+Runtime evidence is ignored under `Diagnostics/store-resync/`.
+
+147 Swift tests and 28 web tests passed; Swift release and web builds succeeded.
+Regression tests cover changed prepared images and metadata, frozen retries after
+a lost update response across restart, unchanged-photo reuse, revision conflicts,
+continued preservation after repeated resync, reviewed/approved/rejected/manual
+values, and explicit revision-checked PUT payloads. No Store API change was needed.
