@@ -17,6 +17,7 @@ import { Modal } from "./Modal";
 import { ImageLightbox, type LightboxImage } from "./ImageLightbox";
 import { IdentificationReview, IdentitySummary } from "./Identification";
 import { CardSummary } from "./CardSummary";
+import { StoreTransfer } from "./StoreTransfer";
 import { BatchPrice, type BatchValuation } from "./Pricing";
 import { conditionImages } from "./conditionLightbox";
 import { imageBlob, saveBlob, saveJSON, type Api } from "./api";
@@ -481,6 +482,9 @@ export function BatchDetail({ id }: { id: string }) {
         )}
       </header>
       <div className="toolbar batch-toolbar">
+        {grouped && record.state === "completed" && (
+          <StoreTransfer api={api} id={id} />
+        )}
         <button
           className="button secondary"
           aria-label="Export batch ZIP"

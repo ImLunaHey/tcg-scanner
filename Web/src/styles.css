@@ -1986,3 +1986,13 @@
     display: none;
   }
 }
+
+.store-transfer {
+  max-width: 100%;
+}
+.store-transfer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
