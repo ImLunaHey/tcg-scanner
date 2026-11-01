@@ -111,7 +111,7 @@ export function finishPresentation(
       label: finishes[estimate.suggestedFinish] || estimate.suggestedFinish,
       state: "resolved",
       detail:
-        "Automatic result from printed-marker and catalogue evidence; not physically confirmed.",
+        "Automatic result from local image, printed-marker and catalogue evidence; not physically confirmed.",
     };
   if (current && estimate.state === "unsupported")
     return {
@@ -128,7 +128,7 @@ export function finishPresentation(
       label: "Non-holo or holo",
       state: "uncertain",
       detail:
-        "Both variants share this printed code; the automatic check cannot distinguish them.",
+        "Both variants share this printed code; available image evidence has not resolved the finish.",
     };
   return {
     label: "Uncertain",

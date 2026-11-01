@@ -108,7 +108,7 @@ extension ScannerCoordinator {
             try Task.checkCancellation()
             result.evidence = try await cardRecognizer.recognize(data)
             if let evidence = result.evidence, evidence.candidates.count == 1 {
-                let estimate = Task.detached(priority: .utility) { FinishEstimator.estimate(data, evidence: evidence) }
+                let estimate = Task.detached(priority: .utility) { FinishEstimator.estimate(data, evidence: evidence, preparation: preparation) }
                 result.finishEstimate = await withTaskCancellationHandler { await estimate.value } onCancel: { estimate.cancel() }
                 try Task.checkCancellation()
             }

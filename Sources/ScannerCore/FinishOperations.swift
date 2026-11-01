@@ -20,7 +20,8 @@ extension ScannerCoordinator {
         }
         if let selected = identity.selectedCardID { evidence.candidates = evidence.candidates.filter { $0.id == selected } }
         let source: OriginalImage?
-        if let editID = identity.sourceEditID { source = snapshot.processedImages?.first { $0.id == editID && $0.request.sequence == sequence }?.image }
+        let prepared = snapshot.processedImages?.first { $0.id == identity.sourceEditID && $0.request.sequence == sequence }
+        if identity.sourceEditID != nil { source = prepared?.image }
         else { source = snapshot.images.first { $0.sequence == sequence } }
         guard let source, source.sha256 == identity.sourceSHA256, source.bytes <= 32 * 1024 * 1024 else {
             throw ScannerError("storage", "The identification's source image is missing or changed.")
@@ -30,7 +31,7 @@ extension ScannerCoordinator {
             try Task.checkCancellation()
             let chunk = try OriginalReader.read(root: root, record: snapshot, image: source, offset: 0, length: source.bytes)
             guard chunk.chunkSHA256 == source.sha256, let data = Data(base64Encoded: chunk.base64) else { throw ScannerError("storage", "Source checksum verification failed.") }
-            let result = FinishEstimator.estimate(data, evidence: input)
+            let result = FinishEstimator.estimate(data, evidence: input, preparation: prepared?.cardPreparation)
             try Task.checkCancellation()
             return result
         }

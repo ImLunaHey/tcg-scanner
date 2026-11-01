@@ -6,16 +6,63 @@ import ScannerAPI
 /// Local printed-variant inference for ordinary modern English cards. It does
 /// not measure reflectivity or confirm finish, and never writes a reviewed field.
 public enum FinishEstimator {
-    public static func estimate(_ data: Data, evidence: RecognitionEvidence) -> FinishEstimate {
-        do { return try analyze(data, evidence: evidence) }
+    public static func estimate(_ data: Data, evidence: RecognitionEvidence, preparation: CardPreparation? = nil) -> FinishEstimate {
+        do { return try analyze(data, evidence: evidence, preparation: preparation) }
         catch { return FinishEstimate(state: .uncertain, candidateID: evidence.candidates.count == 1 ? evidence.candidates.first?.id : nil,
-            evidence: ["Local finish analysis could not read the set-code box."], limitations: ["Inspect the physical card; no finish has been confirmed."], uncertaintyReason: .analysisFailed) }
+            evidence: ["Local finish analysis could not read the image evidence."], limitations: ["Inspect the physical card; no finish has been confirmed."], uncertaintyReason: .analysisFailed) }
     }
 
-    public static func analyze(_ data: Data, evidence: RecognitionEvidence) throws -> FinishEstimate {
+    public static func analyze(_ data: Data, evidence: RecognitionEvidence, preparation: CardPreparation? = nil) throws -> FinishEstimate {
+        let marker = try analyzeMarker(data, evidence: evidence)
+        // Original scanner frames and unverified/backs must never supply border evidence.
+        guard preparation?.orientationVerified == true, preparation?.orientationBasis == "text",
+              evidence.candidates.count == 1, let card = evidence.candidates.first,
+              card.category == "Pokemon", marker.markerPolarity == "dark",
+              marker.state == .estimated || marker.uncertaintyReason == .multipleRegularFinishes else { return marker }
+        let border: BorderFinishEvidence
+        do {
+            let measured = try BorderFoilAnalyzer.analyze(data, orientation: evidence.orientation)
+            border = BorderFinishEvidence(state: BorderFinishEvidence.State(rawValue: measured.state.rawValue)!,
+                threshold: measured.threshold, baseline: measured.baseline, inset: measured.inset, downsampled: measured.downsampled)
+        } catch is CancellationError { throw CancellationError() }
+        catch {
+            border = BorderFinishEvidence(state: .failed, threshold: BorderFoilMeasurement.calibratedThreshold)
+        }
+        return combine(marker, card: card, border: border)
+    }
+
+    /// Reverse-holo markers remain independent; absence of border texture never means normal.
+    static func combine(_ marker: FinishEstimate, card: CardCandidate, border: BorderFinishEvidence) -> FinishEstimate {
+        guard marker.candidateID == card.id, marker.markerPolarity == "dark",
+              marker.state == .estimated || marker.uncertaintyReason == .multipleRegularFinishes else { return marker }
+        var result = marker
+        result.borderEvidence = border
+        result.limitations.append("Border texture was calibrated on a small set of modern cards. Printed patterns can resemble foil; absent texture does not establish non-holo or rule out reverse holo.")
+        switch border.state {
+        case .present:
+            if card.availableFinishes.contains(.holo) {
+                result.state = .estimated; result.suggestedFinish = .holo; result.uncertaintyReason = nil
+                result.evidence.append("Independent brightness texture on both borders exceeds the fixed foil threshold in all three measurement variants; the dark set code and catalogue support holo.")
+            } else {
+                result.state = .uncertain; result.suggestedFinish = nil; result.uncertaintyReason = .conflictingFinishEvidence
+                result.evidence.append("Border texture suggests foil but the catalogue does not list a regular holo printing. The conflict needs review.")
+            }
+        case .absent:
+            result.evidence.append("No stable border foil signal was found; this does not prove non-holo. The printed-marker/catalogue inference is retained.")
+        case .unstable:
+            result.evidence.append("Border measurements disagree across strip widths or resolution. They cannot resolve the finish; the printed-marker/catalogue inference is retained.")
+        case .unsupported:
+            result.evidence.append("The prepared image is outside the border check's size or shape limits; only printed-marker/catalogue evidence was used.")
+        case .failed:
+            result.evidence.append("Border analysis was unavailable; only printed-marker/catalogue evidence was used.")
+        }
+        return result
+    }
+
+    private static func analyzeMarker(_ data: Data, evidence: RecognitionEvidence) throws -> FinishEstimate {
         try Task.checkCancellation()
         let limitations = ["Experimental estimate: inspect the physical card before confirming finish.",
-            "Uses printed set-code contrast and catalogue variants, not measured reflectivity. Special/promotional printings may differ."]
+            "Uses printed set-code contrast, catalogue variants and eligible prepared-card border texture, not measured reflectivity. Special/promotional printings may differ."]
         guard evidence.candidates.count == 1, let card = evidence.candidates.first,
               card.evidence.contains(where: { $0.hasPrefix("Collector number ") }) else {
             return FinishEstimate(state: .uncertain, evidence: ["A single printing with a readable collector number is required."], limitations: limitations, uncertaintyReason: .ambiguousIdentity)
