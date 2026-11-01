@@ -3,6 +3,9 @@ import ScannerAPI
 
 extension ScannerCoordinator {
     public func startScan(_ submission: ScanRequest) async throws -> ScanRecord {
+        try await submitScan(submission, fromButton: false)
+    }
+    func submitScan(_ submission: ScanRequest, fromButton: Bool) async throws -> ScanRecord {
         try submission.validate()
         if let existing = try existingSubmission(submission) { return existing }
         try acceptingJobs()
@@ -16,6 +19,10 @@ extension ScannerCoordinator {
         // Selection suspends. Recheck idempotency/capacity before creating files or reserving hardware.
         if let existing = try existingSubmission(submission) { return existing }
         try acceptingJobs()
+        if fromButton {
+            try Task.checkCancellation()
+            guard !inspecting, activeScanID == nil, queue.isEmpty else { throw ScannerError("busy", "Scan-button press ignored while service is busy.") }
+        }
         if submission.useDeviceSettings == true {
             guard let settings = try database.deviceSettings(device.id) else { throw ScannerError("settingsNotFound", "No configured defaults for this scanner.") }
             request.dpi = settings.dpi; request.duplex = settings.duplex; request.format = settings.format
@@ -54,6 +61,7 @@ extension ScannerCoordinator {
         let outcome: CaptureOutcome
         do {
             try Task.checkCancellation()
+            try await releaseAutomaticButton()
             try await store.markPreparing()
             outcome = try await backend.capture(deviceID: record.device.id, request: record.request, store: store)
         } catch {
@@ -91,6 +99,7 @@ extension ScannerCoordinator {
     }
     public func shutdownScans() async {
         stopping = true
+        try? await releaseAutomaticButton()
         await stopButtonObservation()
         let identificationWorkers = Array(identificationTasks.values)
         for worker in identificationWorkers { worker.cancel() }
@@ -99,6 +108,7 @@ extension ScannerCoordinator {
     }
     public func prepareForSleep() async {
         paused = true
+        try? await releaseAutomaticButton()
         await stopButtonObservation()
         try? database.event("service.sleep", payload: .null)
         await cancelOutstanding()

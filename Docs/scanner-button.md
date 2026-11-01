@@ -1,7 +1,45 @@
-# Physical scan-button investigation
+# Physical Scan-button batches
 
-The service logs the documented ImageCaptureCore browser selection callback in
-normal service logs with the `button-monitor:` prefix. This is diagnostic only:
+Start ScannerService with `--scan-button-device DEVICE_ID` to explicitly enable
+physical Scan/Enter batches for one scanner. Omit the option to disable automatic
+button handling. The generated LaunchAgent preserves the option. This installation
+uses fi-8170 ID `02210000-0000-0000-0000-000004C515FF`.
+
+The service holds an idle ADF session and waits for `ICButtonTypeScan`. The driver
+must expose `scan_button_monitor` with current value `1` (On); no vendor settings
+are changed. Wait for `button-monitor: ARMED` in
+`~/Library/Logs/Scanner/service.jsonl`. A press with a loaded feeder closes the
+idle session, then creates one ordinary queued job: **300 DPI, duplex PNG, card
+preparation enabled**. It uses the configured storage root and next `B-NNN` folder,
+with the same cropping, orientation, recognition, finish/condition checks and
+pricing pipeline as a web scan. It does not use or modify saved device defaults.
+The current capture ceiling remains 100 images / 50 duplex cards.
+
+Other buttons and browser-selection events never create jobs. Empty-feeder
+presses are ignored. Repeated events are latched once; no listener runs during
+scanning or processing, and a five-second cooldown prevents immediate rearming.
+Busy presses are not queued. Manual client scans, settings inspection and bounded
+button diagnostics cancel the idle listener and wait for closure before acquiring
+the hardware. Sleep/shutdown close it; wake/reconnection allow the service monitor
+to rearm it. Missing devices/drivers retry with a five-second minimum backoff.
+Unconfirmed closure blocks further hardware operations until service restart.
+
+`scanner.button.jobCreated` and `scanner.button.failed` events are stored in the
+normal service event history. The listener only exists in ScannerService; no GUI,
+shell process or second hardware owner is involved. Discovery itself never scans.
+
+Automated mocks cover one job per press, busy presses, exact job settings, manual
+client handoff, empty/non-Scan event filtering, sleep/shutdown, reconnect/backoff,
+explicit opt-in and failed-closure protection. **The automatic batch handoff still
+requires a physical A4 test**; only event delivery has been hardware-verified so far.
+Load one expendable A4 sheet, wait for ARMED, press Scan/Enter once, and verify one
+new batch with two original PNGs, confirmed session closure and subsequent rearming.
+Do not use cards for this first test.
+
+## Investigation history
+
+The initial investigation logged the documented ImageCaptureCore browser selection callback in
+normal service logs with the `button-monitor:` prefix. That callback remains diagnostic only:
 it does not create jobs, configure the scanner, open an extra session, change the
 launch application, or send vendor commands. Scanner discovery records the current
 autolaunch target to help diagnose routing. The listener remains in ScannerService;
@@ -24,9 +62,8 @@ service log (`~/Library/Logs/Scanner/service.jsonl`) and batch count before/afte
 A missing callback is a routing investigation result, not proof the physical button
 cannot work. Do not load cards or enable automatic jobs during this test.
 
-Status: physical Scan-button delivery to the headless service is hardware-verified
-with an open session (see result below). Button-triggered batch creation is not
-yet implemented or hardware-verified.
+Physical Scan-button delivery to the headless service was hardware-verified
+with an open session (see result below), before automatic batch creation was added.
 
 ## Open-session diagnostic
 
@@ -66,6 +103,5 @@ session closure, and the service returned to unpaused/idle with no queued jobs.
 Evidence is ignored under `Diagnostics/scanner-button/`, particularly
 `session-after-press.jsonl` and `verified-button-event.json`.
 
-The production implementation still needs persistent idle-session ownership,
-exclusive handoff to the normal scan queue, configured button scan settings,
-debouncing/busy handling, reconnection and shutdown tests before enabling scans.
+The implementation described above adds the subsequent production handoff.
+Its physical scan acceptance test remains separate from this receive-only result.

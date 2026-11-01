@@ -14,6 +14,8 @@ struct ServiceOptions: ParsableCommand {
     var storageRoot: String?
     @Option(help: "Require this SMB share at the storage root; never fall back to local storage.")
     var requiredSMBShare: String?
+    @Option(help: "Enable physical Scan-button card batches for this exact scanner ID (300 DPI, duplex PNG).")
+    var scanButtonDevice: String?
     @Option(help: "Private SQLite database path.")
     var database = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Scanner/state/scanner.sqlite").path
     @Option(help: "Write a LaunchAgent plist to this path and exit without accessing hardware.")
@@ -62,7 +64,7 @@ enum ServiceMain {
             let backend = ImageCaptureBackend { message in
                 if verbose || message.hasPrefix("button-monitor:") { log(message) }
             }
-            let coordinator = try ScannerCoordinator(backend: backend, storageRoot: URL(fileURLWithPath: storage.storageRoot), database: database, validateStorage: storage.validate)
+            let coordinator = try ScannerCoordinator(backend: backend, storageRoot: URL(fileURLWithPath: storage.storageRoot), database: database, validateStorage: storage.validate, scanButtonDeviceID: options.scanButtonDevice)
             let router = DiagnosticRouter(coordinator: coordinator)
             let server = UnixServer(path: options.socket, log: log, handler: router.respond)
             let lifetime = ServiceLifetime(server: server, coordinator: coordinator, log: log)

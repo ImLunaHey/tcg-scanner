@@ -10,6 +10,7 @@ extension ScannerCoordinator {
         inspecting = true
         buttonMonitorTask = Task {
             do {
+                try await releaseAutomaticButton()
                 let device = try await selectDevice(nil)
                 try Task.checkCancellation()
                 try await backend.observeButton(deviceID: device.id, seconds: seconds)

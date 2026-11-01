@@ -9,6 +9,7 @@ class ImageCaptureConnection: NSObject, @preconcurrency ICScannerDeviceDelegate 
     var failure: ScannerError?
     var sessionOpened = false
     var sessionClosed = false
+    var onButton: ((String) -> Void)?
     private var openRequested = false
     private var openCompleted = false
     private var ready = false
@@ -74,10 +75,11 @@ class ImageCaptureConnection: NSObject, @preconcurrency ICScannerDeviceDelegate 
     func deviceDidBecomeReady(_ device: ICDevice) { ready = true; log("device ready") }
     // Apple still documents this selector for open-session button delivery in
     // ICDeviceBrowserDelegate, although it is absent from the current ICDevice.h.
-    // Receive-only compatibility hook: no private commands or automatic scans.
+    // Receive-only compatibility hook; the coordinator decides whether to scan.
     @objc(device:didReceiveButtonPress:)
     func device(_ device: ICDevice, didReceiveButtonPress button: String) {
-        log("button-monitor: device button event=\(button); id=\(device.uuidString ?? "unknown"); no scan requested")
+        log("button-monitor: device button event=\(button); id=\(device.uuidString ?? "unknown"); listener=\(onButton == nil ? "diagnostic" : "automatic")")
+        onButton?(button)
     }
     func device(_ device: ICDevice, didCloseSessionWithError error: Error?) {
         closeCompleted = true

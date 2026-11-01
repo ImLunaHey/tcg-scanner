@@ -8,9 +8,15 @@ public protocol ScannerBackend: Sendable {
     func inspect(deviceID: String) async throws -> Inspection
     func capture(deviceID: String, request: ScanRequest, store: ScanStorage) async throws -> CaptureOutcome
     func observeButton(deviceID: String, seconds: Int) async throws
+    /// Returns only after a loaded-feeder Scan press and confirmed session closure.
+    /// Cancellation must also close the session before returning or throwing.
+    func waitForScanButton(deviceID: String) async throws
 }
 
 public extension ScannerBackend {
+    func waitForScanButton(deviceID: String) async throws {
+        throw ScannerError("unsupported", "Automatic Scan-button monitoring is not supported by this backend.")
+    }
     func observeButton(deviceID: String, seconds: Int) async throws {
         throw ScannerError("unsupported", "Button observation is not supported by this backend.")
     }
@@ -25,6 +31,9 @@ public actor ScannerCoordinator {
     let backend: any ScannerBackend
     var inspecting = false
     var buttonMonitorTask: Task<Void, Never>?
+    var automaticButtonTask: Task<Void, Never>?
+    let scanButtonDeviceID: String?
+    var nextButtonAttempt = ContinuousClock.now
     var stopping = false
     var scans: [UUID: ScanStorage] = [:]
     var queue: [UUID] = []
@@ -45,7 +54,8 @@ public actor ScannerCoordinator {
     var activeScanID: UUID?
     let storageRoot: URL
     let validateStorage: @Sendable () throws -> Void
-    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil, validateStorage: @escaping @Sendable () throws -> Void = {}, cardRecognizer: any CardRecognizing = CardRecognizer(), cardPricing: any CardPricingProviding = CardPricingProvider()) throws {
+    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil, validateStorage: @escaping @Sendable () throws -> Void = {}, cardRecognizer: any CardRecognizing = CardRecognizer(), cardPricing: any CardPricingProviding = CardPricingProvider(), scanButtonDeviceID: String? = nil) throws {
+        self.scanButtonDeviceID = scanButtonDeviceID
         self.backend = backend; self.storageRoot = storageRoot; self.validateStorage = validateStorage
         self.database = try database ?? ScannerDatabase()
         self.cardRecognizer = cardRecognizer
@@ -60,7 +70,9 @@ public actor ScannerCoordinator {
         guard !inspecting && activeScanID == nil && !stopping && !paused && !requiresRestart else { throw ScannerError("busy", "Scanner is busy or shutting down; retry shortly.") }
         inspecting = true
         defer { inspecting = false; scheduleNext() }
+        try await releaseAutomaticButton()
         let selected = try await selectDevice(deviceID)
+        guard !stopping, !paused else { throw ScannerError("busy", "Service paused during scanner handoff.") }
         let report = try await backend.inspect(deviceID: selected.id)
         try database.saveInspection(report)
         return report

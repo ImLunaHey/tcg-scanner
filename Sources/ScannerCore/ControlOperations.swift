@@ -41,7 +41,9 @@ extension ScannerCoordinator {
         }
         inspecting = true
         defer { inspecting = false; scheduleNext() }
+        try await releaseAutomaticButton()
         let device = try await selectDevice(deviceID)
+        guard !stopping, !paused else { throw ScannerError("busy", "Service paused during scanner handoff.") }
         let inspection = try await backend.inspect(deviceID: device.id)
         try database.saveInspection(inspection)
         guard inspection.errors.isEmpty, inspection.sessionClosed else { throw ScannerError("inspection", "Could not inspect and close scanner session; defaults were not changed.") }

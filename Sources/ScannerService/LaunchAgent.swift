@@ -11,6 +11,7 @@ enum LaunchAgent {
         var arguments = [executable, "--database", options.database, "--socket", options.socket]
         if let root = options.storageRoot { arguments += ["--storage-root", root] }
         if let share = options.requiredSMBShare { arguments += ["--required-smb-share", share] }
+        if let device = options.scanButtonDevice { arguments += ["--scan-button-device", device] }
         if options.verbose { arguments.append("--verbose") }
         let plist: [String: Any] = ["Label": "local.scanner.service", "ProgramArguments": arguments,
             "RunAtLoad": true, "KeepAlive": true, "ThrottleInterval": 10, "ExitTimeOut": 60,

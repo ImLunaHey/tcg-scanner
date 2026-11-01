@@ -40,7 +40,11 @@ final class ServiceLifetime {
         monitor = Task { [coordinator, log] in
             var lastError: String?
             while !Task.isCancelled {
-                do { _ = try await coordinator.devices(); lastError = nil }
+                do {
+                    _ = try await coordinator.devices()
+                    await coordinator.maintainScanButton()
+                    lastError = nil
+                }
                 catch {
                     let message = error.localizedDescription
                     if message != lastError && !Task.isCancelled { log("Device monitor: \(message)"); lastError = message }

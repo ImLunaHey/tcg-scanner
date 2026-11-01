@@ -70,6 +70,11 @@ for paths, restart commands, troubleshooting and physical test steps.
 
 ## HTTP control
 
+The scanner's physical Scan/Enter button can also create a card batch when
+ScannerService is configured with `--scan-button-device DEVICE_ID`. It uses
+300 DPI duplex PNG and the normal automatic card pipeline. See
+[button setup, safety limits and validation](Docs/scanner-button.md).
+
 After updating ScannerService, install the authenticated localhost gateway:
 
 ```sh
