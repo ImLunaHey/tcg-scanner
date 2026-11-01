@@ -25,6 +25,7 @@ export type FinishEstimate = {
   evidence: string[];
   limitations: string[];
   method: string;
+  uncertaintyReason?: string;
 };
 export type Identification = {
   request: { id: string; sequence: number; language: string };
@@ -82,6 +83,12 @@ export function finishDescription(value: Identification): string {
     estimate.candidateID === cardID
   )
     return `${finishes[estimate.suggestedFinish] || estimate.suggestedFinish} (estimated)`;
+  if (
+    estimate?.state === "uncertain" &&
+    estimate.candidateID === cardID &&
+    estimate.uncertaintyReason === "multipleRegularFinishes"
+  )
+    return "Non-holo or holo";
   return estimate ? "Needs review" : "Not verified";
 }
 

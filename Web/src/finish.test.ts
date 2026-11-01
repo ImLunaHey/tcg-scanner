@@ -39,3 +39,22 @@ describe("finish estimates", () => {
       }),
     ).toBe("Needs review"));
 });
+
+it("explains shared-code ambiguity without assigning a finish or overriding review", () => {
+  const ambiguous = {
+    ...result,
+    finishEstimate: {
+      ...result.finishEstimate!,
+      state: "uncertain" as const,
+      suggestedFinish: undefined,
+      uncertaintyReason: "multipleRegularFinishes",
+    },
+  };
+  expect(finishDescription(ambiguous)).toBe("Non-holo or holo");
+  expect(finishDescription({ ...ambiguous, finish: "normal" })).toBe(
+    "Non-holo (reviewed)",
+  );
+  expect(finishDescription({ ...ambiguous, selectedCardID: "other" })).toBe(
+    "Needs review",
+  );
+});
