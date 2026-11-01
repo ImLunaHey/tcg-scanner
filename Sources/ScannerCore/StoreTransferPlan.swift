@@ -48,10 +48,14 @@ extension StoreTransferLedger {
             let identity = identities[front]
             let candidates = [.confirmed, .reviewRequired].contains(identity?.state ?? .noMatch) ? (identity?.evidence?.candidates ?? []) : []
             let suggestions = candidates.prefix(10).map { StoreReview.Suggestion(provider: "tcgdex", externalId: $0.id, name: $0.name, setName: $0.setName, collectorNumber: $0.localID, language: "en") }
-            var findings = edits.flatMap { $0.cardPreparation?.warnings ?? [] }
-            if let check = identities[1 - front]?.conditionCheck {
-                findings += check.findings.map { "Back: " + $0.explanation }
-                if check.state == .checked, check.findings.isEmpty { findings.append("No back-border marks flagged; this is not a condition grade.") }
+            // Store uses these observations to prefill condition notes. Capture
+            // warnings and empty-check summaries describe the scan, not the card.
+            var findings: [String] = []
+            if let check = identities[1 - front]?.conditionCheck, check.state == .checked {
+                for finding in check.findings {
+                    let note = String(("Back: " + finding.explanation).prefix(500))
+                    if !findings.contains(note) { findings.append(note) }
+                }
             }
             let finish = identity.flatMap { item -> String? in
                 if item.finish != .unverified { return item.finish.rawValue }
@@ -63,7 +67,7 @@ extension StoreTransferLedger {
             let price = quote?.state == .priced && quote?.stale == false && quote?.lowPence == quote?.highPence ? quote?.lowPence : nil
             inputs.append(StoreCardInput(cardNumber: "C-" + BatchNaming.number(number), review: StoreReview(
                 recognitionSuggestions: suggestions, finishEstimate: finish, conditionEstimate: nil,
-                borderFindings: Array(findings.prefix(30)).map { String($0.prefix(500)) }, suggestedPriceGbp: price),
+                borderFindings: Array(findings.prefix(30)), suggestedPriceGbp: price),
                 game: "pokemon", language: "en", gameSource: "scannerConfiguration", languageSource: "scannerConfiguration"))
             cards.append(StorePlannedCard(number: number, front: edits[front].image, back: edits[1 - front].image))
         }

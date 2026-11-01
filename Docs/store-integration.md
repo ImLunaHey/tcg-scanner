@@ -150,3 +150,12 @@ Validation: 142 Swift tests passed, including a saved-image orientation regressi
 and the release build succeeded. Installed with the persistent signing identity.
 Runtime evidence is ignored under `Diagnostics/store-c011/`; no physical scan,
 Store approval or publication was performed.
+
+## Condition-note export — 2026-11-01
+
+Store uses `review.borderFindings` to prefill condition notes. New exports now
+include only distinct mark observations from a completed back condition check.
+Scan-boundary/preparation warnings, check limitations and the no-marks summary
+are not card condition descriptions and are excluded. Empty findings leave
+condition notes empty; no condition grade is inferred. Scan warnings remain in
+the scanner record. Inconclusive checks do not supply condition-note findings.

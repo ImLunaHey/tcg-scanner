@@ -217,3 +217,24 @@ private func waitForTransfer(_ coordinator: ScannerCoordinator, id: UUID) async 
         #expect(!error.message.contains("size limits"))
     }
 }
+
+@Test func storeConditionNotesContainOnlyDistinctObservedMarks() throws {
+    let fixture = try StoreFixture(); defer { try? FileManager.default.removeItem(at: fixture.root) }
+    var record = fixture.record
+    let warning = "Card is close to a scan boundary. Check that the original captured the entire edge; cropping cannot restore missing pixels."
+    for index in 0...1 { record.processedImages?[index].cardPreparation?.warnings = [warning] }
+    record.cardIdentifications?[0].conditionCheck = ConditionCheck(state: .checked, limitations: ["Not a grade"])
+    let empty = try StoreTransferLedger.make(record: record, store: StagingMock(), valuation: nil)
+    #expect(empty.submission.cards[0].review.borderFindings.isEmpty)
+    #expect(empty.submission.cards[0].review.conditionEstimate == nil)
+    #expect(empty.snapshot.processedImages?[0].cardPreparation?.warnings == [warning])
+
+    let mark = ConditionCheck.Finding(kind: .edgeWhitening,
+        region: ImageCrop(x: 0, y: 0.2, width: 0.02, height: 0.1), explanation: "Possible whitening along the left edge.")
+    record.cardIdentifications?[0].conditionCheck?.findings = [mark, mark]
+    let observed = try StoreTransferLedger.make(record: record, store: StagingMock(), valuation: nil)
+    #expect(observed.submission.cards[0].review.borderFindings == ["Back: Possible whitening along the left edge."])
+    record.cardIdentifications?[0].conditionCheck?.state = .inconclusive
+    let inconclusive = try StoreTransferLedger.make(record: record, store: StagingMock(), valuation: nil)
+    #expect(inconclusive.submission.cards[0].review.borderFindings.isEmpty)
+}
