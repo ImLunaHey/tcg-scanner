@@ -129,3 +129,24 @@ These are configured workflow values, not automatic game/language detection.
 Persisted transfer receipts remain readable; a retry upgrades only its frozen
 local submission, never replacing Store reviewer changes. No older wire client
 contract is supported.
+
+Deployed the signed service and reran preparation/identification for B-016 capture
+22. The software verified a two-quarter-turn correction using back-pattern and
+logo evidence. All 44 latest prepared sides have verified orientation and matching
+identification source hashes; all original file hashes remain unchanged. The
+existing scan-boundary warning remains because preparation cannot recover pixels
+absent from an original.
+
+Retried B-016 successfully: Store batch `01a197b1-0958-70a9-86e7-048b8d51acf1`
+contains 22 pending cards, no approvals or inventory IDs. All 44 uploaded PNG
+hashes and sizes match the correct prepared sides. Every card includes canonical
+game/language metadata, and recognition suggestions include provider/external ID.
+C-011 authenticated previews both return images; anonymous requests are rejected.
+Store nevertheless returns `photosReady:false` for C-011 in both batch and card
+detail responses. This upstream readiness flag remains unexplained; successful
+transfer and private preview access do not establish Store approval readiness.
+
+Validation: 142 Swift tests passed, including a saved-image orientation regression,
+and the release build succeeded. Installed with the persistent signing identity.
+Runtime evidence is ignored under `Diagnostics/store-c011/`; no physical scan,
+Store approval or publication was performed.
