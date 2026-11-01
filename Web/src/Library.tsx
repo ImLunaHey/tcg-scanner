@@ -5,9 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Link } from "wouter";
 import {
-  ArrowLeft,
   Download,
   ImageIcon,
   Images,
@@ -19,6 +17,7 @@ import { Modal } from "./Modal";
 import { ImageLightbox, type LightboxImage } from "./ImageLightbox";
 import { IdentificationReview, IdentitySummary } from "./Identification";
 import { CardSummary } from "./CardSummary";
+import { BatchPrice, type BatchValuation } from "./Pricing";
 import { conditionImages } from "./conditionLightbox";
 import { imageBlob, saveBlob, saveJSON, type Api } from "./api";
 import {
@@ -221,6 +220,31 @@ export function BatchDetail({ id }: { id: string }) {
         ))
         ? 1500
         : false,
+  });
+  // Identity/finish changes invalidate the valuation independently of image loading.
+  const pricingRevision = JSON.stringify([
+    batch.data?.images.map((image) => image.sequence),
+    batch.data?.cardIdentifications?.map((value) => [
+      value.request.id,
+      value.state,
+      value.selectedCardID,
+      value.finish,
+      value.finishEstimate?.candidateID,
+      value.finishEstimate?.state,
+      value.finishEstimate?.suggestedFinish,
+      value.finishEstimate?.uncertaintyReason,
+    ]),
+  ]);
+  const pricing = useQuery({
+    queryKey: ["batch-pricing", id, pricingRevision],
+    queryFn: ({ signal }) =>
+      api.get<BatchValuation>(
+        `batches/${encodeURIComponent(id)}/valuation`,
+        signal,
+      ),
+    enabled: !!batch.data?.request.prepareCards,
+    staleTime: 60_000,
+    refetchInterval: (query) => (query.state.data?.refreshing ? 1500 : 60_000),
   });
   const [lightbox, setLightbox] = useState<{
     images: LightboxImage[];
@@ -438,27 +462,27 @@ export function BatchDetail({ id }: { id: string }) {
   }
   return (
     <>
-      <Link href="/library" className="back-link">
-        <ArrowLeft size={16} />
-        Batch library
-      </Link>
-      <header className="page-heading">
+      <header className="page-heading batch-heading">
         <div>
-          <p className="eyebrow">{dateLabel(record.createdAt)}</p>
-          <h1>{batchLabel(record)}</h1>
+          <div className="batch-title">
+            <h1>{batchLabel(record)}</h1>
+            <StateBadge state={record.state} />
+          </div>
           <p>
             {grouped
               ? `${groupCardCaptures(record.images).length} cards · `
-              : ""}
-            {record.images.length} images · {record.request.dpi} DPI ·{" "}
-            {record.request.format.toUpperCase()} · {record.device.name}
+              : `${record.images.length} images · `}
+            {dateLabel(record.createdAt)}
           </p>
         </div>
-        <StateBadge state={record.state} />
+        {record.request.prepareCards && (
+          <BatchPrice value={pricing.data} loading={pricing.isPending} />
+        )}
       </header>
-      <div className="toolbar">
+      <div className="toolbar batch-toolbar">
         <button
           className="button secondary"
+          aria-label="Export batch ZIP"
           disabled={
             !finished ||
             !record.images.length ||
@@ -468,23 +492,30 @@ export function BatchDetail({ id }: { id: string }) {
           onClick={() => archive.mutate()}
         >
           <Download size={16} />
-          {archive.isPending ? "Preparing archive…" : "Export batch ZIP"}
+          {archive.isPending ? "Preparing archive…" : "Export ZIP"}
         </button>
         <button
           className="button secondary"
+          aria-label="Download manifest"
           onClick={() =>
             saveJSON(record, `${batchLabel(record)}-manifest.json`)
           }
         >
-          Download manifest
+          Manifest
         </button>
-        <button
-          className="button secondary"
-          disabled={comparison.length !== 2}
-          onClick={() => setCompareOpen(true)}
-        >
-          Compare selected ({comparison.length}/2)
-        </button>
+        {!grouped && (
+          <button
+            className="button secondary"
+            disabled={comparison.length !== 2}
+            onClick={() => setCompareOpen(true)}
+          >
+            Compare selected ({comparison.length}/2)
+          </button>
+        )}
+        <span className="batch-scan-settings">
+          {record.request.dpi} DPI · {record.request.format.toUpperCase()} ·{" "}
+          {record.device.name}
+        </span>
         {!finished && <CancelJob id={id} />}
       </div>
       <ErrorNote
@@ -493,11 +524,12 @@ export function BatchDetail({ id }: { id: string }) {
       {record.errors.map((error, i) => (
         <ErrorNote key={i} error={error.message} />
       ))}
-      <p className="library-note">
-        {grouped
-          ? "Each card groups two consecutive captures. Front/back labels follow card-recognition evidence; uncertain sides keep numbered labels. Check correspondence before exporting. Originals remain unchanged."
-          : "Original captures are kept exactly as delivered. Side labels remain unassigned until front/back pairing is validated."}
-      </p>
+      {!grouped && (
+        <p className="library-note">
+          Original captures are kept exactly as delivered. Side labels remain
+          unassigned until front/back pairing is validated.
+        </p>
+      )}
       {!finished && (
         <Loading
           label={`${record.state} · ${record.images.length} images saved. Total count is unknown until feeding finishes.`}
@@ -596,6 +628,12 @@ export function BatchDetail({ id }: { id: string }) {
                 <div className="paired-info">
                   <CardSummary
                     label={captureLabel(pair.number)}
+                    price={pricing.data?.cards.find(
+                      (value) => value.number === pair.number,
+                    )}
+                    pricingLoading={
+                      pricing.isPending || pricing.data?.refreshing
+                    }
                     identification={identity}
                     pending={!finished && record.request.prepareCards === true}
                     incomplete={!pair.first || !pair.second}

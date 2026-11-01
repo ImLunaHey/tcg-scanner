@@ -163,14 +163,6 @@ function Workspace() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <span className="small">MADE FOR YOUR WORKFLOW</span>
-            <p>
-              Capture once.
-              <br />
-              Keep the original.
-            </p>
-          </div>
           <button className="nav-link logout" onClick={logout}>
             <LogOut size={18} />
             <span>Sign out</span>

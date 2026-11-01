@@ -7,6 +7,7 @@ import {
   type Identification,
 } from "./Identification";
 import type { ConditionCheck } from "./ConditionReview";
+import { CardPrice, type CardValuation } from "./Pricing";
 
 /** Compact gallery presentation. Detailed evidence stays in the review dialogs. */
 export function CardSummary({
@@ -16,6 +17,8 @@ export function CardSummary({
   pending,
   incomplete,
   openMarks,
+  price,
+  pricingLoading,
 }: {
   label: string;
   identification?: Identification;
@@ -23,6 +26,8 @@ export function CardSummary({
   pending: boolean;
   incomplete: boolean;
   openMarks: () => void;
+  price?: CardValuation;
+  pricingLoading?: boolean;
 }) {
   const card = identityCard(identification);
   const finish = finishPresentation(identification, pending);
@@ -59,16 +64,22 @@ export function CardSummary({
       : undefined;
   return (
     <>
-      <div className="card-summary-meta">
-        <span className="card-reference">{label}</span>
-        {card && (
-          <span className="card-match-state">
-            {identification?.state === "confirmed"
-              ? "Confirmed"
-              : "Suggested match"}
-          </span>
-        )}
-        {incomplete && <span className="badge">Incomplete pair</span>}
+      <div className="card-summary-top">
+        <div className="card-summary-meta">
+          <span className="card-reference">{label}</span>
+          {card && (
+            <span className="card-match-state">
+              {identification?.state === "confirmed"
+                ? "Confirmed"
+                : "Suggested match"}
+            </span>
+          )}
+          {incomplete && <span className="badge">Incomplete pair</span>}
+        </div>
+        <CardPrice
+          value={price?.cardID === card?.id ? price : undefined}
+          loading={pricingLoading}
+        />
       </div>
       {card ? (
         <div className="card-summary-identity">

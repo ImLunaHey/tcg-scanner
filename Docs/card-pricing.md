@@ -65,3 +65,21 @@ Tests cover monetary rounding, duplicate physical cards, flipped fronts, partial
 coverage, missing variant prices, ambiguous mappings, invalid currencies/FX,
 offline fallback, retry coalescing, database reopening, RPC validation and HTTP
 authentication. Public catalogue inaccuracies remain possible; this is a guide.
+
+## Installed validation — 2026-11-01
+
+115 Swift tests and 27 web tests passed. The signed service and gateway were
+installed with the persistent signing identity. Live saved-batch checks returned
+14/14 priced cards in B-015 (£0.56), 22/22 in B-016 (£0.69–£3.97, three unresolved
+regular-finish ranges), and 17/20 in B-013 (£0.89–£2.11 subtotal). These are dated
+validation observations, not fixed prices. The source update was 2026-10-31 and
+the ECB rate 0.83380 GBP/EUR dated 2026-10-30. All three scan records compared
+identically before and after pricing. No hardware scan or image rewrite occurred.
+Warm local valuation reads took 4–26 ms.
+
+Authenticated browser verification used the installed Tailscale HTTPS UI at
+1440, 768, 390 and 320 px: per-card prices and batch sums matched the API; partial
+coverage was labelled; reload retained access; source/FX dates were available;
+black and light themes followed system changes; finish-pill contrast exceeded
+4.5:1; no horizontal overflow; the existing marked-image lightbox still opened.
+Snapshots and screenshots are ignored under `Diagnostics/card-pricing/`.

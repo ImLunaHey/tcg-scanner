@@ -84,16 +84,17 @@ using local OCR and TCGdex suggestions, with separate manual finish and conditio
 - Library: paginated history, live capture thumbnails, original/edited downloads,
   selected-image comparison, complete JSON manifests and batch ZIP export. Duplex
   card jobs group adjacent captures into a card with both sides and one identity
-  summary and shared controls; missing sides and interrupted batches remain flagged.
-  The front is prominent, the back smaller, and editing/originals/checks are
-  collapsed under each card.
+  summary; missing sides and interrupted batches remain flagged. The front is
+  prominent, the back smaller. Card panels show identity, finish, back-border
+  checks and GBP price guides. Only actual flagged marks get a lightbox link;
+  scan notes remain collapsible. Per-card manual and download controls are hidden.
 - Optional manual copies: percentage crop coordinates and clockwise rotation,
   processed by the existing native image service; originals remain untouched.
 - [Card preparation](card-preparation.md): **Auto-crop and orient cards** starts
   enabled in the scan controls; disable it for documents. Use **Prepare card**
   on an existing capture.
-  **Download front/back** exports the prepared PNG for paired cards; **Original**
-  under the expanded controls retains the capture. Ungrouped images use **Download card**.
+  Paired card batches export through **Export ZIP** and **Manifest** in the compact
+  batch toolbar. Ungrouped images retain their individual export controls.
   Unique identity suggestions show their name, set and collector number directly
   on the capture tile, clearly distinguished from confirmed identities.
 - Scanner details: capability values, ranges, defaults, evidence, vendor fields,
@@ -168,7 +169,12 @@ Viewport emulation is not a claim of testing on physical iPhones/iPads.
 
 Light/dark appearance follows the system/browser `prefers-color-scheme` setting,
 including changes while the page is open. There is no theme toggle or stored
-appearance override. Scan pixels retain their original colours in both themes.
+appearance override. Dark mode uses black and charcoal surfaces; light mode uses
+neutral white/grey surfaces. Finish pills retain green/amber evidence states in
+both modes. Scan pixels retain their original colours. The sidebar slogan and
+batch back link are removed. Card prices sit at the top right of each summary;
+the batch value and coverage sit beside the batch title, including on phones.
+See [Cardmarket GBP pricing](card-pricing.md).
 
 Click any library preview to open an authenticated, full-resolution lightbox.
 Paired cards provide front/back switching in that same dialog. Use zoom buttons,
