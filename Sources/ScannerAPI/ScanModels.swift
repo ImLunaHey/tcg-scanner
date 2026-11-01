@@ -1,6 +1,7 @@
 import Foundation
 
 public enum OriginalFormat: String, Codable, Sendable { case tiff, png }
+public enum ScanBackground: String, Codable, Sendable { case black, white }
 public enum ScanState: String, Codable, Sendable {
     case queued, preparing, scanning, processing, completed, failed, cancelled
     public var terminal: Bool { self == .completed || self == .failed || self == .cancelled }
@@ -12,14 +13,16 @@ public struct ScanRequest: Codable, Sendable, Equatable {
     public var profileID: UUID?
     public var useDeviceSettings: Bool?
     public var prepareCards: Bool?
+    public var background: ScanBackground?
     public var dpi: Int
     public var duplex: Bool
     public var format: OriginalFormat
     public init(requestID: UUID = UUID(), deviceID: String? = nil, outputDirectory: String? = nil,
-                dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .png, profileID: UUID? = nil, useDeviceSettings: Bool? = nil, prepareCards: Bool? = nil) {
+                dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .png, profileID: UUID? = nil, useDeviceSettings: Bool? = nil, prepareCards: Bool? = nil, background: ScanBackground? = nil) {
         self.requestID = requestID; self.deviceID = deviceID; self.outputDirectory = outputDirectory
         self.dpi = dpi; self.duplex = duplex; self.format = format; self.profileID = profileID; self.useDeviceSettings = useDeviceSettings
         self.prepareCards = prepareCards
+        self.background = background
     }
     public func validate() throws {
         guard !(profileID != nil && useDeviceSettings == true) else { throw ScannerError("invalidSettings", "Choose either a profile or device defaults.") }
