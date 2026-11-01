@@ -64,11 +64,11 @@ func combinedFinishSavedBatchesPreserveUncertaintyAndMatchPhysicalChecks() throw
         let record = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: String(path))))
         var fronts = 0
         for identity in record.cardIdentifications ?? [] {
-            guard let evidence = identity.evidence,
-                  let prepared = record.processedImages?.first(where: { $0.id == identity.sourceEditID }),
-                  prepared.cardPreparation?.orientationBasis == "text" else { continue }
-            let data = try Data(contentsOf: URL(fileURLWithPath: record.outputDirectory).appendingPathComponent(prepared.image.relativePath))
-            let result = try FinishEstimator.analyze(data, evidence: evidence, preparation: prepared.cardPreparation)
+            guard [.reviewRequired, .confirmed].contains(identity.state), let evidence = identity.evidence else { continue }
+            let prepared = record.processedImages?.first(where: { $0.id == identity.sourceEditID })
+            let image = try #require(identity.sourceEditID == nil ? record.images.first(where: { $0.sequence == identity.request.sequence }) : prepared?.image)
+            let data = try Data(contentsOf: URL(fileURLWithPath: record.outputDirectory).appendingPathComponent(image.relativePath))
+            let result = try FinishEstimator.analyze(data, evidence: evidence, preparation: prepared?.cardPreparation)
             let batch = record.batchNumber ?? 0, ordinal = (identity.request.sequence + 1) / 2
             fronts += 1
             rows.append(Row(batch: batch, sequence: identity.request.sequence,
@@ -88,7 +88,7 @@ func combinedFinishSavedBatchesPreserveUncertaintyAndMatchPhysicalChecks() throw
                     // Without verified prepared provenance the original marker ambiguity stays.
                     let unprepared = try FinishEstimator.analyze(data, evidence: evidence)
                     #expect(unprepared.suggestedFinish == nil && unprepared.borderEvidence == nil)
-                    var unchecked = try #require(prepared.cardPreparation); unchecked.orientationVerified = false
+                    var unchecked = try #require(prepared?.cardPreparation); unchecked.orientationVerified = false
                     let unverified = try FinishEstimator.analyze(data, evidence: evidence, preparation: unchecked)
                     #expect(unverified.suggestedFinish == nil && unverified.borderEvidence == nil)
                     unchecked.orientationVerified = true; unchecked.orientationBasis = "pokemon-back-pattern"
