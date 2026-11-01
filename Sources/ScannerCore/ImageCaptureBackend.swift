@@ -22,6 +22,7 @@ public final class ImageCaptureBackend: NSObject, ScannerBackend, @preconcurrenc
                 ICDeviceTypeMask.scanner.rawValue | ICDeviceLocationTypeMask.local.rawValue)!
             started = true
             browser.start()
+            log("button-monitor: browser listener started; diagnostic only, no scan action")
         }
         let deadline = ContinuousClock.now + .seconds(15)
         while !enumerated {
@@ -70,6 +71,16 @@ public final class ImageCaptureBackend: NSObject, ScannerBackend, @preconcurrenc
     }
     public func deviceBrowser(_ browser: ICDeviceBrowser, didAdd device: ICDevice, moreComing: Bool) {
         log("device connected: \(device.name ?? "unnamed")")
+        if device is ICScannerDevice {
+            log("button-monitor: scanner discovered; id=\(device.uuidString ?? "unknown"); autolaunch=\(device.autolaunchApplicationPath ?? "unset")")
+        }
+    }
+    /// Apple's documented selection callback can indicate a physical button press
+    /// when this process is the event target and no device session is open.
+    /// Log only: selection requests are not sufficient evidence to start a scan.
+    public func deviceBrowser(_ browser: ICDeviceBrowser, requestsSelect device: ICDevice) {
+        guard device is ICScannerDevice else { return }
+        log("button-monitor: selection event received; id=\(device.uuidString ?? "unknown"); sessionOpen=\(device.hasOpenSession); no scan requested")
     }
     public func deviceBrowser(_ browser: ICDeviceBrowser, didRemove device: ICDevice, moreGoing: Bool) {
         log("device disconnected: \(device.name ?? "unnamed")")

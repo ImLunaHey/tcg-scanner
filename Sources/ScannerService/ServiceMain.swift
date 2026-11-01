@@ -59,7 +59,9 @@ enum ServiceMain {
             try database.event("service.started", payload: .object(["recoveredJobs": .number(Double(recovered))]))
             log("Recovered \(recovered) interrupted job(s); physical scans are never automatically resumed.")
             let verbose = options.verbose
-            let backend = ImageCaptureBackend { message in if verbose { log(message) } }
+            let backend = ImageCaptureBackend { message in
+                if verbose || message.hasPrefix("button-monitor:") { log(message) }
+            }
             let coordinator = try ScannerCoordinator(backend: backend, storageRoot: URL(fileURLWithPath: storage.storageRoot), database: database, validateStorage: storage.validate)
             let router = DiagnosticRouter(coordinator: coordinator)
             let server = UnixServer(path: options.socket, log: log, handler: router.respond)
