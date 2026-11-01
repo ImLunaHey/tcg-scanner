@@ -159,3 +159,10 @@ Scan-boundary/preparation warnings, check limitations and the no-marks summary
 are not card condition descriptions and are excluded. Empty findings leave
 condition notes empty; no condition grade is inferred. Scan warnings remain in
 the scanner record. Inconclusive checks do not supply condition-note findings.
+
+Validated with 143 passing Swift tests and a release build; installed the signed
+service and verified it restarted idle. Removed the two exact generated warning/
+summary strings from all 22 untouched B-016 pending Store drafts using optimistic
+revision checks. Preserved photos, recognition, price, finish, metadata and review
+state; C-011's computed condition notes are now empty. No approval or publication
+was performed. Before/after evidence is ignored under `Diagnostics/store-c011/`.
