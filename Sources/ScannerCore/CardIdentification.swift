@@ -26,6 +26,12 @@ extension ScannerCoordinator {
         guard image.bytes <= 32 * 1024 * 1024 else { throw ScannerError("resourceLimit", "OCR source exceeds 32 MiB.") }
         var identification = CardIdentification(request: request, sourceSHA256: image.sha256)
         identification.sourceEditID = prepared?.id
+        // A retry must not erase a physical mark if reading/OCR later fails.
+        if let previous = record.cardIdentifications?.first(where: {
+            $0.request.sequence == request.sequence && $0.sourceSHA256 == image.sha256 && $0.sourceEditID == prepared?.id
+        }), previous.finishEstimate?.edition?.needsEditionHandling == true {
+            identification.finishEstimate = previous.finishEstimate
+        }
         record.cardIdentifications = (record.cardIdentifications ?? []).filter { $0.request.sequence != request.sequence } + [identification]
         try database.save(record)
         do { try BatchFiles.writeManifest(record, root: storageRoot) }
@@ -106,10 +112,13 @@ extension ScannerCoordinator {
             let check = Task.detached(priority: .utility) { ConditionInspector.check(data, preparation: preparation) }
             result.conditionCheck = await withTaskCancellationHandler { await check.value } onCancel: { check.cancel() }
             try Task.checkCancellation()
+            // Local stamp evidence survives unavailable OCR/catalogue services and unknown cards.
+            result.finishEstimate = await finishAnalyzer.estimate(data,
+                evidence: RecognitionEvidence(lines: [], candidates: []), preparation: preparation)
+            try Task.checkCancellation()
             result.evidence = try await cardRecognizer.recognize(data)
-            if let evidence = result.evidence, evidence.candidates.count == 1 {
-                let estimate = Task.detached(priority: .utility) { FinishEstimator.estimate(data, evidence: evidence, preparation: preparation) }
-                result.finishEstimate = await withTaskCancellationHandler { await estimate.value } onCancel: { estimate.cancel() }
+            if let evidence = result.evidence {
+                result.finishEstimate = await finishAnalyzer.estimate(data, evidence: evidence, preparation: preparation)
                 try Task.checkCancellation()
             }
             try Task.checkCancellation()

@@ -15,7 +15,7 @@ extension ScannerCoordinator {
         let snapshot = try await scanStatus(jobID)
         guard snapshot.state.terminal, scans[jobID] == nil,
               let identity = snapshot.cardIdentifications?.first(where: { $0.request.sequence == sequence && $0.request.id == identificationID }),
-              [.reviewRequired, .confirmed].contains(identity.state), var evidence = identity.evidence else {
+              [.reviewRequired, .confirmed, .noMatch].contains(identity.state), var evidence = identity.evidence else {
             throw ScannerError("conflict", "A completed, current card identification is required.")
         }
         if let selected = identity.selectedCardID { evidence.candidates = evidence.candidates.filter { $0.id == selected } }
@@ -26,12 +26,12 @@ extension ScannerCoordinator {
         guard let source, source.sha256 == identity.sourceSHA256, source.bytes <= 32 * 1024 * 1024 else {
             throw ScannerError("storage", "The identification's source image is missing or changed.")
         }
-        let root = storageRoot, input = evidence
+        let root = storageRoot, input = evidence, analyzer = finishAnalyzer
         let task = Task.detached(priority: .utility) {
             try Task.checkCancellation()
             let chunk = try OriginalReader.read(root: root, record: snapshot, image: source, offset: 0, length: source.bytes)
             guard chunk.chunkSHA256 == source.sha256, let data = Data(base64Encoded: chunk.base64) else { throw ScannerError("storage", "Source checksum verification failed.") }
-            let result = FinishEstimator.estimate(data, evidence: input, preparation: prepared?.cardPreparation)
+            let result = await analyzer.estimate(data, evidence: input, preparation: prepared?.cardPreparation)
             try Task.checkCancellation()
             return result
         }
@@ -39,7 +39,7 @@ extension ScannerCoordinator {
         try validateStorage()
         var latest = try await scanStatus(jobID)
         guard let index = latest.cardIdentifications?.firstIndex(where: { $0.request.id == identificationID }),
-              var current = latest.cardIdentifications?[index], [.reviewRequired, .confirmed].contains(current.state),
+              var current = latest.cardIdentifications?[index], [.reviewRequired, .confirmed, .noMatch].contains(current.state),
               current.sourceSHA256 == identity.sourceSHA256, current.selectedCardID == identity.selectedCardID else {
             throw ScannerError("conflict", "Identification changed during finish analysis. Refresh and retry.")
         }

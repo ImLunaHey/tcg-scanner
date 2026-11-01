@@ -51,18 +51,20 @@ public actor ScannerCoordinator {
     var automaticallyIdentifyingCards = false
     var identificationTasks: [UUID: Task<Void, Never>] = [:]
     let cardRecognizer: any CardRecognizing
+    let finishAnalyzer: CardFinishAnalyzer
     let database: ScannerDatabase
     let pricingCache: PricingCache
     var scanTask: Task<Void, Never>?
     var activeScanID: UUID?
     let storageRoot: URL
     let validateStorage: @Sendable () throws -> Void
-    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil, validateStorage: @escaping @Sendable () throws -> Void = {}, cardRecognizer: any CardRecognizing = CardRecognizer(), cardPricing: any CardPricingProviding = CardPricingProvider(), scanButtonDeviceID: String? = nil, storeClient: (any StoreStaging)? = nil) throws {
+    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil, validateStorage: @escaping @Sendable () throws -> Void = {}, cardRecognizer: any CardRecognizing = CardRecognizer(), cardPricing: any CardPricingProviding = CardPricingProvider(), scanButtonDeviceID: String? = nil, storeClient: (any StoreStaging)? = nil, cardPrintings: any CardPrintingProviding = CardPrintingProvider(), cardReferences: any CardReferenceProviding = TCGdexReferenceCache()) throws {
         self.storeClient = storeClient
         self.scanButtonDeviceID = scanButtonDeviceID
         self.backend = backend; self.storageRoot = storageRoot; self.validateStorage = validateStorage
         self.database = try database ?? ScannerDatabase()
         self.cardRecognizer = cardRecognizer
+        self.finishAnalyzer = CardFinishAnalyzer(catalogue: cardPrintings, references: cardReferences)
         self.pricingCache = PricingCache(database: self.database, provider: cardPricing)
         for data in try self.database.interruptedStoreTransfers() {
             var ledger = try Wire.decoder().decode(StoreTransferLedger.self, from: data)

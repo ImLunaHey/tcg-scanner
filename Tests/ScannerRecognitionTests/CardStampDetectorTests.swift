@@ -85,6 +85,16 @@ private func stampImage(shape: String = "stamp", darkCutouts: Bool = true, turns
     catch { #expect(error is CancellationError) }
 }
 
+@Test func unknownPreparedCardStillKeepsItsPhysicalStamp() async throws {
+    let preparation = CardPreparation(crop: ImageCrop(x: 0, y: 0, width: 1, height: 1), quarterTurns: 0,
+        orientationVerified: true, warnings: [], orientationBasis: "text")
+    let result = await CardFinishAnalyzer().estimate(try stampImage(),
+        evidence: RecognitionEvidence(lines: [], candidates: []), preparation: preparation)
+    #expect(result.edition?.stamp.state == .present)
+    #expect(result.edition?.needsEditionHandling == true)
+    #expect(result.edition?.name == nil && result.suggestedFinish == nil)
+}
+
 // Local opt-in comparison: original source files remain untouched. The synthetic
 // mark above exercises geometry and colour guards; these are real scanned marks.
 @Test(.enabled(if: ProcessInfo.processInfo.environment["SCANNER_STAMP_FIXTURES"] != nil))
