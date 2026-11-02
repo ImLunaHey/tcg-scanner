@@ -71,7 +71,7 @@ private func waitFor(_ coordinator: ScannerCoordinator, id: UUID, terminal: Bool
     #expect(try await waitFor(coordinator, id: request.requestID).state == .completed)
     let done = try await waitFor(coordinator, id: second.id)
     #expect(done.state == .completed)
-    #expect(done.request.dpi == 300 && done.request.duplex)
+    #expect(done.request.dpi == 600 && done.request.duplex)
     #expect(done.profile?.name == "Duplex")
     #expect(done.startedAt != nil && done.completedAt != nil)
     #expect(await backend.maxActive == 1)
@@ -171,4 +171,27 @@ private actor UnclosedBackend: ScannerBackend {
     #expect(FileManager.default.fileExists(atPath: moved.appendingPathComponent("manifest.json").path))
     #expect(FileManager.default.fileExists(atPath: moved.appendingPathComponent("C-001.png").path))
     await coordinator.shutdownScans()
+}
+
+@Test func allScanSourcesUse600DPIAfterResolvingSettings() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let backend = QueueBackend()
+    await backend.release()
+    let db = try ScannerDatabase()
+    let service = try ScannerCoordinator(backend: backend, storageRoot: root, database: db)
+    let profile = ScanProfile(name: "Lower resolution", dpi: 150)
+    try db.saveProfile(profile)
+    try db.saveDeviceSettings(ScanSettings(dpi: 300), deviceID: "queue")
+    let requests = [ScanRequest(dpi: 150), ScanRequest(dpi: 300),
+                    ScanRequest(profileID: profile.id), ScanRequest(useDeviceSettings: true)]
+    for request in requests {
+        let job = try await service.startScan(request)
+        #expect(job.request.dpi == 600)
+        #expect(try await waitFor(service, id: job.id).state == .completed)
+        #expect(try await service.startScan(request).id == job.id)
+    }
+    #expect(await backend.entered.count == requests.count)
+    #expect(await backend.entered.allSatisfy { $0.dpi == 600 })
+    await service.shutdownScans()
 }

@@ -26,7 +26,7 @@ import UserNotifications
     var connected = false
     var busy = false
     var nextOffset: Int?
-    var dpi = 300
+    var dpi = 600
     var duplex = false
     var prepareCards = true
     var cardLanguage: CardLanguage = .english
@@ -56,7 +56,7 @@ import UserNotifications
         guard let allowed = inspection?.units.first(where: { $0.type == 3 })?.settings["resolutionDPI"]?.allowed,
               case .array(let values) = allowed else { return [] }
         return values.compactMap { value in
-            guard case .number(let n) = value, n >= 150, n <= 600, n.rounded() == n else { return nil }
+            guard case .number(let n) = value, n == 600 else { return nil }
             return Int(n)
         }.sorted()
     }

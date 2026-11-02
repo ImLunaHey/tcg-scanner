@@ -102,13 +102,13 @@ extension ScannerGateway {
                 }
                 guard case .string(let id) = params["requestID"] else { throw GatewayError(400, "invalidParams", "Provide requestID or Idempotency-Key as a UUID.") }
                 params["requestID"] = .string(try uuid(id))
-                params = ["dpi": .number(300), "duplex": .bool(false), "format": .string("png")].merging(params) { _, v in v }
+                params = ["dpi": .number(600), "duplex": .bool(false), "format": .string("png")].merging(params) { _, v in v }
             } else if parts == ["profiles"], method == .post {
                 rpc = "profiles.create"; status = 201
                 try only(body, ["id", "name", "dpi", "duplex", "format"])
                 guard case .string(let id) = params["id"] else { throw GatewayError(400, "invalidParams", "Profile creation requires a stable UUID id.") }
                 params["id"] = .string(try uuid(id))
-                params = ["dpi": .number(300), "duplex": .bool(false), "format": .string("png")].merging(params) { _, v in v }
+                params = ["dpi": .number(600), "duplex": .bool(false), "format": .string("png")].merging(params) { _, v in v }
             } else if parts.count == 2, parts[0] == "profiles", method == .patch || method == .delete {
                 rpc = method == .patch ? "profiles.update" : "profiles.delete"
                 try only(body, method == .patch ? ["name", "dpi", "duplex", "format"] : [])

@@ -39,7 +39,7 @@ private actor LostReply {
     let model = ScannerModel(client: client, defaults: defaults)
     try await model.refresh()
     #expect(model.connected && model.supportsDuplex)
-    #expect(model.dpiValues == [300, 600])
+    #expect(model.dpiValues == [600])
     #expect(!model.canScan)
     model.start()
     #expect(try await coordinator.jobs().jobs.isEmpty)

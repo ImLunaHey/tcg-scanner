@@ -11,7 +11,7 @@ public struct ScanProfile: Codable, Sendable, Equatable {
     public var dpi: Int
     public var duplex: Bool
     public var format: OriginalFormat
-    public init(id: UUID = UUID(), name: String, dpi: Int = 300, duplex: Bool = false, format: OriginalFormat = .png) {
+    public init(id: UUID = UUID(), name: String, dpi: Int = 600, duplex: Bool = false, format: OriginalFormat = .png) {
         self.id = id; self.name = name; self.dpi = dpi; self.duplex = duplex; self.format = format
     }
     public func validate() throws {

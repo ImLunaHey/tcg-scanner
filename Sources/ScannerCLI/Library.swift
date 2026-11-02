@@ -11,7 +11,7 @@ struct DeviceCommand: ParsableCommand {
 struct Configure: ParsableCommand {
     static let configuration = CommandConfiguration(abstract: "Save validated defaults for future scans using --use-device-settings. No hardware writes.")
     @OptionGroup var options: ClientOptions
-    @Option var dpi = 300
+    @Option var dpi = 600
     @Flag var duplex = false
     @Option var format = "png"
     func validate() throws {

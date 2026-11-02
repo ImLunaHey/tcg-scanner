@@ -38,7 +38,7 @@ final class ImageCaptureSession {
                 }
                 trigger.receive(isScan: true, documentLoaded: feeder.documentLoaded)
             }
-            connection.log("button-monitor: ARMED; Scan starts a 300 DPI duplex PNG card batch when paper is loaded")
+            connection.log("button-monitor: ARMED; Scan starts a 600 DPI duplex PNG card batch when paper is loaded")
             while !trigger.accepted {
                 connection.traceButtonFeederState()
                 try Task.checkCancellation()

@@ -6,7 +6,7 @@ struct Scan: ParsableCommand {
     static let configuration = CommandConfiguration(abstract: "Scan loaded A4 paper until the feeder is empty (120-second limit).")
     @OptionGroup var options: ClientOptions
     @Option(help: "Output directory inside the service's storage root. Default: storage root.") var output: String?
-    @Option(help: "Resolution supported by the driver (150–600 DPI).") var dpi = 300
+    @Option(help: "Scan resolution. The service enforces 600 DPI for every new job.") var dpi = 600
     @Flag(help: "Scan both sides of each sheet.") var duplex = false
     @Flag(help: "Automatically crop black-background card images and orient readable fronts; preserve originals.") var prepareCards = false
     @Option(help: "Physical card language when preparing cards: en (English) or ko (Korean).") var cardLanguage = "en"

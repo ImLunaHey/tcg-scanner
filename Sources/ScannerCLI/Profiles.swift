@@ -13,7 +13,7 @@ struct Profiles: ParsableCommand {
         @OptionGroup var options: ClientOptions
         @Argument var name: String
         @Option var id: String?
-        @Option var dpi = 300
+        @Option var dpi = 600
         @Flag var duplex = false
         @Option var format = "png"
         func validate() throws {
@@ -38,7 +38,7 @@ extension Profiles {
         @OptionGroup var options: ClientOptions
         @Argument var name: String
         @Option(help: "Stable UUID for retrying profile creation.") var id: String?
-        @Option var dpi = 300
+        @Option var dpi = 600
         @Flag var duplex = false
         @Option var format = "png"
         func validate() throws {

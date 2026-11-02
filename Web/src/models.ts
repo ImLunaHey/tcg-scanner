@@ -143,8 +143,7 @@ export function controls(inspection?: Inspection) {
             (n): n is number =>
               typeof n === "number" &&
               Number.isInteger(n) &&
-              n >= 150 &&
-              n <= 600,
+              n === 600,
           )
           .sort((a, b) => a - b)
       : [],

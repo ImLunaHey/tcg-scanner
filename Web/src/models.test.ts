@@ -29,7 +29,7 @@ describe("shared contracts", () => {
       ],
     } as unknown as Inspection;
     expect(controls(report)).toEqual({
-      resolutions: [300, 600],
+      resolutions: [600],
       duplex: false,
     });
     expect(controls()).toEqual({ resolutions: [], duplex: false });

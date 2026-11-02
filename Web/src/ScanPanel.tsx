@@ -33,7 +33,7 @@ export function ScanPanel({ onStarted }: { onStarted: (id: string) => void }) {
   const [chosenDevice, setChosenDevice] = useState("");
   const deviceID = chosenDevice || devices.data?.devices[0]?.id || "";
   const [profileID, setProfileID] = useState("");
-  const [chosenDPI, setDPI] = useState(300);
+  const [chosenDPI, setDPI] = useState(600);
   const [format, setFormat] = useState<Format>("png");
   const [duplex, setDuplex] = useState(false);
   const [pending, setPending] = useState(loadPending);
@@ -60,7 +60,6 @@ export function ScanPanel({ onStarted }: { onStarted: (id: string) => void }) {
   const available = controls(inspection.data);
   const profile = profiles.data?.profiles.find((p) => p.id === profileID);
   const dpi =
-    profile?.dpi ??
     (available.resolutions.includes(chosenDPI)
       ? chosenDPI
       : (available.resolutions[0] ?? chosenDPI));

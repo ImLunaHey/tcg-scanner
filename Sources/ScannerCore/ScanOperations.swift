@@ -32,6 +32,9 @@ extension ScannerCoordinator {
             guard let settings = try database.deviceSettings(device.id) else { throw ScannerError("settingsNotFound", "No configured defaults for this scanner.") }
             request.dpi = settings.dpi; request.duplex = settings.duplex; request.format = settings.format
         }
+        // Installation policy applies after profiles and device defaults are resolved.
+        // Retain the original submission separately for idempotency; history is unchanged.
+        request.dpi = 600
         let database = self.database
         try validateStorage()
         let number = try database.reserveBatchNumber(for: request.requestID)

@@ -89,7 +89,7 @@ private func poll(_ peer: StdioPeer, id: String, terminal: Bool) async throws ->
     let requestID = UUID().uuidString
     let arguments: JSONValue = .object(["requestID": .string(requestID), "profileID": .string(profileID)])
     let started = try payload(await peer.tool("scanner_start_scan", arguments)).decode(ScanRecord.self)
-    #expect(started.request.dpi == 300 && started.request.format == .png)
+    #expect(started.request.dpi == 600 && started.request.format == .png)
     let completed = try await poll(peer, id: requestID, terminal: true)
     #expect(completed.state == .completed && completed.images.count == 2)
     #expect(try payload(await peer.tool("scanner_start_scan", arguments)).decode(ScanRecord.self).id == completed.id)

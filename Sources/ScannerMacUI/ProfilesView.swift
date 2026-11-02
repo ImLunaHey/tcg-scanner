@@ -30,7 +30,7 @@ struct ProfilesView: View {
                         Image(systemName: "doc.badge.gearshape").font(.title2).foregroundStyle(.tint)
                         VStack(alignment: .leading, spacing: 5) {
                             Text(profile.name).font(.headline)
-                            Text("\(profile.dpi) DPI · \(profile.duplex ? "Duplex" : "Simplex") · \(profile.format.rawValue.uppercased()) · A4 colour").foregroundStyle(.secondary)
+                            Text("600 DPI · \(profile.duplex ? "Duplex" : "Simplex") · \(profile.format.rawValue.uppercased()) · A4 colour").foregroundStyle(.secondary)
                         }
                         Spacer()
                         Button("Use") { model.selectedProfile = profile.id; model.section = "Dashboard" }
@@ -68,15 +68,7 @@ private struct ProfileEditor: View {
             Text(draft.creating ? "Create profile" : "Edit profile").font(.title2.bold())
             Form {
                 TextField("Name", text: $draft.profile.name)
-                if model.dpiValues.isEmpty {
-                    TextField("Resolution (150–600 DPI)", value: $draft.profile.dpi, format: .number)
-                } else {
-                    Picker("Resolution", selection: $draft.profile.dpi) {
-                        ForEach(Array(Set(model.dpiValues + [draft.profile.dpi])).sorted(), id: \.self) { dpi in
-                            Text("\(dpi) DPI" + (model.dpiValues.contains(dpi) ? "" : " · unsupported on selected scanner")).tag(dpi)
-                        }
-                    }
-                }
+                Text("Resolution: 600 DPI · enforced for every scan")
                 Toggle("Duplex", isOn: $draft.profile.duplex)
                 Picker("Output", selection: $draft.profile.format) { Text("PNG").tag(OriginalFormat.png); Text("TIFF").tag(OriginalFormat.tiff) }
                 Text("The selected scanner must support this resolution and duplex mode. Supported DPI: \(model.dpiValues.map(String.init).joined(separator: ", ")).").font(.caption).foregroundStyle(.secondary)
@@ -87,6 +79,7 @@ private struct ProfileEditor: View {
                 Spacer()
                 if saving { ProgressView().controlSize(.small) }
                 Button("Save") {
+                    draft.profile.dpi = 600
                     saving = true
                     Task {
                         defer { saving = false }

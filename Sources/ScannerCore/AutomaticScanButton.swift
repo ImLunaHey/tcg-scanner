@@ -19,7 +19,7 @@ extension ScannerCoordinator {
                 try Task.checkCancellation()
                 try await backend.waitForScanButton(deviceID: deviceID)
                 try Task.checkCancellation()
-                let request = ScanRequest(deviceID: deviceID, dpi: 300, duplex: true, format: .png, prepareCards: true)
+                let request = ScanRequest(deviceID: deviceID, dpi: 600, duplex: true, format: .png, prepareCards: true)
                 let record = try await submitScan(request, fromButton: true)
                 try database.event("scanner.button.jobCreated", payload: .object([
                     "jobID": .string(record.id.uuidString), "deviceID": .string(deviceID)

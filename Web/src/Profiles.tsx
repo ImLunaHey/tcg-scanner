@@ -38,7 +38,7 @@ export function Profiles() {
               profile: {
                 id: uuid(),
                 name: "",
-                dpi: 300,
+                dpi: 600,
                 duplex: true,
                 format: "png",
               },
@@ -70,7 +70,7 @@ export function Profiles() {
               </span>
               <h2>{profile.name}</h2>
               <p>
-                {profile.dpi} DPI · {profile.duplex ? "Both sides" : "One side"}{" "}
+                600 DPI · {profile.duplex ? "Both sides" : "One side"}{" "}
                 · {profile.format.toUpperCase()}
               </p>
               <div className="profile-actions">
@@ -163,7 +163,7 @@ function ProfileEditor({
 }) {
   const { api } = useAuth();
   const queries = useQueryClient();
-  const [value, setValue] = useState(profile);
+  const [value, setValue] = useState({ ...profile, dpi: 600 });
   const save = useMutation({
     mutationFn: () => {
       const { id, ...fields } = value;
@@ -217,17 +217,7 @@ function ProfileEditor({
           </Field>
           <div className="form-row">
             <Field label="Resolution (DPI)">
-              <input
-                type="number"
-                min={150}
-                max={600}
-                step={1}
-                required
-                value={value.dpi}
-                onChange={(e) =>
-                  setValue({ ...value, dpi: Number(e.target.value) })
-                }
-              />
+              <span>600 DPI · enforced for every scan</span>
             </Field>
             <Field label="Format">
               <select

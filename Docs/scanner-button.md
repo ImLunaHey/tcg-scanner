@@ -9,7 +9,7 @@ The service holds an idle ADF session and waits for `ICButtonTypeScan`. The driv
 must expose `scan_button_monitor` with current value `1` (On); no vendor settings
 are changed. Wait for `button-monitor: ARMED` in
 `~/Library/Logs/Scanner/service.jsonl`. A press with a loaded feeder closes the
-idle session, then creates one ordinary queued job: **300 DPI, duplex PNG, Overscan with black backing, card
+idle session, then creates one ordinary queued job: **600 DPI, duplex PNG, Overscan with black backing, card
 preparation enabled**. It uses the configured storage root and next `B-NNN` folder,
 with the same cropping, orientation, recognition, finish/condition checks and
 pricing pipeline as a web scan. It does not use or modify saved device defaults.
@@ -145,3 +145,11 @@ and `scanInProgress` values at each button event, plus changes to `documentLoade
 while the automatic or diagnostic listener waits. These are driver observations,
 not independent measurements of physical loading. No triggering policy, scanner
 setting or feeding behaviour was changed in response to the timing report.
+
+## Resolution policy — 2026-11-02
+
+Every new scan is resolved to 600 DPI in ScannerService after profile and device
+defaults are applied. This includes physical-button, CLI, MCP, HTTP and native-app
+jobs. Lower values in saved profiles or incoming requests cannot lower capture
+resolution. The persisted job request records the effective 600 DPI; existing
+scan history is unchanged. Unsupported hardware fails rather than falling back.
