@@ -33,26 +33,52 @@ export function CardSummary({
   price?: CardValuation;
   pricingLoading?: boolean;
 }) {
+  const card = identityCard(identification);
   if (game !== "pokemon") {
     return (
       <>
         <div className="card-summary-top">
           <span className="card-reference">{label}</span>
+          <span className="badge">{gameLabel(game)}</span>
         </div>
         <div className="card-summary-identity">
-          <h2>{gameLabel(game)}</h2>
-          <p>
-            {pending
-              ? "Checking card backs…"
-              : game === "yugioh"
-                ? "Detected from card back. Card identity, rarity, condition and pricing are not supported yet."
-                : "No unique supported card back detected. Pokémon checks are skipped."}
-          </p>
+          {game === "yugioh" ? (
+            <>
+              {card ? (
+                <>
+                  <h2>{card.name}</h2>
+                  <p>
+                    {card.setName}{" "}
+                    <span className="card-number">{card.localID}</span>
+                  </p>
+                  {!!card.rarities?.length && (
+                    <p>
+                      Catalogue{" "}
+                      {card.rarities.length === 1 ? "rarity" : "rarities"}:{" "}
+                      {card.rarities.join(" / ")}
+                    </p>
+                  )}
+                  {card.category && <p>{card.category}</p>}
+                </>
+              ) : (
+                <IdentitySummary
+                  identification={identification}
+                  pending={pending}
+                />
+              )}
+              <p className="small muted">Finish and condition not assessed.</p>
+            </>
+          ) : (
+            <p>
+              {pending
+                ? "Checking card backs…"
+                : "No unique supported card back detected. Identification is skipped."}
+            </p>
+          )}
         </div>
       </>
     );
   }
-  const card = identityCard(identification);
   const finish = finishPresentation(identification, pending);
   const edition = editionPresentation(identification);
   const FinishIcon =
@@ -89,6 +115,7 @@ export function CardSummary({
       <div className="card-summary-top">
         <div className="card-summary-meta">
           <span className="card-reference">{label}</span>
+          <span className="badge">{gameLabel(game)}</span>
           {card && identification?.state === "confirmed" && (
             <span className="card-match-state">Confirmed</span>
           )}

@@ -40,8 +40,10 @@ every ICA scanner or trading-card game.
   features are not assumed to exist on macOS.
 - **Game detection uses each card’s back.** Standard Pokémon and English TCG
   Yu-Gi-Oh! backs determine game and side labels automatically, without a selector.
-  Unknown or ambiguous pairs skip Pokémon analysis. Yu-Gi-Oh! name/set recognition,
-  finish/condition assessment, pricing and Store export are not implemented.
+  Unknown or ambiguous pairs skip identification. English Yu-Gi-Oh! fronts use
+  local OCR and a cached YGOPRODeck catalogue for names, printed set codes and
+  catalogue rarities. Yu-Gi-Oh! finish/condition assessment, pricing and Store
+  export are not implemented. See [Yu-Gi-Oh! identification](Docs/yugioh-identification.md).
   See [game detection and validation](Docs/game-detection.md).
 - Identity and finish results are suggestions. Condition checks inspect selected
   features of standard Pokémon backs; they do **not** establish a selling grade

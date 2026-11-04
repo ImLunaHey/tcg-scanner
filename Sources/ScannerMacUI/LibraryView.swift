@@ -63,13 +63,15 @@ private struct BatchDetail: View {
                             Text("C-\(BatchNaming.number(record.request.duplex ? (image.sequence + 1) / 2 : image.sequence)) · \(prepared == nil ? "original" : "cropped card")").font(.headline)
                             Text("\(prepared?.image.width ?? image.width) × \(prepared?.image.height ?? image.height) · \(side)").font(.caption).foregroundStyle(.secondary)
                             Text(game == .pokemon ? "Pokémon" : game == .yugioh ? "Yu-Gi-Oh!" : "Unknown game").font(.caption)
-                            if game == .pokemon {
+                            if game != .unknown {
                                 if let identification = record.cardIdentifications?.first(where: { $0.request.sequence == image.sequence }) {
                                     CardIdentitySummary(identification: identification)
                                     if let check = identification.conditionCheck { Button(check.summary) { checkingCondition = EditingImage(image: image) }.font(.caption).buttonStyle(.link) }
                                 }
-                                Button("Check condition…") { checkingCondition = EditingImage(image: image) }.disabled(!record.state.terminal)
-                                Button("Identify / review card…") { identifying = EditingImage(image: image) }.disabled(!record.state.terminal)
+                                if game == .pokemon { Button("Check condition…") { checkingCondition = EditingImage(image: image) }.disabled(!record.state.terminal) }
+                                if game == .pokemon || pair?.frontSequence == image.sequence {
+                                    Button("Identify / review card…") { identifying = EditingImage(image: image) }.disabled(!record.state.terminal)
+                                }
                             } else {
                                 Text("Card identity, finish and condition checks are unavailable for this game.").font(.caption).foregroundStyle(.secondary)
                             }
@@ -133,7 +135,8 @@ private struct CardIdentitySummary: View {
                 Text(card.name).bold()
                 Text(([card.category == "Pokemon" ? "Pokémon" : card.category].compactMap { $0 } + (card.types ?? [])).joined(separator: " · "))
                 Text(card.setName + " · " + card.localID + (card.officialSetCount.map { "/\($0)" } ?? ""))
-                Text("Finish: " + identification.finishDescription)
+                if let rarities = card.rarities, !rarities.isEmpty { Text("Catalogue rarities: " + rarities.joined(separator: " / ")) }
+                if card.provider != "ygoprodeck" { Text("Finish: " + identification.finishDescription) }
             } else {
                 switch identification.state {
                 case .processing: Text("Identifying card…")

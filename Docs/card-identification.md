@@ -1,3 +1,7 @@
+Game routing: detected Pokémon pairs use the workflow below. Detected English
+Yu-Gi-Oh! fronts use the separate [YGOPRODeck matcher](yugioh-identification.md).
+Unknown pairs are not sent to either recognizer.
+
 # Card identification and manual assessment
 
 Automatic finish estimates now combine printed-marker/catalogue evidence with

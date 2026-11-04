@@ -209,7 +209,7 @@ export function presentCardPair(
     );
     if (detection.game !== "unknown" && front?.image && back?.image) {
       return {
-        identity: detection.game === "pokemon" ? front.identity : undefined,
+        identity: front.identity,
         sides: [
           { image: front.image, label: "Front" },
           { image: back.image, label: "Back" },

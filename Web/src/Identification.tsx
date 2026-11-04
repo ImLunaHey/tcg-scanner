@@ -15,6 +15,9 @@ export type CardCandidate = {
   officialSetCount?: number;
   evidence: string[];
   availableFinishes: string[];
+  provider?: string;
+  catalogueID?: string;
+  rarities?: string[];
   category?: string;
   types?: string[];
 };

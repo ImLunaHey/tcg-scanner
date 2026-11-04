@@ -22,9 +22,11 @@ original checksum. It does not trust a client-supplied game or cached label.
   and simplex scans remain unknown. Missing captures never shift later pairs.
 
 Both games get crop, deskew, upright orientation and front/back presentation.
-Only detected Pokémon pairs enter Pokémon catalogue matching, finish assessment,
-condition checks, pricing and Store staging. Yu-Gi-Oh! names, sets, rarity,
-condition, pricing and Store export are not implemented. Unknown games retain
+Detected Pokémon pairs enter Pokémon catalogue matching, finish assessment,
+condition checks, pricing and Store staging. Detected English Yu-Gi-Oh! fronts
+use [local OCR and YGOPRODeck](yugioh-identification.md) for name, set-code and
+catalogue-rarity suggestions. Yu-Gi-Oh! finish/condition checks, pricing and
+Store export are not implemented. Unknown games retain
 originals and prepared images for inspection; they are not silently treated as
 Pokémon. Game detection is not an authenticity check or a proof that sequential
 captures came from the same physical card.

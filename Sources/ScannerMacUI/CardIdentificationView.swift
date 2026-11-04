@@ -15,6 +15,7 @@ struct CardIdentificationView: View {
     @State private var finish = CardFinish.unverified
     @State private var condition = CardCondition.unassessed
     @State private var language: CardLanguage = .english
+    @State private var game: CardGame = .unknown
     private var processing: Bool { result?.state == .processing }
     private var candidates: [CardCandidate] { result?.evidence?.candidates ?? [] }
     var body: some View {
@@ -23,7 +24,7 @@ struct CardIdentificationView: View {
                 Text("Identify C-\(BatchNaming.number(sequence))").font(.title2.bold())
                 Spacer(); Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
             }
-            Text("\(language.displayName) card fronts. OCR runs on this Mac; TCGdex supplies catalogue data. Your image is not uploaded.").font(.callout).foregroundStyle(.secondary)
+            Text("\(language.displayName) card fronts. OCR runs on this Mac; \(game == .yugioh ? "YGOPRODeck" : "TCGdex") supplies catalogue data. Your image is not uploaded.").font(.callout).foregroundStyle(.secondary)
             if let error { Text(error).foregroundStyle(.red).textSelection(.enabled) }
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
@@ -38,7 +39,7 @@ struct CardIdentificationView: View {
                     if let edition = result?.editionPresentation(for: selected.isEmpty ? nil : selected) {
                         Text(edition.label).font(.callout).help(edition.detail)
                     }
-                    if result?.state == .noMatch, result?.evidence != nil {
+                    if game == .pokemon, result?.state == .noMatch, result?.evidence != nil {
                         Button("Refresh local stamp check") { estimateFinish() }.disabled(saving || processing)
                     }
                     if !candidates.isEmpty, result?.state != .rejected {
@@ -48,7 +49,8 @@ struct CardIdentificationView: View {
                         }
                         if let card = candidates.first(where: { $0.id == selected }) {
                             Text(card.evidence.joined(separator: " · ")).font(.caption)
-                            Text("Catalogue finishes: " + card.availableFinishes.map(\.displayName).joined(separator: ", ")).font(.caption).foregroundStyle(.secondary)
+                            if let rarities = card.rarities { Text("Catalogue rarities: " + rarities.joined(separator: " / ")).font(.caption) }
+                            else { Text("Catalogue finishes: " + card.availableFinishes.map(\.displayName).joined(separator: ", ")).font(.caption).foregroundStyle(.secondary) }
                         }
                         if let estimate = result?.finishEstimate {
                             Text("Finish: " + (result?.finishDescription ?? "Needs review")).font(.headline)
@@ -59,8 +61,10 @@ struct CardIdentificationView: View {
                                 Button("Use finish estimate in review") { finish = suggested }.disabled(saving || processing)
                             }
                         }
-                        Button(result?.finishEstimate == nil ? "Estimate finish locally" : "Refresh finish estimate") { estimateFinish() }
-                            .disabled(saving || processing || candidates.count != 1)
+                        if game == .pokemon {
+                            Button(result?.finishEstimate == nil ? "Estimate finish locally" : "Refresh finish estimate") { estimateFinish() }
+                                .disabled(saving || processing || candidates.count != 1)
+                        }
                         Picker("Finish · manual", selection: $finish) {
                             ForEach(CardFinish.allCases, id: \.self) { Text($0.displayName).tag($0) }
                         }
@@ -85,6 +89,7 @@ struct CardIdentificationView: View {
                 do {
                     let record = try await model.client.job(job)
                     language = record.request.resolvedCardLanguage
+                    game = record.detectedGame(for: sequence)
                     accept(record.cardIdentifications?.first { $0.request.sequence == sequence })
                     loading = false
                     try await Task.sleep(for: .seconds(2))
