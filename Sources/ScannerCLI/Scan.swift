@@ -3,7 +3,7 @@ import Foundation
 import ScannerAPI
 
 struct Scan: ParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "Scan loaded A4 paper until the feeder is empty (120-second limit).")
+    static let configuration = CommandConfiguration(abstract: "Scan loaded media until the feeder is empty (120-second image inactivity limit; 30-minute batch limit).")
     @OptionGroup var options: ClientOptions
     @Option(help: "Output directory inside the service's storage root. Default: storage root.") var output: String?
     @Option(help: "Scan resolution. The service enforces 600 DPI for every new job.") var dpi = 600

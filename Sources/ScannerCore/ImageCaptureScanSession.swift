@@ -38,7 +38,22 @@ final class ImageCaptureScanSession: ImageCaptureConnection {
             try Task.checkCancellation()
             requested = true; requestScan()
             log("scan requested: \(request.duplex ? "duplex" : "simplex"), \(request.dpi) DPI, A4")
-            try await wait("scan completion", seconds: 120) { completed }
+            var deadline = ScanTransferDeadline()
+            var observedSequence = sequence
+            while !completed {
+                try Task.checkCancellation()
+                if let failure { throw failure }
+                if sequence != observedSequence {
+                    observedSequence = sequence
+                    deadline.receivedImage()
+                }
+                guard !deadline.expired() else {
+                    throw ScannerError("timeout", "Scan stopped after 120 seconds without a new image or the 30-minute batch limit.")
+                }
+                try await Task.sleep(for: .milliseconds(50))
+            }
+            try Task.checkCancellation()
+            if let failure { throw failure }
             if let completionError { throw completionError }
         } catch {
             if error is CancellationError { outcome.cancelled = true }
@@ -84,5 +99,16 @@ final class ImageCaptureScanSession: ImageCaptureConnection {
         completed = true
         if let error { completionError = ScannerError("scan", error: error) }
         log("scan completion callback\(error.map { ": \($0.localizedDescription)" } ?? "")")
+    }
+}
+
+/// A busy 600 DPI transfer must not be cancelled by a short total-job timer.
+struct ScanTransferDeadline {
+    private let started: ContinuousClock.Instant
+    private var lastImage: ContinuousClock.Instant
+    init(now: ContinuousClock.Instant = .now) { started = now; lastImage = now }
+    mutating func receivedImage(now: ContinuousClock.Instant = .now) { lastImage = now }
+    func expired(now: ContinuousClock.Instant = .now) -> Bool {
+        now - lastImage >= .seconds(120) || now - started >= .seconds(1800)
     }
 }
