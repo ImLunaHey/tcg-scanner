@@ -8,6 +8,7 @@ struct Scan: ParsableCommand {
     @Option(help: "Output directory inside the service's storage root. Default: storage root.") var output: String?
     @Option(help: "Scan resolution. The service enforces 600 DPI for every new job.") var dpi = 600
     @Flag(help: "Scan both sides of each sheet.") var duplex = false
+    @Flag(help: "Preserve extra edge margins with black backing, independently of card analysis.") var overscan = false
     @Flag(help: "Automatically crop black-background card images and orient readable fronts; preserve originals.") var prepareCards = false
     @Option(help: "Physical card language when preparing cards: en (English) or ko (Korean).") var cardLanguage = "en"
     @Option(help: "Original format: tiff or png.") var format = "png"
@@ -27,7 +28,7 @@ struct Scan: ParsableCommand {
         let directory = output.map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath).standardizedFileURL.path }
         let profileID = try profile.map { try options.request("profiles.get", params: .object(["id": .string($0)])).decode(ScanProfile.self).id }
         let request = ScanRequest(requestID: requestID.flatMap(UUID.init(uuidString:)) ?? UUID(), deviceID: options.device,
-                                  outputDirectory: directory, dpi: dpi, duplex: duplex, format: OriginalFormat(rawValue: format)!, profileID: profileID, useDeviceSettings: useDeviceSettings ? true : nil, prepareCards: prepareCards ? true : nil, cardLanguage: prepareCards ? CardLanguage(rawValue: cardLanguage) : nil)
+                                  outputDirectory: directory, dpi: dpi, duplex: duplex, format: OriginalFormat(rawValue: format)!, profileID: profileID, useDeviceSettings: useDeviceSettings ? true : nil, prepareCards: prepareCards ? true : nil, overscan: overscan ? true : nil, cardLanguage: prepareCards ? CardLanguage(rawValue: cardLanguage) : nil)
         let result = try options.perform("scan.start", params: .wrapping(request))
         var record = try result.decode(ScanRecord.self)
         if !options.json { print("Scan \(record.id.uuidString)\nOutput: \(record.outputDirectory)") }

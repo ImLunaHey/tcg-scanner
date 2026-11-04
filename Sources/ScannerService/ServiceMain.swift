@@ -14,7 +14,7 @@ struct ServiceOptions: ParsableCommand {
     var storageRoot: String?
     @Option(help: "Require this SMB share at the storage root; never fall back to local storage.")
     var requiredSMBShare: String?
-    @Option(help: "Enable physical Scan-button card batches for this exact scanner ID (300 DPI, duplex PNG).")
+    @Option(help: "Enable physical Scan-button card batches for this exact scanner ID (600 DPI, duplex PNG).")
     var scanButtonDevice: String?
     @Option(help: "Private SQLite database path.")
     var database = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Scanner/state/scanner.sqlite").path

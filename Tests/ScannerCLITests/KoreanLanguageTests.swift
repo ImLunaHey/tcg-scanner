@@ -13,3 +13,8 @@ import Testing
     }
     #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["scan", "--card-language", "ko"]) }
 }
+
+@Test func overscanCanPreserveMarginsWithoutPokemonAnalysis() throws {
+    let scan = try Scanner.parseAsRoot(["scan", "--duplex", "--overscan"]) as! Scan
+    #expect(scan.duplex && scan.overscan && !scan.prepareCards)
+}
