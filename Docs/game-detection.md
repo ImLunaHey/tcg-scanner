@@ -61,3 +61,20 @@ a whole-card pass read “PareMoy”, while isolating the top logo read “PokeM
 The detector now retries that region after the independent layout check, using
 the same bounded logo matcher and a minimum OCR confidence. It does not loosen
 the colour/layout gates or default an unreadable back to Pokémon.
+
+## Installed validation — 2026-11-04
+
+The signed service, HTTP/web dashboard and native app were updated. B-044 was
+prepared through the installed service using `images prepare-card`, without
+feeding hardware again. All eight copies verified a two-quarter-turn rotation;
+all four backs were labeled Yu-Gi-Oh!, fronts were captures 2/4/6/8, and no
+preparation warnings or Pokémon identification records were produced.
+SHA-256 and byte counts matched all eight unchanged originals and all eight
+prepared PNGs. The on-disk manifest agreed with the service and authenticated
+HTTPS batch response. The direct batch URL returned the deployed application.
+The first prepared front/back pair was also visually inspected upright.
+
+Validation: 216 Swift tests, 38 web tests, production web build and Swift release
+build passed. Saved-image tests passed on four Yu-Gi-Oh! and four Pokémon pairs,
+including all quarter turns of each back and the automatic preparation pipeline.
+No Yu-Gi-Oh! catalogue, rarity, condition, pricing or Store support is claimed.
