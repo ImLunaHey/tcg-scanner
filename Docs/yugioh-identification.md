@@ -67,3 +67,18 @@ swift test --filter savedYugiohFrontsMatchPrintingsUsingLocalOCR
 Regular tests cover contradictory evidence, unreadable fields, unresolved
 printings, multiple rarities, cache reuse/restart/offline behaviour, reference
 validation, service routing and client presentation.
+
+## Installed validation — 2026-11-04
+
+Signed service, web and native updates were installed after 220 Swift tests,
+40 web tests and production builds passed. The installed CLI initiated
+identification for B-044 captures 2, 4, 6 and 8 without another physical scan.
+All four completed with the name, passcode and BLZD-EN091 printing described
+above. Each result records `apple-vision-ygoprodeck-text-v1` and the matching
+prepared-source checksum. No finish estimate or condition check was generated.
+
+The service downloaded and cached the real catalogue (14,655 entries in the
+observed response) and the base artwork. All eight original and eight prepared
+PNG hashes remained unchanged. Manifest and authenticated HTTPS metadata agreed
+on all four identities. Refresh an already-open dashboard page to load the new
+client bundle; no rescan is required.
