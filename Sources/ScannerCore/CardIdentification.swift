@@ -29,6 +29,7 @@ extension ScannerCoordinator {
         guard image.bytes <= 32 * 1024 * 1024 else { throw ScannerError("resourceLimit", "OCR source exceeds 32 MiB.") }
         var identification = CardIdentification(request: request, sourceSHA256: image.sha256)
         identification.sourceEditID = prepared?.id
+        if record.detectedGame(for: request.sequence) == .yugioh { identification.method = "apple-vision-ygoprodeck-text-v1" }
         // A retry must not erase a physical mark if reading/OCR later fails.
         if let previous = record.cardIdentifications?.first(where: {
             $0.request.sequence == request.sequence && $0.sourceSHA256 == image.sha256 && $0.sourceEditID == prepared?.id
@@ -97,9 +98,12 @@ extension ScannerCoordinator {
     // Both the scan pipeline and explicit retries use the same bounded recognizer.
     func recognizeCard(_ pending: CardIdentification, record snapshot: ScanRecord, image: OriginalImage) async -> CardIdentification {
         var result = pending
-        guard snapshot.detectedGame(for: pending.request.sequence) == .pokemon else {
+        let game = snapshot.detectedGame(for: pending.request.sequence)
+        let pair = CardGameDetection.resolve(snapshot).first { $0.number == (pending.request.sequence + 1) / 2 }
+        if game == .yugioh { result.method = "apple-vision-ygoprodeck-text-v1" }
+        guard game == .pokemon || (game == .yugioh && pair?.frontSequence == pending.request.sequence) else {
             result.state = .noMatch
-            result.evidence = RecognitionEvidence(lines: [], candidates: [], warnings: ["Pokémon analysis requires a recognized Pokémon back in this pair. Other games and unknown pairs are not assessed."])
+            result.evidence = RecognitionEvidence(lines: [], candidates: [], warnings: ["Identification requires a supported card pair and a readable front; Yu-Gi-Oh! backs and unknown games are not assessed."])
             result.completedAt = Date()
             return result
         }
@@ -121,6 +125,13 @@ extension ScannerCoordinator {
             }
             let data = try await withTaskCancellationHandler { try await sourceTask.value } onCancel: { sourceTask.cancel() }
             try Task.checkCancellation()
+            if game == .yugioh {
+                result.evidence = try await yugiohRecognizer.recognize(data, language: language)
+                try Task.checkCancellation()
+                result.state = result.evidence?.candidates.isEmpty == false ? .reviewRequired : .noMatch
+                result.completedAt = Date()
+                return result
+            }
             let preparation = snapshot.processedImages?.first { $0.id == pending.sourceEditID }?.cardPreparation
             let check = Task.detached(priority: .utility) { ConditionInspector.check(data, preparation: preparation) }
             result.conditionCheck = await withTaskCancellationHandler { await check.value } onCancel: { check.cancel() }

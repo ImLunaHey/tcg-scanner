@@ -184,12 +184,23 @@ func otherGamesNeverInvokePokemonAnalysis(basis: String) async throws {
     var record = try savedBatch(root: root, database: database)
     record.processedImages?[0].cardPreparation?.orientationBasis = basis
     try database.save(record)
-    let stub = RecognitionStub()
-    let service = try ScannerCoordinator(backend: NoHardware(), storageRoot: root, database: database, cardRecognizer: stub)
+    let stub = RecognitionStub(), yugioh = RecognitionStub()
+    let service = try ScannerCoordinator(backend: NoHardware(), storageRoot: root, database: database, cardRecognizer: stub, yugiohRecognizer: yugioh)
     let request = IdentificationRequest(jobID: record.id, sequence: 1)
     _ = try await service.identifyCard(request)
     let result = try await completed(service, job: record.id)
-    #expect(result.state == .noMatch && result.evidence?.candidates.isEmpty == true)
+    #expect(result.state == (basis == "yugioh-back-pattern" ? .reviewRequired : .noMatch))
+    #expect(await yugioh.calls == (basis == "yugioh-back-pattern" ? 1 : 0))
+    if basis == "yugioh-back-pattern" {
+        #expect(result.method == "apple-vision-ygoprodeck-text-v1")
+        _ = try await service.identifyCard(IdentificationRequest(jobID: record.id, sequence: 2))
+        let deadline = ContinuousClock.now + .seconds(5)
+        while try await service.cardIdentification(jobID: record.id, sequence: 2)?.state == .processing, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(try await service.cardIdentification(jobID: record.id, sequence: 2)?.state == .noMatch)
+        #expect(await yugioh.calls == 1) // Recognized back must never reach the front matcher.
+    }
     #expect(result.finishEstimate == nil && result.conditionCheck == nil)
     #expect(await stub.calls == 0)
     await #expect(throws: ScannerError.self) { try await service.estimateFinish(jobID: record.id, sequence: 1, identificationID: request.id) }

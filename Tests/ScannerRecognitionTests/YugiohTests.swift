@@ -1,4 +1,6 @@
 import Foundation
+import CoreGraphics
+import ImageIO
 import Testing
 import ScannerAPI
 @testable import ScannerRecognition
@@ -75,4 +77,42 @@ func savedYugiohFrontsMatchPrintingsUsingLocalOCR() async throws {
         #expect(result.candidates.count == 1)
         #expect(result.candidates.first?.localID.isEmpty == false)
     }
+}
+
+private actor YgoArtworkFetch {
+    var calls = 0
+    let bytes: Data
+    init(bytes: Data) { self.bytes = bytes }
+    func get(_ url: URL, limit: Int) -> Data {
+        calls += 1
+        #expect(url.absoluteString == "https://images.ygoprodeck.com/images/cards/39706423.jpg")
+        #expect(limit == YugiohCatalogue.imageLimit)
+        return bytes
+    }
+}
+@Test func yugiohReferenceCacheReusesValidatedImagesAndRejectsLinks() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let context = try #require(CGContext(data: nil, width: 200, height: 300, bitsPerComponent: 8, bytesPerRow: 800,
+        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+    let data = NSMutableData()
+    let output = try #require(CGImageDestinationCreateWithData(data, "public.png" as CFString, 1, nil))
+    CGImageDestinationAddImage(output, try #require(context.makeImage()), nil)
+    #expect(CGImageDestinationFinalize(output))
+    let fetch = YgoArtworkFetch(bytes: data as Data)
+    let cache = YugiohCatalogue(root: root, fetch: { await fetch.get($0, limit: $1) })
+    var card = try #require(YugiohCatalogue.decode(ygoJSON).first)
+    card.card_images = [.init(id: 39706423)]
+    try await cache.cacheReference(card)
+    try await cache.cacheReference(card)
+    #expect(await fetch.calls == 1)
+    let image = root.appendingPathComponent("reference-39706423.jpg")
+    try Data("not an image".utf8).write(to: image)
+    try await cache.cacheReference(card)
+    #expect(await fetch.calls == 2)
+    try FileManager.default.removeItem(at: image)
+    try FileManager.default.createSymbolicLink(at: image, withDestinationURL: root.appendingPathComponent("catalogue.json"))
+    try ygoJSON.write(to: root.appendingPathComponent("catalogue.json"))
+    await #expect(throws: ScannerError.self) { try await cache.cacheReference(card) }
+    #expect(!YugiohCatalogue.validImage(Data("<html>error</html>".utf8)))
 }

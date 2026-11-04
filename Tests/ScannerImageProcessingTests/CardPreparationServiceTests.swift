@@ -193,7 +193,7 @@ func savedPairsAutomaticallyPrepareAndRouteByGame() async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: root) }
     let recognizer = AutomaticRecognition()
-    let coordinator = try ScannerCoordinator(backend: SavedConditionPaper(bytes: bytes), storageRoot: root, cardRecognizer: recognizer)
+    let coordinator = try ScannerCoordinator(backend: SavedConditionPaper(bytes: bytes), storageRoot: root, cardRecognizer: recognizer, yugiohRecognizer: recognizer)
     let job = try await coordinator.startScan(ScanRequest(duplex: true, prepareCards: true))
     let deadline = ContinuousClock.now + .seconds(120)
     var result = try await coordinator.scanStatus(job.id)
@@ -205,8 +205,10 @@ func savedPairsAutomaticallyPrepareAndRouteByGame() async throws {
     #expect(result.processedImages?.count == count)
     #expect(result.cardGames?.count == count / 2)
     #expect(result.cardGames?.allSatisfy { $0.game == expected } == true)
-    #expect(await recognizer.calls == (expected == .pokemon ? count : 0))
-    if expected != .pokemon { #expect(result.cardIdentifications == nil) }
+    #expect(await recognizer.calls == (expected == .pokemon ? count : count / 2))
+    if expected == .yugioh {
+        #expect(result.cardIdentifications?.allSatisfy { $0.request.sequence.isMultiple(of: 2) && $0.finishEstimate == nil && $0.conditionCheck == nil } == true)
+    }
     let manifest = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: result.outputDirectory).appendingPathComponent("manifest.json")))
     #expect(manifest.cardGames?.map(\.game) == result.cardGames?.map(\.game))
     await coordinator.shutdownScans()

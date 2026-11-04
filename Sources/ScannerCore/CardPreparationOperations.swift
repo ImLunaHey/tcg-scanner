@@ -48,13 +48,16 @@ extension ScannerCoordinator {
                 if Task.isCancelled { break }
                 do {
                     let current = await store.snapshot()
-                    guard current.detectedGame(for: sequence) == .pokemon,
+                    let game = current.detectedGame(for: sequence)
+                    let pair = CardGameDetection.resolve(current).first { $0.number == (sequence + 1) / 2 }
+                    guard game == .pokemon || (game == .yugioh && pair?.frontSequence == sequence),
                           let original = current.images.first(where: { $0.sequence == sequence }) else { continue }
                     let prepared = current.processedImages?.last { $0.request.sequence == sequence && $0.cardPreparation != nil }
                     let source = prepared?.image ?? original
                     var pending = CardIdentification(request: IdentificationRequest(jobID: current.id, sequence: sequence,
                         language: current.request.resolvedCardLanguage.rawValue), sourceSHA256: source.sha256)
                     pending.sourceEditID = prepared?.id
+                    if game == .yugioh { pending.method = "apple-vision-ygoprodeck-text-v1" }
                     try await store.saveIdentification(pending)
                     let result = await recognizeCard(pending, record: current, image: source)
                     try await store.saveIdentification(result)
