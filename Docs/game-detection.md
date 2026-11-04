@@ -54,3 +54,10 @@ normal automatic pipeline through a backend that supplies saved bytes into a
 temporary batch; it checks game metadata, cropping and game-specific routing.
 Ordinary automated tests cover mixed game metadata, both feed orders, ambiguous
 pairs, gaps, stale checksums, and rejection of non-Pokémon analysis/export.
+
+The first four Pokémon pairs from B-041 also passed the automatic pipeline and
+all back rotations. This exposed an existing upright-logo OCR miss on capture 3:
+a whole-card pass read “PareMoy”, while isolating the top logo read “PokeMoy”.
+The detector now retries that region after the independent layout check, using
+the same bounded logo matcher and a minimum OCR confidence. It does not loosen
+the colour/layout gates or default an unreadable back to Pokémon.

@@ -11,17 +11,22 @@ enum PokemonBackOrientation {
         // the blue border, yellow end logos, and central red/white ball layout.
         guard let turns = try patternRotation(data) else { return nil }
         if words.contains(where: resemblesLogo) { return turns }
-        // An inverted stylized logo can fail OCR even when the layout is clear.
-        // Verify text again in the layout's proposed orientation, retaining both
-        // independent checks rather than weakening fuzzy-logo matching.
-        guard turns != 0 else { return nil }
+        // Retry in the layout's proposed orientation. A whole-card OCR pass can
+        // misread an upright stylized logo too, so isolate its top band before
+        // giving up. The colour/layout checks and fuzzy threshold stay unchanged.
         let orientations: [CGImagePropertyOrientation] = [.up, .right, .down, .left]
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.recognitionLanguages = ["en-US"]; request.usesLanguageCorrection = false
+        if turns != 0 {
+            try VNImageRequestHandler(data: data, orientation: orientations[turns]).perform([request])
+            if (request.results ?? []).contains(where: { $0.topCandidates(1).first.map { resemblesLogo($0.string) } == true }) { return turns }
+        }
+        try Task.checkCancellation()
+        request.regionOfInterest = CGRect(x: 0.04, y: 0.70, width: 0.92, height: 0.28)
         try VNImageRequestHandler(data: data, orientation: orientations[turns]).perform([request])
-        let uprightWords = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
-        return uprightWords.contains(where: resemblesLogo) ? turns : nil
+        let logos = (request.results ?? []).compactMap { $0.topCandidates(1).first }
+        return logos.contains { $0.confidence >= 0.5 && resemblesLogo($0.string) } ? turns : nil
     }
 
     /// Independent colour/layout evidence for orientation-invariant border checks.

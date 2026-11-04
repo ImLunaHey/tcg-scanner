@@ -23,7 +23,7 @@ func savedGameBacksDetectAcrossRotations() throws {
             for turn in 0..<4 {
                 let rotated = try ImageProcessor.render(cropped.data, request: ImageEditRequest(jobID: UUID(), sequence: sequence, quarterTurns: turn))
                 let result = try CardProcessor.uprightRotation(rotated.data)
-                #expect(result.basis == "\(game)-back-pattern")
+                #expect(result.basis == "\(game)-back-pattern", "Capture \(sequence), quarter turn \(turn)")
                 #expect(result.turns == (4 - turn) % 4)
             }
         }
