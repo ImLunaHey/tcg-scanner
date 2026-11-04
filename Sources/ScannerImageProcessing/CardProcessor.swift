@@ -118,6 +118,7 @@ public enum CardProcessor {
     }
 
     static func uprightRotation(_ data: Data, language: CardLanguage = .english) throws -> (turns: Int, verified: Bool, basis: String) {
+        if let turns = try YugiohBackOrientation.rotation(data) { return (turns, true, "yugioh-back-pattern") }
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         let supported = try request.supportedRecognitionLanguages()
