@@ -1,268 +1,243 @@
-# Native macOS scanner platform
+# TCG Scanner
 
-Milestones 1–7: Swift scanner discovery, capability reports, basic A4 simplex/duplex
-scanning, and a persistent background service for the USB Ricoh fi-8170.
-The CLI, Swift MCP server, authenticated HTTP gateway, native SwiftUI app and React web app use
-the service exclusively. No graphical application is required for scanning.
-The [remote web workspace](Docs/web-app.md) provides responsive scanning controls,
-live events and a batch library; see [web validation](Docs/milestone-7-validation.md).
-[Card feeding validation](Docs/card-test-readiness.md)
-now includes an explicitly authorized single-card test and an 11-card duplex
-batch with clean feeding and no new damage reported. [Whole-card preparation](Docs/card-preparation.md) preserves
-originals while adding cropped and oriented PNG copies. Bulk feeding is not yet validated.
-Optional [English and Korean card identification](Docs/card-identification.md) uses local
-Apple Vision OCR and TCGdex to suggest a card and set. Card-preparation scans
-run identification automatically during processing. Select the physical cards' language
-before scanning; Korean catalogue coverage is limited. Supported English finish
-checks provide estimates; Korean finish checks are not yet validated. Condition
-observations and estimates remain separate from physical review and grading.
-See [native app installation and workflow](Docs/native-app.md) and
-[milestone 6 validation](Docs/milestone-6-validation.md).
-See [MCP setup and agent workflow](Docs/mcp.md) and [milestone 4 validation](Docs/milestone-4-validation.md).
+A native macOS scanning platform for trading cards and documents, built in Swift
+and initially tested with the **Ricoh fi-8170 over USB on Apple Silicon**.
 
-Actual hardware evidence: [paper scans](Docs/milestone-2-validation.md) and
-[LaunchAgent verification](Docs/milestone-3-validation.md), plus the controlled
-[card tests and their limitations](Docs/card-preparation.md). Discovery and
-diagnostics never request a scan.
+Scan through a SwiftUI desktop app, a remote web dashboard, a Swift CLI, or an MCP
+client. One background service owns the scanner, schedules jobs, and preserves
+original images. The desktop app does not need to be open.
 
-## Scan storage
+## What it does
 
-This installation saves scans to `smb://lake/scans` at `/Volumes/scans`.
-Each batch has one folder with image files directly inside; no `originals/` or
-`processed/` folders are used. New scans default to PNG. Web/native controls
-enable automatic cropped card copies; disable that option for documents. Original
-captures remain unchanged. Folders use permanent numbers (`B-001`) and dates stay
-in metadata.
-Current unpaired captures use `C-001.png`; `C-001-front.png`/`C-001-back.png`
-will require verified card pairing. See [storage configuration and migration](Docs/storage.md).
+- **600 DPI scanning:** simplex or duplex capture, lossless PNG by default, with
+  TIFF available. The service enforces 600 DPI for every new job, including jobs
+  started with the scanner's physical Scan/Enter button.
+- **Card preparation:** automatic boundary detection, cropping, deskew and
+  orientation, with front/back previews and manual image adjustments. Original
+  captures remain unchanged.
+- **Pokémon recognition:** local Apple Vision OCR with TCGdex card and set
+  matching. English and Korean are selectable; Korean catalogue coverage is limited.
+- **Review and valuation:** experimental finish estimates, candidate border-wear
+  findings, and Cardmarket prices converted to GBP for cards and batches.
+- **Batch management:** permanent batch numbers, image metadata, manifests,
+  previews and exports, backed by SQLite and files on disk.
+- **Remote control:** authenticated HTTP API, live events and a responsive React
+  dashboard with system light/dark appearance and image zoom.
+- **Store integration:** optional send/resync to a separate Store application's
+  staging inbox, preserving batch/card references for review before approval.
 
-## Build and startup
+Image analysis runs locally on the Mac. Catalogue lookups, reference-image
+retrieval and pricing use external services; the optional Store integration
+explicitly transfers selected batch images and metadata.
 
-Requires macOS 14+, Swift 6.2+ (Hummingbird's minimum) and the official ICA driver.
-Configure a [local signing identity](Docs/signing.md) before running app build or
-installation scripts. Plain `swift build` and automated tests do not require it.
-Hardware checks used Apple Silicon, macOS 26.5.2, Swift 6.3.3 and Ricoh driver
-package 2.4.1. Other macOS versions have not been hardware-tested.
+## Current scope
+
+This is actively developed, hardware-tested software, not a claim of support for
+every ICA scanner or trading-card game.
+
+- The **fi-8170** is the tested scanner. Settings are discovered through Apple's
+  ImageCaptureCore and the installed official ICA driver; Windows PaperStream
+  features are not assumed to exist on macOS.
+- **Pokémon is the supported recognition workflow.** Yu-Gi-Oh! identification,
+  back recognition, finish assessment and Store export are not implemented.
+- Identity and finish results are suggestions. Condition checks inspect selected
+  features of standard Pokémon backs; they do **not** establish a selling grade
+  or reliably detect every scratch, dent or crease.
+- Duplex captures are grouped consecutively. Front/back labels use recognition
+  evidence, so uncertain sides still need review.
+- Card tests have included 600 DPI duplex batches with user-confirmed clean
+  feeding. They do not establish that every card, sleeve or modified feeder is
+  safe. Validate new media with expendable samples. The service does not change
+  multifeed detection, paper-thickness or transport-safety settings.
+
+See the [hardware findings](Docs/hardware-discovery.md),
+[card preparation](Docs/card-preparation.md),
+[recognition](Docs/card-identification.md), and
+[condition-check limitations](Docs/condition-checks.md).
+
+## Requirements
+
+- macOS 14 or later and Swift 6.2 or later; Xcode supplies the Apple frameworks.
+- The scanner's official macOS ICA driver.
+- Node.js and npm to build or develop the web UI. Node is not needed to serve the
+  installed production dashboard.
+- A [persistent signing identity](Docs/signing.md) for the installation scripts.
+  Plain Swift builds and automated tests do not require one.
+
+Hardware validation has used Apple Silicon. Other scanner models and macOS
+configurations require their own validation.
+
+## Get started
+
+### Build and inspect
 
 ```sh
+git clone https://github.com/ImLunaHey/tcg-scanner.git
+cd tcg-scanner
 swift build
 swift test
-# Manual foreground service; do not run alongside the installed LaunchAgent:
+```
+
+Run the service in one terminal:
+
+```sh
 .build/debug/scanner-service --verbose
 ```
 
-Or install the per-user background service and automatic login startup:
+Use another terminal to inspect the scanner:
+
+```sh
+.build/debug/scanner devices --json
+.build/debug/scanner capabilities --json
+.build/debug/scanner device --json
+.build/debug/scanner diagnostics --json
+```
+
+Do not run a foreground service alongside an installed service. Discovery and
+diagnostics do not initiate scanning. Hardware inspections require an idle scanner;
+job status remains available during capture.
+
+### Scan
+
+First validate ordinary paper feeding. Each scan feeds until the ADF is empty or a
+limit is reached; it does not feed just one item unless only one is loaded.
+
+```sh
+# Loaded documents: duplex PNG, without card processing.
+.build/debug/scanner scan --dpi 600 --duplex --format png --no-wait --json
+
+# A separate run, only after loading suitable cards:
+.build/debug/scanner scan --duplex --prepare-cards --card-language en --no-wait --json
+```
+
+Use `--card-language ko` for Korean cards. Monitor or cancel the returned job:
+
+```sh
+.build/debug/scanner jobs status JOB_UUID --json
+.build/debug/scanner jobs cancel JOB_UUID --json
+.build/debug/scanner batches list --json
+.build/debug/scanner batches manifest JOB_UUID > manifest.json
+```
+
+Use `--request-id UUID` with identical inputs when retrying a lost response. A new
+UUID creates a new physical scan. Closing a client or interrupting its status wait
+does not cancel the service-owned job.
+
+Profiles and device defaults supply scan options; the service applies the 600 DPI
+policy after resolving them. Run `scanner --help` or a subcommand's `--help` for
+profiles, configuration, image downloads and other operations.
+
+### Install the background service and interfaces
+
+After configuring [signing](Docs/signing.md), a fresh installation can use:
 
 ```sh
 Scripts/install-launch-agent.sh
-"$HOME/Library/Application Support/Scanner/bin/scanner" devices --json
-```
 
-The installer builds release binaries, copies them to a stable location and
-registers `local.scanner.service` in your logged-in GUI session. It does not start
-a scan. `--no-start` installs without loading. To stop automatic startup:
+# Optional native SwiftUI application:
+Scripts/install-mac-app.sh
+open "$HOME/Applications/Scanner.app"
 
-```sh
-Scripts/uninstall-launch-agent.sh
-```
-
-Uninstall retains scans, metadata, profiles, logs and binaries. For an update,
-uninstall first, then install again. See [service operations](Docs/service-operations.md)
-for paths, restart commands, troubleshooting and physical test steps.
-
-## HTTP control
-
-The scanner's physical Scan/Enter button can also create a card batch when
-ScannerService is configured with `--scan-button-device DEVICE_ID`. It uses
-300 DPI duplex PNG and the normal automatic card pipeline. See
-[button setup, safety limits and validation](Docs/scanner-button.md).
-
-After updating ScannerService, install the authenticated localhost gateway:
-
-```sh
+# Optional HTTP gateway and web dashboard:
 Scripts/install-http-agent.sh
+Scripts/install-web.sh
 ```
 
-It listens on `127.0.0.1:8170` and requires a bearer credential on every route.
-The installer creates a private credential file without printing it. REST endpoints
-cover devices, profiles, jobs, history, manifests, original downloads, thumbnails
-and SSE progress. PNG remains the scan default. The browser interface is a later
-milestone. See [HTTP API](Docs/http-api.md), [Tailscale and operations](Docs/http-operations.md)
-and [validation](Docs/milestone-5-validation.md).
+The service runs as a per-user LaunchAgent and installs the CLI at
+`~/Library/Application Support/Scanner/bin/scanner`. Installation does not start a
+scan. For existing installations, follow the
+[service operations](Docs/service-operations.md) and interface-specific update
+instructions rather than rerunning fresh-install commands over running services.
 
-## Discover and inspect
-
-From the repository, the debug CLI can also use the installed service:
+The web dashboard is served at `http://127.0.0.1:8170` by default. Its application
+shell is public; scanner data and controls require authentication. The installer
+creates a private access key. To copy it on the scanner Mac:
 
 ```sh
-.build/debug/scanner devices
-.build/debug/scanner devices --json
-.build/debug/scanner device --json
-.build/debug/scanner capabilities --json
-.build/debug/scanner settings --json
-.build/debug/scanner diagnostics --json
-.build/debug/scanner service-status --json
+pbcopy < "$HOME/Library/Application Support/Scanner/http/token"
 ```
 
-Specify `--device ID` if multiple scanners are connected. Discovery includes all
-local ICA scanners; only the fi-8170 ADF has been tested. Capability reports retain
-unknowns and driver anomalies. A writable property is not proof that setting it
-works. [Hardware findings](Docs/hardware-discovery.md) describe the observed driver.
-Inspections require an idle scanner; service status, job history and events remain
-available while scanning.
+For remote use, configure authenticated HTTPS access through Tailscale as described
+in [HTTP operations](Docs/http-operations.md). Do not expose unrestricted control
+to the public internet.
 
-## Scan ordinary A4 paper
+| Interface | Setup and reference |
+| --- | --- |
+| Native SwiftUI app | [Native application](Docs/native-app.md) |
+| React web dashboard | [Web application](Docs/web-app.md) |
+| CLI and background service | [Service operations](Docs/service-operations.md) |
+| MCP over stdio | [MCP configuration and tools](Docs/mcp.md) |
+| Physical Scan/Enter button | [Button configuration](Docs/scanner-button.md) |
+| HTTP and local JSON-RPC | [HTTP API](Docs/http-api.md) · [Local API](Docs/local-api.md) |
 
-Load exactly one expendable sheet for an initial test. `scan` feeds until the ADF
-empties or a capture limit is reached; it does not promise to feed only one sheet.
-The default storage root is `~/Scans`. All output directories must stay inside the
-service's configured `--storage-root`.
+## Storage and recovery
 
-```sh
-.build/debug/scanner scan --output ~/Scans/test-scans --dpi 300 --format png
-# Reload the sheet before another scan:
-.build/debug/scanner scan --duplex --dpi 300 --format png --no-wait --json
-.build/debug/scanner jobs status JOB_UUID --json
-.build/debug/scanner jobs cancel JOB_UUID --json
-.build/debug/scanner jobs list --json
-.build/debug/scanner events --follow --json
-```
-
-`scan-status` and `scan-cancel` remain supported aliases. A start returns a queued
-job and the default CLI waits for its terminal state. Cancelling a queued job
-prevents feeding; cancelling an active job is best-effort. Poll until terminal.
-Ctrl-C in the waiting CLI disconnects the client; use `jobs cancel` to cancel the
-service-owned job.
-
-Pass `--request-id UUID` to deduplicate retries, including after service restart.
-For a pre-PNG-default request that omitted format, pass `--format tiff` when retrying
-that same request ID after upgrading.
-The same UUID with different inputs is rejected. A new UUID means a new physical
-scan; never generate one merely because a response was lost.
-
-```sh
-.build/debug/scanner profiles create 'Documents' --dpi 300 --duplex --json
-.build/debug/scanner profiles list --json
-.build/debug/scanner profiles show Documents --json
-.build/debug/scanner profiles update Documents --dpi 300 --json
-.build/debug/scanner scan --profile Documents --no-wait --json
-```
-
-A selected profile supplies DPI, duplex and format, replacing those command
-options. Jobs snapshot profiles when submitted; later edits cannot change queued
-or active hardware configuration. Saving a profile does not touch hardware.
-Names are unique without regard to case. `profiles update` changes only supplied
-fields; `--no-duplex` explicitly selects simplex. `profiles delete` accepts a name
-or UUID. Profiles currently cover the basic A4 workflow, not card processing.
-
-Save per-device defaults without feeding paper or writing hardware properties:
-
-```sh
-.build/debug/scanner configure --dpi 300 --duplex --format png --json
-# Only after paper is ready:
-.build/debug/scanner scan --use-device-settings --no-wait --json
-```
-
-Defaults are validated against the idle scanner and snapshotted into each job.
-Use either a profile or device defaults, not both. `device --json` reports readiness
-when the driver exposes it; a ready result is a momentary observation.
-
-Retrieve existing scans without feeding:
-
-```sh
-.build/debug/scanner batches list --json
-.build/debug/scanner batches show JOB_UUID --json
-.build/debug/scanner batches manifest JOB_UUID > manifest.json
-.build/debug/scanner images metadata JOB_UUID 1 --json
-.build/debug/scanner images download JOB_UUID 1 --output ./original.png --json
-```
-
-Downloads verify chunk and complete-file SHA-256 values, use private file permissions,
-and refuse to overwrite an existing destination. Image access uses service-owned
-job IDs and sequence numbers. The CLI export destination is local to the CLI. Use the original image’s extension:
-this command downloads unchanged bytes and does not convert historical TIFFs to PNG.
-
-Current scan scope: A4, RGB, 8 bits per channel, driver-supported 150–600 DPI,
-PNG by default, with TIFF available explicitly via `--format tiff`. PNG is lossless
-and suitable for browser workflows. **Physical tests passed for 300-DPI TIFF simplex
-and duplex, and 300-DPI PNG duplex.** Other modes remain hardware-unverified. Scans require ADF/A4/geometry/bit-depth controls
-plus cropping and blank-page-skip controls. Unsupported settings fail before
-feeding. Multifeed, paper thickness and transport safety settings are never written.
-Temporary changes are restored after the scan stops.
-
-## Persistence and recovery
-
-Each job creates a unique batch directory:
+The default image root is `~/Scans`. A configured SMB share is also supported;
+SQLite metadata remains local. All clients use the service's configured storage
+root, and remote clients cannot write to arbitrary filesystem paths.
 
 ```text
-B-001/
-  manifest.json
-  .incoming/   # untouched driver files, including partial/invalid files
-  C-001.png    # verified byte-identical copies; side unknown
-  C-002.png
+Scans/
+  B-001/
+    manifest.json
+    C-001.png
+    C-002.png
+    edit-<UUID>.png
+    .incoming/
 ```
 
-Manifests update atomically after each image. GRDB/SQLite stores jobs, original
-requests, profiles, image metadata, batches, capabilities, device observations and
-events. Metadata migrations run at startup. Original images stay on disk and are
-never overwritten by a retry. Keeping incoming and originals uses roughly twice
-the image storage. Callback order is retained; side identity remains unknown.
-On-demand thumbnails use native ImageIO and preserve originals. Cropping, rotation
-and card processing remain later work.
+Batch numbers increase permanently; dates stay in metadata. Original filenames
+refer to acquisition order, while prepared copies and front/back relationships
+are recorded in metadata. Images remain directly inside the batch folder rather
+than separate `originals/` and `processed/` directories. `.incoming/` retains
+original driver deliveries and may contain duplicates or partial files.
 
-States: queued → preparing → scanning → processing → completed, or failed/cancelled.
-`processing` currently means finalizing storage, not card-image processing.
-On shutdown or sleep, outstanding jobs are cancelled. At restart, unfinished jobs
-are marked failed/interrupted; a newer terminal manifest can be reconciled into
-the database. **Startup never resumes physical feeding.** Files not yet indexed
-remain available for manual review. A disk error or unconfirmed scanner session
-closure stops scheduling until the service is restarted.
+Manifests update atomically and saved originals are checksum-verified. Interrupted
+jobs are recovered or marked failed; startup never resumes physical feeding.
+Failed scans retain received files, but a partial batch must not be mistaken for a
+complete one. Back up both the images and the local database, which holds the
+batch-number ledger and scan history. See [storage configuration](Docs/storage.md).
 
-Limits: 100 waiting jobs, 256 profiles, 120 seconds of capture, cancellation after
-100 image callbacks, 512 MiB per accepted file and 10,000 replayable events. History
-and original files have no automatic deletion policy; monitor available disk space.
-A single hardware session runs at a time, including across multiple connected
-scanners, matching the current backend's session limitation.
+Current limits include 100 image callbacks per scan, 120 seconds without a new
+image, and a 30-minute capture limit. The callback ceiling cancels the job when
+reached, so keep batches **below 50 duplex cards**. Only one hardware session is
+active at a time across the current backend. There is no automatic deletion of
+scan history or originals.
 
-## Architecture and access
+## Architecture
 
-- **ScannerAPI**: shared Codable/Sendable contracts.
-- **ScannerCore**: backend abstraction, ImageCaptureCore, storage and job scheduler.
-- **ScannerPersistence**: GRDB transactions, migrations, history and recovery.
-- **ScannerServiceSupport**: versioned JSON-RPC routing and validation.
-- **ScannerTransport**: private Unix sockets; blocking CLI and asynchronous Swift client APIs.
-- **ScannerService**: hardware owner, main run loop, monitoring, lifecycle and structured logs.
-- **ScannerHTTP / ScannerHTTPSupport**: Hummingbird REST, bearer sessions, streaming
-  images/events; uses service IPC exclusively.
-- **ScannerCLI**: ArgumentParser client; imports no hardware backend.
-- **ScannerMCP / ScannerMCPSupport**: official Swift MCP SDK, stdio tools and schemas;
-  communicates through the same private Unix socket, with no hardware backend.
+All interfaces communicate with ScannerService. The native app, CLI and MCP server
+use a private Unix-domain socket; the Hummingbird HTTP gateway forwards web/API
+requests through that same service. Clients never open their own scanner sessions.
 
-Default socket: `~/Library/Application Support/Scanner/run/control.sock`.
-Directory mode 0700, socket mode 0600, and same-user peer checks restrict local
-access. A per-user hardware lock rejects another service even with different
-socket/database paths. ICA additionally controls sessions held by other apps.
-The optional HTTP gateway adds authenticated TCP control, binding to loopback by
-default. Only explicit Tailscale access is supported beyond loopback. No shell
-execution endpoint is exposed.
+| Component | Responsibility |
+| --- | --- |
+| `ScannerAPI`, `ScannerClient`, `ScannerTransport` | Shared contracts and local IPC |
+| `ScannerCore`, `ScannerService`, `ScannerServiceSupport` | Hardware access, queue, lifecycle and API routing |
+| `ScannerPersistence` | GRDB/SQLite metadata, migrations and recovery |
+| `ScannerImageProcessing`, `ScannerRecognition` | Native image preparation, OCR and card analysis |
+| `ScannerCLI`, `ScannerMCP`, `ScannerMCPSupport` | Headless and agent interfaces |
+| `ScannerHTTP`, `ScannerHTTPSupport` | Authenticated HTTP, downloads and live events |
+| `ScannerMacUI`, `Apps/ScannerMac` | Native SwiftUI desktop application |
+| `Web` | React, Vite, TypeScript, Tailwind CSS and TanStack Query |
 
-See [local API](Docs/local-api.md) for job, profile, event and diagnostic methods.
-JSON results go to stdout; logs go to stderr. Exit codes: 0 success, 1 scan/API/I/O
-failure, 3 unavailable service, 4 missing/ambiguous device, 5 busy service,
-6 cancelled scan, 64 argument usage error. Queries may succeed with no devices;
-partial inspections include errors and exit 1.
+The native stack uses Swift concurrency, ImageCaptureCore, Core Image, Vision and
+ImageIO. The macOS app is native SwiftUI, with no Electron, Tauri or web wrapper.
 
-## Validation and scope
+## Development and testing
 
-`swift test` uses Swift Testing, mock backends and real Unix sockets. It covers
-concurrent submissions, queue cancellation, immutable profile snapshots,
-persistence/recovery, disconnects, simulated sleep, disk failure, transport limits,
-permissions, checksums, CLI parsing, private original exports, and a complete workflow
-through the compiled MCP executable over stdio. HTTP integration tests use a live
-Hummingbird listener, concurrent HTTP clients and a mock-backed service socket. Automated tests never feed the real scanner.
-Physical sleep/wake, unplugging during capture and cancellation during a real feed
-remain unverified; do those controlled paper checks before unattended operation.
+```sh
+swift test --disable-index-store -Xswiftc -warnings-as-errors
+npm --prefix Web ci
+npm --prefix Web test
+npm --prefix Web run build
+```
 
-`Diagnostics/` and `.build/` are ignored runtime artifacts. Existing physical scans
-under `Diagnostics/test-scans/` are preserved. The earlier discovery probes remain
-in Git history. Inventory integration is outside the current milestone.
+Swift Testing covers mock scanners, scheduling, persistence, local sockets, CLI,
+MCP and HTTP integration. Automated tests do not feed the physical scanner.
+Hardware validation and experimental findings are documented separately in
+[`Docs/`](Docs/). Some documents are historical milestone reports; use current
+source and this README for current defaults and limits.
+
+Build outputs, local diagnostics, databases, credentials and scanned card images
+are not part of the repository.
