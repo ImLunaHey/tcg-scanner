@@ -34,8 +34,8 @@ private actor KoreanHTTPRecognition: CardRecognizing {
         #expect(try decode(start, as: ScanRecord.self).request.cardLanguage == .korean)
         let record = try await httpPoll(client, id: id, headers: httpHeaders())
         #expect(record.request.cardLanguage == .korean)
-        #expect(record.cardIdentifications?.first?.request.language == "ko")
-        #expect(await recognition.languages == [.korean])
+        #expect(record.cardIdentifications == nil) // Unknown mock frame must not enter Pokémon recognition.
+        #expect(await recognition.languages.isEmpty)
         let retry = try await client.execute(uri: "/api/v1/jobs", method: .post, headers: httpHeaders(), body: body)
         #expect(try decode(retry, as: ScanRecord.self).id == id)
         let path = "/api/v1/images/\(id):1/identification"

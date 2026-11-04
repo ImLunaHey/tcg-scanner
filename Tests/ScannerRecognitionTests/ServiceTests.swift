@@ -36,10 +36,15 @@ private func savedBatch(root: URL, database: ScannerDatabase) throws -> ScanReco
     #expect(CGImageDestinationFinalize(encoder))
     let data = bytes as Data
     try data.write(to: batch.appendingPathComponent("C-001.png"))
-    var record = ScanRecord(device: Device(id: "fixture", name: "Saved image"), request: ScanRequest(), outputDirectory: batch.path)
+    var record = ScanRecord(device: Device(id: "fixture", name: "Saved image"), request: ScanRequest(duplex: true), outputDirectory: batch.path)
     record.state = .completed
     record.images = [OriginalImage(sequence: 1, relativePath: "C-001.png", bytes: data.count,
         sha256: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined(), width: 120, height: 80, imageCount: 1, uniformType: "public.png")]
+    var back = record.images[0]; back.sequence = 2; back.relativePath = "C-002.png"
+    try data.write(to: batch.appendingPathComponent(back.relativePath))
+    record.images.append(back)
+    addPokemonBack(to: &record, sequence: 2)
+    try data.write(to: batch.appendingPathComponent(try #require(record.processedImages?.last).image.relativePath))
     try database.insert(record, submission: record.request)
     return record
 }
@@ -97,7 +102,7 @@ private func completed(_ coordinator: ScannerCoordinator, job: UUID) async throw
     #expect(try await restarted.cardIdentification(jobID: record.id, sequence: 1)?.conditionCheck == checked.conditionCheck)
     let manifest = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: record.outputDirectory).appendingPathComponent("manifest.json")))
     #expect(manifest.cardIdentifications?.first?.finish == .reverseHolo)
-    #expect(manifest.processedImages?.first?.id == edit.id)
+    #expect(manifest.processedImages?.last?.id == edit.id)
     #expect(manifest.state == .completed && manifest.images.first?.sha256 == record.images.first?.sha256)
     _ = try await service.readImage(jobID: record.id, sequence: 1, offset: 0, length: 262144)
     let rejected = try await service.reviewCard(jobID: record.id, sequence: 1, identificationID: request.id, cardID: nil, finish: .normal, condition: .nearMint)
@@ -168,5 +173,26 @@ private func completed(_ coordinator: ScannerCoordinator, job: UUID) async throw
     request.params = .object(["jobID": .string(record.id.uuidString), "sequence": .number(1), "identificationID": .string(identity.request.id.uuidString), "path": .string("/etc/passwd")])
     let router = DiagnosticRouter(coordinator: service)
     #expect(await router.respond(to: try Wire.encoder().encode(request)).error?.code == -32602)
+    await service.shutdownScans()
+}
+
+@Test(arguments: ["yugioh-back-pattern", "unknown"])
+func otherGamesNeverInvokePokemonAnalysis(basis: String) async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let database = try ScannerDatabase()
+    var record = try savedBatch(root: root, database: database)
+    record.processedImages?[0].cardPreparation?.orientationBasis = basis
+    try database.save(record)
+    let stub = RecognitionStub()
+    let service = try ScannerCoordinator(backend: NoHardware(), storageRoot: root, database: database, cardRecognizer: stub)
+    let request = IdentificationRequest(jobID: record.id, sequence: 1)
+    _ = try await service.identifyCard(request)
+    let result = try await completed(service, job: record.id)
+    #expect(result.state == .noMatch && result.evidence?.candidates.isEmpty == true)
+    #expect(result.finishEstimate == nil && result.conditionCheck == nil)
+    #expect(await stub.calls == 0)
+    await #expect(throws: ScannerError.self) { try await service.estimateFinish(jobID: record.id, sequence: 1, identificationID: request.id) }
+    await #expect(throws: ScannerError.self) { try await service.checkCondition(jobID: record.id, sequence: 1, identificationID: request.id) }
     await service.shutdownScans()
 }

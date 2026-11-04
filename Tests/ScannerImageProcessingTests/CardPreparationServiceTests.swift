@@ -60,11 +60,8 @@ private func waitForCard(_ coordinator: ScannerCoordinator, id: UUID) async thro
     let record = try await waitForCard(coordinator, id: start.id)
     #expect(record.state == .completed && record.images.count == 1)
     let prepared = try #require(record.processedImages?.first)
-    let identity = try #require(record.cardIdentifications?.first)
-    #expect(identity.state == .reviewRequired && identity.selectedCardID == nil)
-    #expect(identity.sourceEditID == prepared.id && identity.sourceSHA256 == prepared.image.sha256)
-    #expect(identity.finish == .unverified && identity.condition == .unassessed)
-    #expect(identity.conditionCheck != nil) // Published automatically, without a client check request.
+    #expect(record.cardIdentifications == nil)
+    #expect(record.cardGames?.first?.game == .unknown)
     #expect(prepared.cardPreparation != nil && prepared.image.width < 220 && prepared.image.height < 290)
     let original = try Data(contentsOf: URL(fileURLWithPath: record.outputDirectory).appendingPathComponent("C-001.png"))
     let id = UUID()
@@ -88,59 +85,46 @@ private func waitForCard(_ coordinator: ScannerCoordinator, id: UUID) async thro
     let record = try await waitForCard(coordinator, id: job.id)
     #expect(record.state == .completed && record.images.count == 1)
     #expect(record.processedImages == nil)
-    #expect(record.cardIdentifications?.first?.sourceSHA256 == record.images.first?.sha256)
-    #expect(record.cardIdentifications?.first?.state == .reviewRequired)
+    #expect(record.cardIdentifications == nil)
     #expect(record.warnings.contains { $0.contains("Card preparation failed") })
     await coordinator.shutdownScans()
 }
 
-@Test(arguments: [false, true]) func automaticIdentificationIsOptionalAndFailurePreservesScan(enabled: Bool) async throws {
+@Test(arguments: [false, true]) func unrecognizedPairsNeverInvokePokemonRecognizer(enabled: Bool) async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: root) }
     let recognizer = AutomaticRecognition(fail: true)
     let coordinator = try ScannerCoordinator(backend: CardPaper(count: 3), storageRoot: root, cardRecognizer: recognizer)
-    let job = try await coordinator.startScan(ScanRequest(prepareCards: enabled))
+    let job = try await coordinator.startScan(ScanRequest(duplex: true, prepareCards: enabled))
     let result = try await waitForCard(coordinator, id: job.id)
     #expect(result.state == .completed && result.images.count == 3)
-    #expect(await recognizer.calls == (enabled ? 3 : 0))
-    if enabled {
-        #expect(result.cardIdentifications?.map(\.request.sequence) == [1, 2, 3])
-        #expect(result.cardIdentifications?.allSatisfy { $0.state == .failed } == true)
-        #expect(result.cardIdentifications?.first?.state == .failed)
-        #expect(result.cardIdentifications?.first?.error != nil)
-    } else { #expect(result.cardIdentifications == nil) }
+    #expect(await recognizer.calls == 0)
+    #expect(result.cardIdentifications == nil)
+    #expect(result.cardGames?.allSatisfy { $0.game == .unknown } == true)
     let manifest = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: result.outputDirectory).appendingPathComponent("manifest.json")))
     #expect(manifest.cardIdentifications?.first?.state == result.cardIdentifications?.first?.state)
     await coordinator.shutdownScans()
 }
 
-@Test func automaticIdentificationPublishesProgressAndCancelsWithoutLosingImages() async throws {
+@Test func automaticPreparationPublishesProgressAndCancelsWithoutLosingImages() async throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: root) }
-    let recognizer = AutomaticRecognition(delay: .seconds(30))
-    let coordinator = try ScannerCoordinator(backend: CardPaper(), storageRoot: root, cardRecognizer: recognizer)
-    let job = try await coordinator.startScan(ScanRequest(prepareCards: true))
+    let recognizer = AutomaticRecognition()
+    let coordinator = try ScannerCoordinator(backend: CardPaper(count: 20), storageRoot: root, cardRecognizer: recognizer)
+    let job = try await coordinator.startScan(ScanRequest(duplex: true, prepareCards: true))
     let deadline = ContinuousClock.now + .seconds(10)
-    var pending: CardIdentification?
-    while ContinuousClock.now < deadline {
-        pending = try await coordinator.scanStatus(job.id).cardIdentifications?.first
-        if pending != nil { break }
+    var current = try await coordinator.scanStatus(job.id)
+    while current.processedImages?.isEmpty != false, ContinuousClock.now < deadline {
         try await Task.sleep(for: .milliseconds(10))
+        current = try await coordinator.scanStatus(job.id)
     }
-    let identification = try #require(pending)
-    #expect(identification.state == .processing)
-    #expect(try await coordinator.scanStatus(job.id).state == .processing)
-    await #expect(throws: ScannerError.self) {
-        try await coordinator.identifyCard(IdentificationRequest(jobID: job.id, sequence: 1))
-    }
-    await #expect(throws: ScannerError.self) {
-        try await coordinator.reviewCard(jobID: job.id, sequence: 1, identificationID: identification.request.id, cardID: nil, finish: .unverified, condition: .unassessed)
-    }
+    #expect(current.state == .processing)
+    #expect(current.processedImages?.isEmpty == false)
     _ = try await coordinator.cancelScan(job.id)
     let result = try await waitForCard(coordinator, id: job.id)
-    #expect(result.state == .cancelled && result.images.count == 1 && result.processedImages?.count == 1)
-    #expect(result.cardIdentifications?.first?.state == .failed)
-    #expect(result.cardIdentifications?.first?.error?.kind == "interrupted")
+    #expect(result.state == .cancelled && result.images.count == 20)
+    #expect(result.processedImages?.isEmpty == false)
+    #expect(await recognizer.calls == 0)
     await coordinator.shutdownScans()
 }
 
@@ -155,19 +139,21 @@ private func waitForCard(_ coordinator: ScannerCoordinator, id: UUID) async thro
     #expect(copy.cardPreparation?.deskewDegrees == copy.request.deskewDegrees)
     #expect((180...187).contains(copy.image.width) && (250...257).contains(copy.image.height))
     #expect(record.images[0].width == 400 && record.images[0].height == 600)
-    #expect(record.cardIdentifications?.first?.sourceSHA256 == copy.image.sha256)
+    #expect(record.cardIdentifications == nil)
     await coordinator.shutdownScans()
 }
 
 private actor SavedConditionPaper: ScannerBackend {
-    let bytes: Data
-    init(bytes: Data) { self.bytes = bytes }
+    let bytes: [Data]
+    init(bytes: [Data]) { self.bytes = bytes }
     func devices() -> [Device] { [Device(id: "mock", name: "Saved back fixture")] }
     func inspect(deviceID: String) -> Inspection { Inspection(device: devices()[0]) }
     func capture(deviceID: String, request: ScanRequest, store: ScanStorage) async throws -> CaptureOutcome {
         try await store.markScanning(settings: [:])
         let url = store.incomingDirectory.appendingPathComponent("back.png")
-        try bytes.write(to: url); try await store.preserve(url, sequence: 1)
+        for (index, data) in bytes.enumerated() {
+            try data.write(to: url); try await store.preserve(url, sequence: index + 1)
+        }
         return CaptureOutcome()
     }
 }
@@ -177,12 +163,13 @@ func conditionChecksRunAutomaticallyWithoutClientRequest(catalogueFails: Bool) a
     let saved = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
     for sourceSequence in [1, 11, 17] {
         let source = try #require(saved.images.first { $0.sequence == sourceSequence })
-        let bytes = try Data(contentsOf: URL(fileURLWithPath: saved.outputDirectory).appendingPathComponent(source.relativePath))
+        let front = try #require(saved.images.first { $0.sequence == sourceSequence + 1 })
+        let bytes = try [source, front].map { try Data(contentsOf: URL(fileURLWithPath: saved.outputDirectory).appendingPathComponent($0.relativePath)) }
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let coordinator = try ScannerCoordinator(backend: SavedConditionPaper(bytes: bytes), storageRoot: root,
             cardRecognizer: AutomaticRecognition(fail: catalogueFails))
-        let job = try await coordinator.startScan(ScanRequest(prepareCards: true))
+        let job = try await coordinator.startScan(ScanRequest(duplex: true, prepareCards: true))
         let done = try await waitForCard(coordinator, id: job.id)
         let identity = try #require(done.cardIdentifications?.first)
         #expect(done.state == .completed)
@@ -193,4 +180,34 @@ func conditionChecksRunAutomaticallyWithoutClientRequest(catalogueFails: Bool) a
         #expect(manifest.cardIdentifications?.first?.conditionCheck == identity.conditionCheck)
         await coordinator.shutdownScans()
     }
+}
+
+@Test(.enabled(if: ProcessInfo.processInfo.environment["SCANNER_GAME_FIXTURE"] != nil))
+func savedPairsAutomaticallyPrepareAndRouteByGame() async throws {
+    let path = try #require(ProcessInfo.processInfo.environment["SCANNER_GAME_FIXTURE"])
+    let expected = CardGame(rawValue: ProcessInfo.processInfo.environment["SCANNER_GAME_EXPECTED"] ?? "yugioh")!
+    let count = Int(ProcessInfo.processInfo.environment["SCANNER_GAME_COUNT"] ?? "8")!
+    let bytes = try (1...count).map {
+        try Data(contentsOf: URL(fileURLWithPath: path).appendingPathComponent(String(format: "C-%03d.png", $0)))
+    }
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let recognizer = AutomaticRecognition()
+    let coordinator = try ScannerCoordinator(backend: SavedConditionPaper(bytes: bytes), storageRoot: root, cardRecognizer: recognizer)
+    let job = try await coordinator.startScan(ScanRequest(duplex: true, prepareCards: true))
+    let deadline = ContinuousClock.now + .seconds(120)
+    var result = try await coordinator.scanStatus(job.id)
+    while !result.state.terminal && ContinuousClock.now < deadline {
+        try await Task.sleep(for: .milliseconds(100))
+        result = try await coordinator.scanStatus(job.id)
+    }
+    #expect(result.state == .completed && result.images.count == count)
+    #expect(result.processedImages?.count == count)
+    #expect(result.cardGames?.count == count / 2)
+    #expect(result.cardGames?.allSatisfy { $0.game == expected } == true)
+    #expect(await recognizer.calls == (expected == .pokemon ? count : 0))
+    if expected != .pokemon { #expect(result.cardIdentifications == nil) }
+    let manifest = try Wire.decoder().decode(ScanRecord.self, from: Data(contentsOf: URL(fileURLWithPath: result.outputDirectory).appendingPathComponent("manifest.json")))
+    #expect(manifest.cardGames?.map(\.game) == result.cardGames?.map(\.game))
+    await coordinator.shutdownScans()
 }

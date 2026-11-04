@@ -9,6 +9,7 @@ extension ScannerCoordinator {
         let identities = record.cardIdentifications ?? []
         var selected: [Int: (CardIdentification, CardCandidate)] = [:]
         for (number, images) in groups {
+            guard let first = images.first, record.detectedGame(for: first.sequence) == .pokemon else { continue }
             let matches = identities.filter { identity in
                 images.contains { $0.sequence == identity.request.sequence }
                     && [.confirmed, .reviewRequired].contains(identity.state)

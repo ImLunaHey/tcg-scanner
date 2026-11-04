@@ -137,7 +137,7 @@ private func waitForTransfer(_ coordinator: ScannerCoordinator, id: UUID) async 
     #expect(payload.sourceBatchId == fixture.record.id && payload.cards[0].review.recognitionSuggestions[0].name == "Claydol")
     #expect(payload.cards[0].review.conditionEstimate == nil)
     #expect(payload.cards[0].game == "pokemon" && payload.cards[0].language == "en")
-    #expect(payload.cards[0].gameSource == "scannerConfiguration" && payload.cards[0].languageSource == "scannerConfiguration")
+    #expect(payload.cards[0].gameSource == "recognition" && payload.cards[0].languageSource == "scannerConfiguration")
     #expect(payload.cards[0].review.recognitionSuggestions[0].provider == "tcgdex")
     #expect(payload.cards[0].review.recognitionSuggestions[0].externalId == "me04-047")
     let remote = try #require(await store.cards.first)
@@ -389,4 +389,12 @@ private func changeStoreSource(_ fixture: StoreFixture) throws {
         return (try Wire.encoder().encode(remote), 200)
     }
     #expect(try await client.update(card: remote, input: input).id == remote.id)
+}
+
+@Test func yugiohPairsCannotBeExportedAsPokemon() throws {
+    let fixture = try StoreFixture(); defer { try? FileManager.default.removeItem(at: fixture.root) }
+    var record = fixture.record
+    record.processedImages?[0].cardPreparation?.orientationBasis = "yugioh-back-pattern"
+    #expect(record.detectedGame(for: 1) == .yugioh)
+    #expect(throws: ScannerError.self) { try StoreTransferLedger.make(record: record, store: StagingMock(), valuation: nil) }
 }

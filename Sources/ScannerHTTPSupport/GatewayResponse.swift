@@ -12,7 +12,7 @@ struct GatewayError: Error, Sendable {
         switch error.kind {
         case "deviceNotFound", "profileNotFound", "imageNotFound", "scanNotFound", "notFound", "settingsNotFound": status = 404
         case "busy", "conflict", "ambiguousDevice", "storeNotReady", "storeConflict": status = 409
-        case "invalidParams", "invalidSettings", "unsupported", "unsupportedSetting", "cardNotFound": status = 422
+        case "invalidParams", "invalidSettings", "unsupported", "unsupportedSetting", "unsupportedGame", "cardNotFound": status = 422
         case "accessDenied": status = 403
         case "resourceLimit": status = 429
         case "serviceUnavailable", "transport", "storage", "storageUnavailable", "storeNotConfigured": status = 503

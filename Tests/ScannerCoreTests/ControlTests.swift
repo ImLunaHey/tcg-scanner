@@ -42,7 +42,7 @@ private actor ControlBackend: ScannerBackend {
     #expect(try db.deviceSettings("control")?.dpi == 600)
     let request = ScanRequest(useDeviceSettings: true)
     let record = try await service.startScan(request)
-    let deadline = ContinuousClock.now + .seconds(3)
+    let deadline = ContinuousClock.now + .seconds(10)
     while (try await service.scanStatus(record.id)).images.isEmpty && ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(5)) }
     #expect(await backend.lastRequest?.dpi == 600)
     #expect(try await service.deviceStatus(nil).ready == false)

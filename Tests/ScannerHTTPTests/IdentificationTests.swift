@@ -5,6 +5,7 @@ import HTTPTypes
 import Testing
 import ScannerAPI
 import ScannerCore
+import ScannerPersistence
 import ScannerRecognition
 import ScannerServiceSupport
 import ScannerTransport
@@ -23,12 +24,20 @@ struct HTTPRecognitionMock: CardRecognizing {
     let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent("ri-" + String(UUID().uuidString.prefix(12)))
     defer { try? FileManager.default.removeItem(at: root) }
     let backend = HTTPMock()
-    let coordinator = try ScannerCoordinator(backend: backend, storageRoot: root, cardRecognizer: HTTPRecognitionMock())
-    var record = try await coordinator.startScan(ScanRequest())
+    let database = try ScannerDatabase()
+    let coordinator = try ScannerCoordinator(backend: backend, storageRoot: root, database: database, cardRecognizer: HTTPRecognitionMock())
+    var record = try await coordinator.startScan(ScanRequest(duplex: true))
     let deadline = ContinuousClock.now + .seconds(5)
     while !record.state.terminal, ContinuousClock.now < deadline {
         try await Task.sleep(for: .milliseconds(10)); record = try await coordinator.scanStatus(record.id)
     }
+    let back = try #require(record.images.last)
+    var preparedBack = ProcessedImage(request: ImageEditRequest(jobID: record.id, sequence: 2), sourceSHA256: back.sha256, image: back)
+    preparedBack.image.relativePath = "edit-\(preparedBack.id.uuidString.lowercased()).png"
+    try FileManager.default.copyItem(atPath: record.outputDirectory + "/" + back.relativePath, toPath: record.outputDirectory + "/" + preparedBack.image.relativePath)
+    preparedBack.cardPreparation = CardPreparation(crop: ImageCrop(), quarterTurns: 0, orientationVerified: true, warnings: [], orientationBasis: "pokemon-back-pattern")
+    record.processedImages = [preparedBack]
+    try database.save(record)
     let job = record
     let socket = root.appendingPathComponent("c.sock").path
     let server = UnixServer(path: socket, handler: DiagnosticRouter(coordinator: coordinator).respond)

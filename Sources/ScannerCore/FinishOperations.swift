@@ -13,6 +13,7 @@ extension ScannerCoordinator {
         preparingCardJobs.insert(jobID); defer { preparingCardJobs.remove(jobID) }
         try validateStorage()
         let snapshot = try await scanStatus(jobID)
+        guard snapshot.detectedGame(for: sequence) == .pokemon else { throw ScannerError("unsupportedGame", "This check requires a recognized Pokémon card pair.") }
         guard snapshot.state.terminal, scans[jobID] == nil,
               let identity = snapshot.cardIdentifications?.first(where: { $0.request.sequence == sequence && $0.request.id == identificationID }),
               [.reviewRequired, .confirmed, .noMatch].contains(identity.state), var evidence = identity.evidence else {

@@ -36,6 +36,7 @@ private func editionBatch(_ db: ScannerDatabase, editions: [CardEditionEvidence?
                 sha256: "fixture", width: 100, height: 100, imageCount: 1, uniformType: "public.png"))
         }
         var identity = CardIdentification(request: IdentificationRequest(jobID: record.id, sequence: offset * 2 + 1), sourceSHA256: "fixture")
+        addPokemonBack(to: &record, sequence: offset * 4 + 3 - identity.request.sequence)
         identity.state = manuallyReviewed ? .confirmed : .reviewRequired
         identity.selectedCardID = manuallyReviewed ? editionCardID : nil
         identity.finish = manuallyReviewed ? .holo : .unverified

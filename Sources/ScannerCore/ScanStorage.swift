@@ -57,6 +57,7 @@ public actor ScanStorage {
     }
     public func addPreparedImage(_ image: ProcessedImage) throws {
         record.processedImages = (record.processedImages ?? []) + [image]
+        record.cardGames = CardGameDetection.resolve(record)
         try save()
     }
     public func saveIdentification(_ identification: CardIdentification) throws {

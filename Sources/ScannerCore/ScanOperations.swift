@@ -93,7 +93,8 @@ extension ScannerCoordinator {
     public func scanStatus(_ id: UUID) async throws -> ScanRecord {
         // Every published update is persisted. Read it without joining the storage
         // actor's queue: network-volume copies can take longer than an API timeout.
-        guard let record = try database.job(id) else { throw ScannerError("scanNotFound", "Unknown scan ID.") }
+        guard var record = try database.job(id) else { throw ScannerError("scanNotFound", "Unknown scan ID.") }
+        record.cardGames = CardGameDetection.resolve(record)
         return record
     }
     public func cancelScan(_ id: UUID) async throws -> ScanRecord {

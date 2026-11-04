@@ -23,6 +23,9 @@ extension StoreTransferLedger {
         var cards: [StorePlannedCard] = [], inputs: [StoreCardInput] = []
         for offset in stride(from: 0, to: images.count, by: 2) {
             let number = offset / 2 + 1
+            guard record.detectedGame(for: images[offset].sequence) == .pokemon else {
+                throw ScannerError("unsupportedGame", "C-\(BatchNaming.number(number)) is not a detected Pokémon pair. Store export for other games is not supported yet.")
+            }
             let pair = Array(images[offset...offset + 1])
             let edits = try pair.map { original -> ProcessedImage in
                 let label = "C-\(BatchNaming.number(number)), capture \(original.sequence)"
@@ -88,7 +91,7 @@ extension StoreTransferLedger {
             inputs.append(StoreCardInput(cardNumber: "C-" + BatchNaming.number(number), review: StoreReview(
                 recognitionSuggestions: suggestions, finishEstimate: finish, conditionEstimate: nil,
                 borderFindings: Array(findings.prefix(30)), suggestedPriceGbp: price),
-                game: "pokemon", language: record.request.resolvedCardLanguage.rawValue, gameSource: "scannerConfiguration", languageSource: "scannerConfiguration"))
+                game: "pokemon", language: record.request.resolvedCardLanguage.rawValue, gameSource: "recognition", languageSource: "scannerConfiguration"))
             cards.append(StorePlannedCard(number: number, front: edits[front].image, back: edits[1 - front].image))
         }
         var status = StoreTransferStatus(jobID: record.id, configured: true)

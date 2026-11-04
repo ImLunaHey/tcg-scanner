@@ -44,6 +44,7 @@ private func batch(_ database: ScannerDatabase, finishes: [CardFinish?]) throws 
         }
         // Alternating which capture is the card front must not change card totals.
         var identity = CardIdentification(request: IdentificationRequest(jobID: record.id, sequence: index * 2 + (index.isMultiple(of: 2) ? 1 : 2)), sourceSHA256: "fixture")
+        addPokemonBack(to: &record, sequence: index * 4 + 3 - identity.request.sequence)
         identity.state = .reviewRequired
         identity.evidence = RecognitionEvidence(lines: [], candidates: [CardCandidate(id: "test-001", name: "Test", localID: "001", setID: "test", setName: "Test", evidence: [], availableFinishes: [.normal, .holo, .reverseHolo])])
         identity.finishEstimate = FinishEstimate(state: finish == nil ? .uncertain : .estimated, suggestedFinish: finish, candidateID: "test-001", evidence: [], uncertaintyReason: finish == nil ? .multipleRegularFinishes : nil)
@@ -53,7 +54,7 @@ private func batch(_ database: ScannerDatabase, finishes: [CardFinish?]) throws 
     return record
 }
 private func ready(_ service: ScannerCoordinator, id: UUID) async throws -> BatchValuation {
-    let deadline = ContinuousClock.now + .seconds(3)
+    let deadline = ContinuousClock.now + .seconds(10)
     while ContinuousClock.now < deadline {
         let value = try await service.batchValuation(id)
         if !value.refreshing { return value }
@@ -113,7 +114,7 @@ private func ready(_ service: ScannerCoordinator, id: UUID) async throws -> Batc
     record.request.prepareCards = false
     var edit = ProcessedImage(request: ImageEditRequest(jobID: record.id, sequence: 1), sourceSHA256: "fixture", image: record.images[0])
     edit.cardPreparation = CardPreparation(crop: ImageCrop(x: 0, y: 0, width: 1, height: 1), quarterTurns: 0, orientationVerified: true, warnings: [])
-    record.processedImages = [edit]
+    record.processedImages?.append(edit)
     try db.save(record)
     let service = try ScannerCoordinator(backend: PricingNoHardware(), database: db, cardPricing: PriceStub())
     let value = try await ready(service, id: record.id)

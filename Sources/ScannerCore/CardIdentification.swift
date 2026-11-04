@@ -97,6 +97,12 @@ extension ScannerCoordinator {
     // Both the scan pipeline and explicit retries use the same bounded recognizer.
     func recognizeCard(_ pending: CardIdentification, record snapshot: ScanRecord, image: OriginalImage) async -> CardIdentification {
         var result = pending
+        guard snapshot.detectedGame(for: pending.request.sequence) == .pokemon else {
+            result.state = .noMatch
+            result.evidence = RecognitionEvidence(lines: [], candidates: [], warnings: ["Pokémon analysis requires a recognized Pokémon back in this pair. Other games and unknown pairs are not assessed."])
+            result.completedAt = Date()
+            return result
+        }
         do {
             guard let language = CardLanguage(rawValue: pending.request.language),
                   language == snapshot.request.resolvedCardLanguage else {

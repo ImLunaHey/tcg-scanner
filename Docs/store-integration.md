@@ -134,10 +134,13 @@ Both checks remain required. Export errors distinguish missing preparation,
 unverified orientation, non-PNG output and actual size limits, naming the capture.
 
 The updated Store contract requires card-level game/language metadata. New
-transfers include `game:pokemon`, `language:en` and both sources as
-`scannerConfiguration`, including cards without recognition matches. Suggestions
-include `provider:tcgdex` and the exact catalogue candidate's `externalId`.
-These are configured workflow values, not automatic game/language detection.
+transfers require a detected Pokémon back for every pair and include
+`game:pokemon`, `gameSource:recognition`, the configured physical-card language
+(`en` or `ko`), and `languageSource:scannerConfiguration`. A Pokémon pair can
+be exported without a catalogue identity; unknown games and Yu-Gi-Oh! pairs
+are rejected before any transfer. Suggestions include `provider:tcgdex` and
+the exact catalogue candidate's `externalId`. Language remains configured,
+while game is detected per pair.
 Persisted transfer receipts remain readable; a retry upgrades only its frozen
 local submission, never replacing Store reviewer changes. No older wire client
 contract is supported.

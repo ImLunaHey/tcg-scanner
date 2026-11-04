@@ -22,6 +22,7 @@ extension ScannerCoordinator {
         // Reload after analysis: a concurrent identification or edit may have been saved.
         var updated = try await scanStatus(jobID)
         updated.processedImages = (updated.processedImages ?? []) + [edit]
+        updated.cardGames = CardGameDetection.resolve(updated)
         try database.save(updated); try BatchFiles.writeManifest(updated, root: storageRoot)
         return edit
     }
@@ -41,19 +42,25 @@ extension ScannerCoordinator {
             } catch {
                 try? await store.addPreparationWarning("Card preparation failed for image \(image.sequence): \(error.localizedDescription). Original retained; use manual review.")
             }
-            if Task.isCancelled { break }
-            do {
-                let current = await store.snapshot()
-                let prepared = current.processedImages?.last { $0.request.sequence == image.sequence && $0.cardPreparation != nil }
-                let source = prepared?.image ?? image
-                var pending = CardIdentification(request: IdentificationRequest(jobID: current.id, sequence: image.sequence,
-                    language: current.request.resolvedCardLanguage.rawValue), sourceSHA256: source.sha256)
-                pending.sourceEditID = prepared?.id
-                try await store.saveIdentification(pending)
-                let result = await recognizeCard(pending, record: current, image: source)
-                try await store.saveIdentification(result)
-            } catch {
-                try? await store.addPreparationWarning("Identification could not be saved for image \(image.sequence): \(error.localizedDescription). Original retained; retry from review.")
+            // A back may arrive second. Prepare both sides before choosing a game.
+            guard image.sequence.isMultiple(of: 2) else { continue }
+            for sequence in [image.sequence - 1, image.sequence] {
+                if Task.isCancelled { break }
+                do {
+                    let current = await store.snapshot()
+                    guard current.detectedGame(for: sequence) == .pokemon,
+                          let original = current.images.first(where: { $0.sequence == sequence }) else { continue }
+                    let prepared = current.processedImages?.last { $0.request.sequence == sequence && $0.cardPreparation != nil }
+                    let source = prepared?.image ?? original
+                    var pending = CardIdentification(request: IdentificationRequest(jobID: current.id, sequence: sequence,
+                        language: current.request.resolvedCardLanguage.rawValue), sourceSHA256: source.sha256)
+                    pending.sourceEditID = prepared?.id
+                    try await store.saveIdentification(pending)
+                    let result = await recognizeCard(pending, record: current, image: source)
+                    try await store.saveIdentification(result)
+                } catch {
+                    try? await store.addPreparationWarning("Identification could not be saved for image \(sequence): \(error.localizedDescription). Original retained; retry from review.")
+                }
             }
         }
     }
