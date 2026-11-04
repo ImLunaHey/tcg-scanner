@@ -83,10 +83,20 @@ it.each([1, 2])(
   (front) => {
     const images = [1, 2].map((sequence) => ({ sequence }) as OriginalImage);
     const pair = groupCardCaptures(images)[0];
-    const result = presentCardPair(pair, [
-      sideIdentity(1, front === 1 ? "reviewRequired" : "noMatch"),
-      sideIdentity(2, front === 2 ? "reviewRequired" : "noMatch"),
-    ]);
+    const result = presentCardPair(
+      pair,
+      [
+        sideIdentity(1, front === 1 ? "reviewRequired" : "noMatch"),
+        sideIdentity(2, front === 2 ? "reviewRequired" : "noMatch"),
+      ],
+      {
+        number: 1,
+        game: "pokemon",
+        frontSequence: front,
+        backSequence: 3 - front,
+        reason: "Detected back",
+      },
+    );
     expect(
       result.sides.map((side) => [side.label, side.image?.sequence]),
     ).toEqual([
@@ -116,12 +126,30 @@ it("does not guess sides for ambiguous, unmatched, rejected or incomplete pairs"
       "Side 1",
       "Side 2",
     ]);
-    if (state === "reviewRequired")
-      expect(result.warning).toContain("Both sides");
+    expect(result.identity).toBeUndefined();
   }
   expect(
     presentCardPair({ number: 1, second: pair.second }, [
       sideIdentity(2, "reviewRequired"),
     ]).sides.map((side) => side.label),
   ).toEqual(["Side 1", "Side 2"]);
+});
+
+it("uses detected backs to order Yu-Gi-Oh pairs without Pokémon identity", () => {
+  const images = [1, 2].map((sequence) => ({ sequence })) as OriginalImage[];
+  const pair = groupCardCaptures(images)[0];
+  const result = presentCardPair(pair, [], {
+    number: 1,
+    game: "yugioh",
+    frontSequence: 2,
+    backSequence: 1,
+    reason: "Detected back",
+  });
+  expect(
+    result.sides.map((side) => [side.image?.sequence, side.label]),
+  ).toEqual([
+    [2, "Front"],
+    [1, "Back"],
+  ]);
+  expect(result.identity).toBeUndefined();
 });

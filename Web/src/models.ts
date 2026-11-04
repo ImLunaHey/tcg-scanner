@@ -58,7 +58,17 @@ export type Batch = Omit<Job, "scannerID" | "progress"> & {
   warnings: string[];
   processedImages?: EditedImage[];
   cardIdentifications?: Identification[];
+  cardGames?: CardGameDetection[];
 };
+export type CardGameDetection = {
+  number: number;
+  game: "pokemon" | "yugioh" | "unknown";
+  frontSequence?: number;
+  backSequence?: number;
+  reason: string;
+};
+export const gameLabel = (game: CardGameDetection["game"]) =>
+  ({ pokemon: "Pokémon", yugioh: "Yu-Gi-Oh!", unknown: "Unknown game" })[game];
 export type EditedImage = {
   request: {
     id: string;
@@ -141,9 +151,7 @@ export function controls(inspection?: Inspection) {
       ? values
           .filter(
             (n): n is number =>
-              typeof n === "number" &&
-              Number.isInteger(n) &&
-              n === 600,
+              typeof n === "number" && Number.isInteger(n) && n === 600,
           )
           .sort((a, b) => a - b)
       : [],
@@ -182,6 +190,7 @@ export function groupCardCaptures(images: OriginalImage[]) {
 export function presentCardPair(
   pair: ReturnType<typeof groupCardCaptures>[number],
   identifications: Identification[] = [],
+  detection?: CardGameDetection,
 ) {
   const entries = [pair.first, pair.second].map((image) => ({
     image,
@@ -191,37 +200,38 @@ export function presentCardPair(
         )
       : undefined,
   }));
-  const matched = entries.filter(
-    ({ identity }) =>
-      identity &&
-      (identity.state === "confirmed" || identity.state === "reviewRequired") &&
-      (identity.evidence?.candidates.length || 0) > 0,
-  );
-  if (matched.length === 1 && pair.first && pair.second) {
-    const front = matched[0];
-    const back = entries.find((entry) => entry !== front)!;
+  if (detection) {
+    const front = entries.find(
+      ({ image }) => image?.sequence === detection.frontSequence,
+    );
+    const back = entries.find(
+      ({ image }) => image?.sequence === detection.backSequence,
+    );
+    if (detection.game !== "unknown" && front?.image && back?.image) {
+      return {
+        identity: detection.game === "pokemon" ? front.identity : undefined,
+        sides: [
+          { image: front.image, label: "Front" },
+          { image: back.image, label: "Back" },
+        ],
+        warning: undefined,
+      };
+    }
     return {
-      identity: front.identity,
-      sides: [
-        { image: front.image, label: "Front" },
-        { image: back.image, label: "Back" },
-      ],
-      warning: undefined,
+      identity: undefined,
+      sides: entries.map(({ image }, index) => ({
+        image,
+        label: `Side ${index + 1}`,
+      })),
+      warning: detection.reason,
     };
   }
   return {
-    identity:
-      matched[0]?.identity ||
-      entries.find(({ identity }) => identity?.state === "processing")
-        ?.identity ||
-      entries.find(({ identity }) => identity)?.identity,
+    identity: undefined,
     sides: entries.map(({ image }, index) => ({
       image,
       label: `Side ${index + 1}`,
     })),
-    warning:
-      matched.length > 1
-        ? "Both sides have card matches; review each side and check the pair."
-        : undefined,
+    warning: "Card back detection is pending.",
   };
 }

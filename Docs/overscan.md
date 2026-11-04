@@ -15,10 +15,13 @@ rewritten. Explicit `overscan:false` and white-background requests retain their
 selected mode; document jobs do not acquire this card-specific default.
 
 Local JSON-RPC and HTTP job requests also accept optional `overscan:true`.
+The CLI exposes `scanner scan --duplex --overscan` independently of card analysis.
 The service selects and verifies cropping value 4, records black backing in
 applied settings, and restores the previous driver value after capture.
 Automatic preparation crops and deskews a separate PNG, verifies upright
-orientation, then runs recognition and finish/condition checks. The original
+orientation, then detects the game from the paired back before running
+Pokémon recognition and finish/condition checks. Other games retain prepared images
+and game/side metadata without Pokémon-specific analysis. The original
 retains the full captured margin. Existing Overscan batches can use the same
 preparation and identification APIs without scanning again.
 

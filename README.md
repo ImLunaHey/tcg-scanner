@@ -38,8 +38,11 @@ every ICA scanner or trading-card game.
 - The **fi-8170** is the tested scanner. Settings are discovered through Apple's
   ImageCaptureCore and the installed official ICA driver; Windows PaperStream
   features are not assumed to exist on macOS.
-- **Pokémon is the supported recognition workflow.** Yu-Gi-Oh! identification,
-  back recognition, finish assessment and Store export are not implemented.
+- **Game detection uses each card’s back.** Standard Pokémon and English TCG
+  Yu-Gi-Oh! backs determine game and side labels automatically, without a selector.
+  Unknown or ambiguous pairs skip Pokémon analysis. Yu-Gi-Oh! name/set recognition,
+  finish/condition assessment, pricing and Store export are not implemented.
+  See [game detection and validation](Docs/game-detection.md).
 - Identity and finish results are suggestions. Condition checks inspect selected
   features of standard Pokémon backs; they do **not** establish a selling grade
   or reliably detect every scratch, dent or crease.

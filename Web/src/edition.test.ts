@@ -94,6 +94,7 @@ describe("stamped edition presentation", () => {
     };
     const panel = renderToStaticMarkup(
       createElement(CardSummary, {
+        game: "pokemon",
         label: "C-001",
         identification: unknown,
         pending: false,
@@ -181,6 +182,7 @@ describe("edition price isolation", () => {
     const panel = (price: CardValuation) =>
       renderToStaticMarkup(
         createElement(CardSummary, {
+          game: "pokemon",
           label: "C-002",
           identification: identity,
           pending: false,

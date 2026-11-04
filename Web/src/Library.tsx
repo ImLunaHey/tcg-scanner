@@ -537,7 +537,11 @@ export function BatchDetail({ id }: { id: string }) {
               identity,
               sides,
               warning: sideWarning,
-            } = presentCardPair(pair, record.cardIdentifications);
+            } = presentCardPair(
+              pair,
+              record.cardIdentifications,
+              record.cardGames?.find((value) => value.number === pair.number),
+            );
             const views = sides.map((side) => {
               const prepared = record.processedImages
                 ?.filter(
@@ -623,6 +627,11 @@ export function BatchDetail({ id }: { id: string }) {
                 <div className="paired-info">
                   <CardSummary
                     label={captureLabel(pair.number)}
+                    game={
+                      record.cardGames?.find(
+                        (value) => value.number === pair.number,
+                      )?.game ?? "unknown"
+                    }
                     price={pricing.data?.cards.find(
                       (value) => value.number === pair.number,
                     )}

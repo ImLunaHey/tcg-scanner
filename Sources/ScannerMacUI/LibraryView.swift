@@ -50,21 +50,29 @@ private struct BatchDetail: View {
                     Spacer()
                     Toggle("Compare adjacent sides", isOn: $compare).toggleStyle(.checkbox)
                 }
-                if compare { Text("Adjacent images are shown in acquisition order. Front/back identity and pairing have not been verified for this batch.").font(.caption).foregroundStyle(.orange) }
+                if compare { Text("Adjacent images are shown in acquisition order. Recognized card backs determine side labels; unknown pairs keep numbered sides.").font(.caption).foregroundStyle(.orange) }
                 if record.images.isEmpty { ContentUnavailableView("No images saved yet", systemImage: "doc.text.image", description: Text(record.state.terminal ? "This job did not produce any saved images." : "Previews appear after each original has been saved.")) }
                 LazyVGrid(columns: compare ? [GridItem(.flexible()), GridItem(.flexible())] : [GridItem(.adaptive(minimum: 220))], spacing: 18) {
                     ForEach(record.images, id: \.sequence) { image in
                         let prepared = record.processedImages?.last(where: { $0.request.sequence == image.sequence && $0.cardPreparation != nil })
+                        let game = record.detectedGame(for: image.sequence)
+                        let pair = record.cardGames?.first { $0.number == (image.sequence + 1) / 2 }
+                        let side = pair?.frontSequence == image.sequence ? "Front" : pair?.backSequence == image.sequence ? "Back" : "Side \(image.side)"
                         VStack(alignment: .leading, spacing: 8) {
                             ScanThumbnail(model: model, job: record.id, sequence: image.sequence, edit: prepared?.id).frame(height: 230)
-                            Text("C-\(BatchNaming.number(image.sequence)) · \(prepared == nil ? "original" : "cropped card")").font(.headline)
-                            Text("\(prepared?.image.width ?? image.width) × \(prepared?.image.height ?? image.height) · side \(image.side)").font(.caption).foregroundStyle(.secondary)
-                            if let identification = record.cardIdentifications?.first(where: { $0.request.sequence == image.sequence }) {
-                                CardIdentitySummary(identification: identification)
-                                if let check = identification.conditionCheck { Button(check.summary) { checkingCondition = EditingImage(image: image) }.font(.caption).buttonStyle(.link) }
+                            Text("C-\(BatchNaming.number(record.request.duplex ? (image.sequence + 1) / 2 : image.sequence)) · \(prepared == nil ? "original" : "cropped card")").font(.headline)
+                            Text("\(prepared?.image.width ?? image.width) × \(prepared?.image.height ?? image.height) · \(side)").font(.caption).foregroundStyle(.secondary)
+                            Text(game == .pokemon ? "Pokémon" : game == .yugioh ? "Yu-Gi-Oh!" : "Unknown game").font(.caption)
+                            if game == .pokemon {
+                                if let identification = record.cardIdentifications?.first(where: { $0.request.sequence == image.sequence }) {
+                                    CardIdentitySummary(identification: identification)
+                                    if let check = identification.conditionCheck { Button(check.summary) { checkingCondition = EditingImage(image: image) }.font(.caption).buttonStyle(.link) }
+                                }
+                                Button("Check condition…") { checkingCondition = EditingImage(image: image) }.disabled(!record.state.terminal)
+                                Button("Identify / review card…") { identifying = EditingImage(image: image) }.disabled(!record.state.terminal)
+                            } else {
+                                Text("Card identity, finish and condition checks are unavailable for this game.").font(.caption).foregroundStyle(.secondary)
                             }
-                            Button("Check condition…") { checkingCondition = EditingImage(image: image) }.disabled(!record.state.terminal)
-                            Button("Identify / review card…") { identifying = EditingImage(image: image) }.disabled(!record.state.terminal)
                             if let prepared {
                                 Button("Export prepared card…") { exportImage(record: record, image: prepared.image, editID: prepared.id, model: model) }
                                 ForEach(prepared.cardPreparation?.warnings ?? [], id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }

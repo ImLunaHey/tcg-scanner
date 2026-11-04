@@ -1,3 +1,4 @@
+import { gameLabel, type CardGameDetection } from "./models";
 import { ArrowUpRight, Check, CircleHelp, Clock3, Minus } from "lucide-react";
 import {
   conditions,
@@ -13,6 +14,7 @@ import { CardPrice, matchingCardPrice, type CardValuation } from "./Pricing";
 /** Compact gallery presentation. Detailed evidence stays in the review dialogs. */
 export function CardSummary({
   label,
+  game,
   identification,
   check,
   pending,
@@ -22,6 +24,7 @@ export function CardSummary({
   pricingLoading,
 }: {
   label: string;
+  game: CardGameDetection["game"];
   identification?: Identification;
   check?: ConditionCheck;
   pending: boolean;
@@ -30,6 +33,25 @@ export function CardSummary({
   price?: CardValuation;
   pricingLoading?: boolean;
 }) {
+  if (game !== "pokemon") {
+    return (
+      <>
+        <div className="card-summary-top">
+          <span className="card-reference">{label}</span>
+        </div>
+        <div className="card-summary-identity">
+          <h2>{gameLabel(game)}</h2>
+          <p>
+            {pending
+              ? "Checking card backs…"
+              : game === "yugioh"
+                ? "Detected from card back. Card identity, rarity, condition and pricing are not supported yet."
+                : "No unique supported card back detected. Pokémon checks are skipped."}
+          </p>
+        </div>
+      </>
+    );
+  }
   const card = identityCard(identification);
   const finish = finishPresentation(identification, pending);
   const edition = editionPresentation(identification);
