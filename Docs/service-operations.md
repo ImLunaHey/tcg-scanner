@@ -102,7 +102,9 @@ not reconstruct a deleted database by crawling arbitrary folders.
 - **Busy:** another inspection/job may own hardware. Read `service-status`.
   Other scanning apps may hold ICA sessions; close those sessions.
 - **Paused after cleanup error:** inspect the failed job, physically clear the
-  feeder if needed, then restart the service. Wake cannot clear hardware quarantine.
+  feeder if needed, then disconnect/reconnect USB or power-cycle the scanner.
+  The device monitor releases quarantine after macOS confirms removal of that exact
+  device and its previous operation finishes. Wake alone cannot clear quarantine.
 - **Storage failure:** restore writable storage/free space, inspect retained
   `incoming/` and `originals/`, then restart. Never discard partial originals merely
   because they are missing from the manifest.
@@ -111,6 +113,28 @@ not reconstruct a deleted database by crawling arbitrary folders.
 - **macOS access prompt:** approve scanner/device access for this executable in the
   logged-in user session if macOS requests it. This machine did not require a new
   prompt for the tested LaunchAgent. Do not assume identical behavior on another Mac.
+
+## USB reconnect and power cycling
+
+Keep the service running when turning the scanner off/on or reconnecting USB.
+Discovery continues while it is offline, and the configured Scan/Enter listener
+rearms after discovery (normally within a few seconds of driver readiness).
+Reconnecting never submits a job. A new button press or explicit client request is
+required. An interrupted scan retains received images and fails; queued jobs fail
+without feeding. Retrying the interrupted request ID returns its existing result.
+
+Both device-browser and session removal callbacks terminate the old session.
+Cleanup stops waiting for cancel/close callbacks from a physically removed device;
+the manifest still truthfully reports whether session closure was acknowledged.
+Unknown ownership on a device that remains connected stays quarantined. A different
+scanner's removal cannot release it. Recovery also works with button monitoring
+disabled. Storage failures remain a separate stop condition.
+
+For an idle hardware check, empty the feeder, note the service PID with
+`launchctl print`, turn the scanner off, verify `scanner devices --json` becomes
+empty, then turn it on. Verify discovery and the `button-monitor: ARMED` log return
+without a changed service PID or new job. Repeat with USB unplug/replug. These
+physical checks are separate from automated removal, queue and ownership tests.
 
 ## Physical paper validation
 
@@ -129,8 +153,9 @@ starting a physical scan; do not use cards for these checks.
    terminal and inspect every retained image. Already-feeding pages may complete.
 3. Test unplugging USB only in an explicitly supervised paper run. Verify the job
    fails, partial files survive, and reconnect restores discovery. If closure is
-   unconfirmed, restart before scanning again. Do not infer physical recovery from
-   a mock test.
+   unconfirmed, confirmed removal releases quarantine without restarting the
+   service. Pending jobs fail; submit a fresh job only after reviewing the feeder.
+   Do not infer physical recovery from a mock test.
 4. Separately test sleep/wake first while idle, then in a supervised paper run.
    Verify job cancellation/interruption, retained originals and no automatic feed
    after wake. Forced sleep can precede asynchronous cleanup; this behavior remains

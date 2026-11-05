@@ -87,6 +87,9 @@ extension ScannerCoordinator {
             try? database.save(await store.snapshot())
         }
         if !outcome.sessionClosed { requiresRestart = true }
+        if !outcome.sessionClosed || outcome.errors.contains(where: { $0.kind == "disconnected" || $0.kind == "deviceNotFound" }) {
+            await failQueuedScansAfterDisconnect()
+        }
         scans[id] = nil; activeScanID = nil; scanTask = nil
         scheduleNext()
     }

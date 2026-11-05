@@ -147,6 +147,7 @@ private actor UnclosedBackend: ScannerBackend {
     let record = try await coordinator.startScan(ScanRequest())
     _ = try await waitFor(coordinator, id: record.id)
     try await coordinator.resumeAfterWake()
+    _ = try await coordinator.devices()
     #expect(await coordinator.status().paused)
     await #expect(throws: ScannerError.self) { try await coordinator.startScan(ScanRequest()) }
     #expect(await backend.calls == 1)

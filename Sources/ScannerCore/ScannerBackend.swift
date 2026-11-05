@@ -4,6 +4,9 @@ import ScannerPersistence
 import ScannerRecognition
 
 public protocol ScannerBackend: Sendable {
+    /// True only when no session remains owned, or removal of the exact
+    /// quarantined device has been confirmed. Must never start scanning.
+    func recoverAfterDisconnect() async -> Bool
     func devices() async throws -> [Device]
     func inspect(deviceID: String) async throws -> Inspection
     func capture(deviceID: String, request: ScanRequest, store: ScanStorage) async throws -> CaptureOutcome
@@ -14,6 +17,7 @@ public protocol ScannerBackend: Sendable {
 }
 
 public extension ScannerBackend {
+    func recoverAfterDisconnect() async -> Bool { false }
     func waitForScanButton(deviceID: String) async throws {
         throw ScannerError("unsupported", "Automatic Scan-button monitoring is not supported by this backend.")
     }
@@ -79,6 +83,7 @@ public actor ScannerCoordinator {
     public func devices() async throws -> [Device] {
         let devices = try await backend.devices()
         try database.observeDevices(devices)
+        await recoverScannerConnection()
         return devices
     }
     public func inspect(deviceID: String?) async throws -> Inspection {
@@ -89,6 +94,7 @@ public actor ScannerCoordinator {
         let selected = try await selectDevice(deviceID)
         guard !stopping, !paused else { throw ScannerError("busy", "Service paused during scanner handoff.") }
         let report = try await backend.inspect(deviceID: selected.id)
+        if report.errors.contains(where: { $0.kind == "cleanup" || $0.kind == "closeSession" }) { requiresRestart = true }
         try database.saveInspection(report)
         return report
     }

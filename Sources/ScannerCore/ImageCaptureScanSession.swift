@@ -60,17 +60,17 @@ final class ImageCaptureScanSession: ImageCaptureConnection {
             else { outcome.errors.append(Self.convert(error)) }
         }
         await Task { @MainActor in
-            if requested && !completed {
+            if requested && !completed && !removed {
                 scanner.cancelScan()
                 let deadline = ContinuousClock.now + .seconds(15)
-                while !completed && ContinuousClock.now < deadline { try? await Task.sleep(for: .milliseconds(50)) }
-                if !completed { outcome.errors.append(ScannerError("cleanup", "Scan cancellation was not acknowledged; restart service before another scan.")) }
+                while !completed && !removed && ContinuousClock.now < deadline { try? await Task.sleep(for: .milliseconds(50)) }
+                if !completed && !removed { outcome.errors.append(ScannerError("cleanup", "Scan cancellation was not acknowledged; disconnect and reconnect the scanner before another scan.")) }
             }
             for save in saves {
                 do { try await save.value } catch { outcome.errors.append(Self.convert(error)) }
             }
             // Restore settings only after scanning has stopped. If not, quarantine the backend.
-            if !requested || completed { configuration.restore() }
+            if !removed && (!requested || completed) { configuration.restore() }
             for error in await close() where !outcome.errors.contains(error) { outcome.errors.append(error) }
             outcome.sessionClosed = sessionClosed
         }.value

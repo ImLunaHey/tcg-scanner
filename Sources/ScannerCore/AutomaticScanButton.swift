@@ -39,7 +39,7 @@ extension ScannerCoordinator {
         let task = automaticButtonTask
         task?.cancel()
         await task?.value
-        guard !requiresRestart else { throw ScannerError("cleanup", "Button listener could not confirm session closure; restart ScannerService.") }
+        guard !requiresRestart else { throw ScannerError("cleanup", "Button listener could not confirm session closure; disconnect and reconnect the scanner.") }
         try Task.checkCancellation()
     }
 }

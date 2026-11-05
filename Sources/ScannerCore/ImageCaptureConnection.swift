@@ -9,6 +9,7 @@ class ImageCaptureConnection: NSObject, @preconcurrency ICScannerDeviceDelegate 
     var failure: ScannerError?
     var sessionOpened = false
     var sessionClosed = false
+    private(set) var removed = false
     var onButton: ((String) -> Void)?
     private var openRequested = false
     private var openCompleted = false
@@ -37,14 +38,14 @@ class ImageCaptureConnection: NSObject, @preconcurrency ICScannerDeviceDelegate 
     func close() async -> [ScannerError] {
         await Task { @MainActor in
             var errors: [ScannerError] = []
-            if let originalUnit, sessionOpened, !closeCompleted, failure == nil {
+            if let originalUnit, !removed, sessionOpened, !closeCompleted, failure == nil {
                 do { try await select(originalUnit) } catch { errors.append(Self.convert(error)) }
             }
-            if !closeCompleted && openRequested && (sessionOpened || !openCompleted) {
+            if !removed && !closeCompleted && openRequested && (sessionOpened || !openCompleted) {
                 closing = true; requestClose()
                 let deadline = ContinuousClock.now + .seconds(10)
-                while !closeCompleted && ContinuousClock.now < deadline { try? await Task.sleep(for: .milliseconds(50)) }
-                if !closeCompleted { errors.append(ScannerError("cleanup", "Scanner session closure was not confirmed.")) }
+                while !removed && !closeCompleted && ContinuousClock.now < deadline { try? await Task.sleep(for: .milliseconds(50)) }
+                if !removed && !closeCompleted { errors.append(ScannerError("cleanup", "Scanner session closure was not confirmed.")) }
             }
             if let failure { errors.append(failure) }
             scanner.delegate = nil
@@ -98,7 +99,12 @@ class ImageCaptureConnection: NSObject, @preconcurrency ICScannerDeviceDelegate 
         else { sessionClosed = true; log("session closed") }
         if !closing { failure = ScannerError("disconnected", "Scanner session closed unexpectedly.") }
     }
-    func didRemove(_ device: ICDevice) { failure = ScannerError("disconnected", "Scanner disconnected.") }
+    func didRemove(_ device: ICDevice) {
+        guard device === scanner else { return }
+        removed = true
+        onButton = nil
+        failure = ScannerError("disconnected", "Scanner disconnected. Received images are retained; start a new batch after reconnecting.")
+    }
     func device(_ device: ICDevice, didEncounterError error: Error?) {
         if let error { failure = ScannerError("driver", error: error) }
     }

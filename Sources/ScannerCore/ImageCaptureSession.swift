@@ -11,7 +11,7 @@ struct ScanButtonTrigger {
 
 @MainActor
 final class ImageCaptureSession {
-    private let connection: ImageCaptureConnection
+    let connection: ImageCaptureConnection
     private let device: Device
     init(scanner: ICScannerDevice, device: Device, log: @escaping @Sendable (String) -> Void) {
         connection = ImageCaptureConnection(scanner: scanner, log: log); self.device = device
