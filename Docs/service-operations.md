@@ -146,8 +146,15 @@ physical checks are separate from automated removal, queue and ownership tests.
   signing identity and LaunchAgent configuration; signature verification passed.
 - Live startup discovered the USB fi-8170, reported `paused: false` with no active
   or queued jobs, and armed the Scan/Enter listener. Storage remained `/Volumes/scans`.
-- Physical USB unplug/replug and power-cycle checks of this build remain pending;
-  automated tests and successful startup do not establish those hardware results.
+- Physical idle power-cycle check passed after the user turned the scanner off/on:
+  the database recorded disconnection at 19:19:37 UTC and reconnection at 19:20:23;
+  the listener logged `ARMED` at 19:20:30. The service PID remained 40322 throughout
+  (the same PID recorded after installation), status returned `paused: false`,
+  and no job events were created after installation. The old listener reported
+  `sessionClosed=false`, so recovery did not depend on a successful close callback.
+- Separate USB cable unplug/replug and interruption during an active physical scan
+  remain unverified on this build; the idle power-cycle result does not establish
+  those hardware results.
 
 ## Physical paper validation
 
