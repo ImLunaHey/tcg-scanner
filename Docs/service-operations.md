@@ -136,6 +136,19 @@ empty, then turn it on. Verify discovery and the `button-monitor: ARMED` log ret
 without a changed service PID or new job. Repeat with USB unplug/replug. These
 physical checks are separate from automated removal, queue and ownership tests.
 
+### Recovery validation — 2026-11-05
+
+- All 224 Swift tests passed with compiler warnings treated as errors. Coverage
+  includes removal during opening without a close callback, exact-device quarantine
+  release, active-job image preservation, queued-job failure, fresh-job acceptance,
+  idle button-listener cleanup failure and retaining quarantine across wake.
+- The release build passed. The service was deployed with the existing persistent
+  signing identity and LaunchAgent configuration; signature verification passed.
+- Live startup discovered the USB fi-8170, reported `paused: false` with no active
+  or queued jobs, and armed the Scan/Enter listener. Storage remained `/Volumes/scans`.
+- Physical USB unplug/replug and power-cycle checks of this build remain pending;
+  automated tests and successful startup do not establish those hardware results.
+
 ## Physical paper validation
 
 The single-sheet duplex test below passed through the LaunchAgent on 2026-10-31;
