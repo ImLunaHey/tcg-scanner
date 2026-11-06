@@ -13,5 +13,13 @@ it("shows the known received total and unique prepared images during processing"
   ], cardGames: [{ number: 1, frontSequence: 2 }], cardIdentifications: [
     { request: { sequence: 2 }, state: "reviewRequired" },
   ] } as Batch;
-  expect(batchProgressLabel(record)).toBe("Processing · 46 images received · 2/46 images prepared · 1 cards checked");
+  expect(batchProgressLabel(record)).toBe("Processing · 46 images received · 2/46 images prepared · 1 card checked");
+});
+it("counts classified code cards without waiting for a playable identity", () => {
+  const record = { state: "processing", images: Array(6), cardGames: [
+    { number: 1, contentKind: "pokemonCodeCard" },
+    { number: 2, contentKind: "pokemonCodeCard" },
+    { number: 3, game: "unknown" },
+  ] } as Batch;
+  expect(batchProgressLabel(record)).toContain("2 cards checked");
 });
