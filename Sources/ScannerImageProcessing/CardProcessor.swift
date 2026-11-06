@@ -33,7 +33,7 @@ public enum CardProcessor {
         let request = ImageEditRequest(jobID: UUID(), sequence: 1, crop: crop, deskewDegrees: geometry.degrees)
         let cropped = try ImageProcessor.render(data, request: request)
         let orientation = try uprightRotation(cropped.data, language: language)
-        var warnings = orientation.verified ? [] : ["Orientation is uncertain (unrecognized or ambiguous card back). Inspect the prepared image and rotate manually if needed."]
+        var warnings = orientation.verified ? [] : ["Orientation is uncertain: neither readable text nor a known card-back pattern established an upright direction."]
         if boundary.touchesEdge {
             warnings.append("Card is close to a scan boundary. Check that the original captured the entire edge; cropping cannot restore missing pixels.")
         }
@@ -143,6 +143,9 @@ public enum CardProcessor {
         let words = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
         if let turns = try PokemonBackOrientation.rotation(data, words: words) {
             return (turns, true, "pokemon-back-pattern")
+        }
+        if language == .english, let turns = EnergyTextOrientation.rotation(request.results ?? []) {
+            return (turns, true, "text")
         }
         let source = CGImageSourceCreateWithData(data as CFData, nil)
         let properties = source.flatMap { CGImageSourceCopyPropertiesAtIndex($0, 0, nil) as? [CFString: Any] }
