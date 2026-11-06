@@ -52,3 +52,20 @@ private func gameRecord(_ bases: [String?]) -> ScanRecord {
     record.processedImages?[0].sourceSHA256 = "stale"
     #expect(CardGameDetection.resolve(record)[0].contentKind == nil)
 }
+
+@Test func oneCurrentRedemptionURLIdentifiesTheCompleteCodeCardPair() {
+    for bases: [String?] in [["unknown", "pokemon-code-url"], ["pokemon-code-url", nil], ["pokemon-code-text", "pokemon-code-url"]] {
+        let result = CardGameDetection.resolve(gameRecord(bases))[0]
+        #expect(result.contentKind == .pokemonCodeCard && result.game == .unknown)
+        #expect(result.frontSequence == nil && result.backSequence == nil)
+    }
+    #expect(CardGameDetection.resolve(gameRecord(["pokemon-code-url"]))[0].contentKind == nil)
+    var stale = gameRecord(["unknown", "pokemon-code-url"])
+    stale.processedImages?[1].sourceSHA256 = "stale"
+    #expect(CardGameDetection.resolve(stale)[0].contentKind == nil)
+    for back in ["pokemon-back-pattern", "yugioh-back-pattern"] {
+        let conflict = CardGameDetection.resolve(gameRecord([back, "pokemon-code-url"]))[0]
+        #expect(conflict.contentKind == nil && conflict.game == .unknown)
+        #expect(conflict.reason.contains("conflict"))
+    }
+}

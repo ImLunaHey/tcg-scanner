@@ -32,15 +32,23 @@ public struct CardGameDetection: Codable, Sendable {
                 default: return nil
                 }
             }
+            let codeBases = images.compactMap { original -> String? in
+                guard let edit = record.processedImages?.last(where: { $0.request.sequence == original.sequence && $0.cardPreparation != nil }),
+                      edit.sourceSHA256 == original.sha256 else { return nil }
+                return edit.cardPreparation?.orientationBasis
+            }
+            let hasRedemptionURL = codeBases.contains("pokemon-code-url")
+            if hasRedemptionURL && !backs.isEmpty {
+                result.reason = "Redemption URL and playable-card back evidence conflict; check pairing."
+                return result
+            }
             if backs.isEmpty {
-                let codeSides = images.filter { original in
-                    guard let edit = record.processedImages?.last(where: { $0.request.sequence == original.sequence && $0.cardPreparation != nil }) else { return false }
-                    return edit.sourceSHA256 == original.sha256 && edit.cardPreparation?.orientationBasis == "pokemon-code-text"
-                }
-                if codeSides.count == 2 {
+                if hasRedemptionURL || codeBases.filter({ $0 == "pokemon-code-text" }).count == 2 {
                     result.contentKind = .pokemonCodeCard
-                    result.method = "pokemon-code-text-v1"
-                    result.reason = "Printed Pokémon online/redemption wording detected on both sides; not a playable card."
+                    result.method = "pokemon-code-evidence-v2"
+                    result.reason = hasRedemptionURL
+                        ? "Printed Pokémon redemption URL detected; not a playable card."
+                        : "Printed Pokémon online/redemption wording detected on both sides; not a playable card."
                     return result
                 }
             }

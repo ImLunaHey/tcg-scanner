@@ -18,7 +18,7 @@ import Testing
     for item in items {
         let result = try CardProcessor.uprightRotation(Data(contentsOf: URL(fileURLWithPath: item.path)))
         print("CODE_CARD", item.number, item.sequence, result.basis, result.verified)
-        #expect(result.basis == "pokemon-code-text")
+        #expect(["pokemon-code-text", "pokemon-code-url"].contains(result.basis))
     }
 }
 
@@ -28,6 +28,22 @@ import Testing
         let file = URL(fileURLWithPath: root).appendingPathComponent(String(format: "C-%03d.png", sequence))
         let result = try CardProcessor.analyze(Data(contentsOf: file))
         print("RAW_CODE_CARD", sequence, result.orientationBasis ?? "unknown", result.quarterTurns)
-        #expect(result.orientationBasis == "pokemon-code-text" && result.orientationVerified)
+        #expect(["pokemon-code-text", "pokemon-code-url"].contains(result.orientationBasis ?? "") && result.orientationVerified)
     }
+}
+
+@Test func redemptionURLRequiresExactPublicHostAndPath() {
+    for text in ["pokemon.com/redeem", "Visit https://www.pokemon.com/redeem.", "pokemon . com / redeem", "www.pokemon.com/tcgo"] {
+        #expect(CodeCardText.hasRedemptionURL([text]))
+    }
+    for text in ["notpokemon.com/redeem", "pokemon.com/redeemer", "pokemon.com/redeem/other", "pokemon.com.evil/redeem", "example.com/pokemon.com/redeem", "Redeem your rewards", "Pokémon TCG Live"] {
+        #expect(!CodeCardText.hasRedemptionURL([text]))
+    }
+}
+
+@Test func savedSingleRedemptionSideClassifiesWithoutReadableCompanion() throws {
+    guard let path = ProcessInfo.processInfo.environment["SCANNER_REDEMPTION_URL_IMAGE"] else { return }
+    let result = try CardProcessor.analyze(Data(contentsOf: URL(fileURLWithPath: path)))
+    #expect(result.orientationBasis == "pokemon-code-url")
+    #expect(result.orientationVerified)
 }

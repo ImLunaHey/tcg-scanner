@@ -359,3 +359,10 @@ SCANNER_RETRY_FIXTURE=/Volumes/scans/B-009 \
 
 Unnumbered basic Energy can expose `evidence.energySymbol` independently of a
 catalogue match. See [Energy symbol recognition](energy-symbols.md).
+
+A complete duplex pair can be classified as a Pokémon online/code card from a
+confident reading of the exact public `pokemon.com/redeem` or `pokemon.com/tcgo`
+URL on either side. The other side need not have readable branding. Weaker
+branding still requires agreement on both sides; stale evidence and conflicts
+with a recognised playable-card back do not classify the pair. Detection stores
+only the evidence kind, never the private redemption string or QR payload.

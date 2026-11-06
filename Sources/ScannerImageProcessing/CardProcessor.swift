@@ -132,6 +132,11 @@ public enum CardProcessor {
         try VNImageRequestHandler(data: data).perform([request])
         let words = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
         let codeCard = CodeCardText.matches(words)
+        let confidentWords = (request.results ?? []).compactMap { observation -> String? in
+            guard let candidate = observation.topCandidates(1).first, candidate.confidence >= 0.7 else { return nil }
+            return candidate.string
+        }
+        let codeBasis: String? = CodeCardText.hasRedemptionURL(confidentWords) ? "pokemon-code-url" : (codeCard ? "pokemon-code-text" : nil)
         var votes = [Double](repeating: 0, count: 4)
         var lines = [Int](repeating: 0, count: 4)
         for observation in request.results ?? [] {
@@ -145,19 +150,22 @@ public enum CardProcessor {
         let best = (0..<4).max { votes[$0] < votes[$1] }!
         let total = votes.reduce(0, +)
         if lines[best] >= 4 && votes[best] >= 20 && votes[best] >= total * 0.8 {
-            var detectedCode = codeCard
+            var detectedBasis = codeBasis
             // Stacked branding is less legible upside down. Retry only suspected
             // redemption inserts, upright; ordinary cards pay no extra OCR pass.
-            if !detectedCode, best != 0, CodeCardText.hasRedemptionWording(words) {
+            if detectedBasis != "pokemon-code-url", best != 0, CodeCardText.hasRedemptionWording(words) {
                 let upright = VNRecognizeTextRequest()
                 upright.recognitionLevel = .accurate
                 upright.recognitionLanguages = language.recognitionLanguages
                 upright.usesLanguageCorrection = true
                 let orientations: [CGImagePropertyOrientation] = [.up, .right, .down, .left]
                 try VNImageRequestHandler(data: data, orientation: orientations[best]).perform([upright])
-                detectedCode = CodeCardText.matches((upright.results ?? []).compactMap { $0.topCandidates(1).first?.string })
+                let reread = (upright.results ?? []).compactMap { $0.topCandidates(1).first }
+                if CodeCardText.hasRedemptionURL(reread.filter { $0.confidence >= 0.7 }.map(\.string)) {
+                    detectedBasis = "pokemon-code-url"
+                } else if CodeCardText.matches(reread.map(\.string)) { detectedBasis = "pokemon-code-text" }
             }
-            return (best, true, detectedCode ? "pokemon-code-text" : "text")
+            return (best, true, detectedBasis ?? "text")
         }
         if let turns = try PokemonBackOrientation.rotation(data, words: words) {
             return (turns, true, "pokemon-back-pattern")
@@ -169,6 +177,6 @@ public enum CardProcessor {
         let properties = source.flatMap { CGImageSourceCopyPropertiesAtIndex($0, 0, nil) as? [CFString: Any] }
         let width = properties?[kCGImagePropertyPixelWidth] as? Int ?? 0
         let height = properties?[kCGImagePropertyPixelHeight] as? Int ?? 0
-        return (width > height ? 1 : 0, false, codeCard ? "pokemon-code-text" : "unknown")
+        return (width > height ? 1 : 0, false, codeBasis ?? "unknown")
     }
 }
