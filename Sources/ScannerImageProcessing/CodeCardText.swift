@@ -3,6 +3,10 @@ import Foundation
 /// Classifies public printed instructions/branding. Never returns redemption
 /// strings, reads QR payloads, uploads images or attempts code redemption.
 enum CodeCardText {
+    static func hasRedemptionWording(_ words: [String]) -> Bool {
+        let text = words.joined(separator: " ").lowercased()
+        return text.contains("redeem") || text.contains("reward") || text.contains("pokemon.com/")
+    }
     static func matches(_ words: [String]) -> Bool {
         let text = words.joined(separator: " ").lowercased()
             .folding(options: .diacriticInsensitive, locale: Locale(identifier: "en_US_POSIX"))

@@ -144,7 +144,21 @@ public enum CardProcessor {
         }
         let best = (0..<4).max { votes[$0] < votes[$1] }!
         let total = votes.reduce(0, +)
-        if lines[best] >= 4 && votes[best] >= 20 && votes[best] >= total * 0.8 { return (best, true, codeCard ? "pokemon-code-text" : "text") }
+        if lines[best] >= 4 && votes[best] >= 20 && votes[best] >= total * 0.8 {
+            var detectedCode = codeCard
+            // Stacked branding is less legible upside down. Retry only suspected
+            // redemption inserts, upright; ordinary cards pay no extra OCR pass.
+            if !detectedCode, best != 0, CodeCardText.hasRedemptionWording(words) {
+                let upright = VNRecognizeTextRequest()
+                upright.recognitionLevel = .accurate
+                upright.recognitionLanguages = language.recognitionLanguages
+                upright.usesLanguageCorrection = true
+                let orientations: [CGImagePropertyOrientation] = [.up, .right, .down, .left]
+                try VNImageRequestHandler(data: data, orientation: orientations[best]).perform([upright])
+                detectedCode = CodeCardText.matches((upright.results ?? []).compactMap { $0.topCandidates(1).first?.string })
+            }
+            return (best, true, detectedCode ? "pokemon-code-text" : "text")
+        }
         if let turns = try PokemonBackOrientation.rotation(data, words: words) {
             return (turns, true, "pokemon-back-pattern")
         }

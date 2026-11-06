@@ -21,3 +21,13 @@ import Testing
         #expect(result.basis == "pokemon-code-text")
     }
 }
+
+@Test func savedRawCodeCardsRetainClassificationThroughAutomaticCropping() throws {
+    guard let root = ProcessInfo.processInfo.environment["SCANNER_RAW_CODE_CARD_FIXTURES"] else { return }
+    for sequence in [31,32,39,40,41,42] {
+        let file = URL(fileURLWithPath: root).appendingPathComponent(String(format: "C-%03d.png", sequence))
+        let result = try CardProcessor.analyze(Data(contentsOf: file))
+        print("RAW_CODE_CARD", sequence, result.orientationBasis ?? "unknown", result.quarterTurns)
+        #expect(result.orientationBasis == "pokemon-code-text" && result.orientationVerified)
+    }
+}
