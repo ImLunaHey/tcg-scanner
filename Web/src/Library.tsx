@@ -627,6 +627,7 @@ export function BatchDetail({ id }: { id: string }) {
                 </div>
                 <div className="paired-info">
                   <CardSummary
+                    contentKind={record.cardGames?.find((card) => card.number === pair.number)?.contentKind}
                     label={captureLabel(pair.number)}
                     game={
                       record.cardGames?.find(

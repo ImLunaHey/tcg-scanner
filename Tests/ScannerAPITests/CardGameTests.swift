@@ -40,3 +40,15 @@ private func gameRecord(_ bases: [String?]) -> ScanRecord {
     let pairs = CardGameDetection.resolve(record)
     #expect(pairs[0].game == .unknown && pairs[1].game == .yugioh)
 }
+
+@Test func onlineCodeCardsNeedTwoCurrentSidesAndNeverBecomePlayableCards() {
+    var record = gameRecord(["pokemon-code-text", "pokemon-code-text"])
+    let pair = CardGameDetection.resolve(record)[0]
+    #expect(pair.contentKind == .pokemonCodeCard)
+    #expect(pair.game == .unknown && pair.frontSequence == nil)
+    #expect(record.detectedGame(for: 1) == .unknown)
+    #expect(CardGameDetection.resolve(gameRecord(["pokemon-code-text", "text"]))[0].contentKind == nil)
+    #expect(CardGameDetection.resolve(gameRecord(["pokemon-code-text"]))[0].contentKind == nil)
+    record.processedImages?[0].sourceSHA256 = "stale"
+    #expect(CardGameDetection.resolve(record)[0].contentKind == nil)
+}

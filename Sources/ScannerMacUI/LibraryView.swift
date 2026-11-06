@@ -34,7 +34,7 @@ private struct BatchDetail: View {
                     VStack(alignment: .leading, spacing: 6) {
                         if let number = record.batchNumber { Text(BatchNaming.batchFolder(number)).font(.title.bold()) }
                         Text(record.createdAt, format: .dateTime.month().day().hour().minute()).font(record.batchNumber == nil ? .title : .callout)
-                        Text("\(record.state.rawValue.capitalized) · \(record.images.count) saved images · \(record.request.dpi) DPI").foregroundStyle(.secondary)
+                        Text("\((record.state == .scanning ? "Receiving images" : record.state.rawValue.capitalized)) · \(record.images.count) saved images · \(record.request.dpi) DPI").foregroundStyle(.secondary)
                     }
                     Spacer()
                     if !record.state.terminal { ProgressView(); Button("Cancel", role: .destructive) { model.cancel(record.id) }.disabled(model.busy) }
@@ -62,7 +62,7 @@ private struct BatchDetail: View {
                             ScanThumbnail(model: model, job: record.id, sequence: image.sequence, edit: prepared?.id).frame(height: 230)
                             Text("C-\(BatchNaming.number(record.request.duplex ? (image.sequence + 1) / 2 : image.sequence)) · \(prepared == nil ? "original" : "cropped card")").font(.headline)
                             Text("\(prepared?.image.width ?? image.width) × \(prepared?.image.height ?? image.height) · \(side)").font(.caption).foregroundStyle(.secondary)
-                            Text(game == .pokemon ? "Pokémon" : game == .yugioh ? "Yu-Gi-Oh!" : "Unknown game").font(.caption)
+                            Text(pair?.contentKind == .pokemonCodeCard ? "Pokémon online/code card" : game == .pokemon ? "Pokémon" : game == .yugioh ? "Yu-Gi-Oh!" : "Unknown game").font(.caption)
                             if game != .unknown {
                                 if let identification = record.cardIdentifications?.first(where: { $0.request.sequence == image.sequence }) {
                                     CardIdentitySummary(identification: identification)
@@ -73,7 +73,7 @@ private struct BatchDetail: View {
                                     Button("Identify / review card…") { identifying = EditingImage(image: image) }.disabled(!record.state.terminal)
                                 }
                             } else {
-                                Text("Card identity, finish and condition checks are unavailable for this game.").font(.caption).foregroundStyle(.secondary)
+                                Text(pair?.contentKind == .pokemonCodeCard ? "Redemption card; playable-card identity, finish and condition checks do not apply." : "Card identity, finish and condition checks are unavailable for this game.").font(.caption).foregroundStyle(.secondary)
                             }
                             if let prepared {
                                 Button("Export prepared card…") { exportImage(record: record, image: prepared.image, editID: prepared.id, model: model) }

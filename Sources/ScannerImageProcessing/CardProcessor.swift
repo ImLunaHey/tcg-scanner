@@ -125,8 +125,13 @@ public enum CardProcessor {
         guard language.recognitionLanguages.allSatisfy(supported.contains) else {
             throw ScannerError("languageUnsupported", "This Mac cannot read the selected card language for automatic orientation.")
         }
-        request.recognitionLanguages = language.recognitionLanguages; request.usesLanguageCorrection = false
+        request.recognitionLanguages = language.recognitionLanguages
+        // This pass establishes printed-word direction/branding, not collector
+        // numbers. Recognition's separate OCR keeps language correction disabled.
+        request.usesLanguageCorrection = true
         try VNImageRequestHandler(data: data).perform([request])
+        let words = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
+        let codeCard = CodeCardText.matches(words)
         var votes = [Double](repeating: 0, count: 4)
         var lines = [Int](repeating: 0, count: 4)
         for observation in request.results ?? [] {
@@ -139,8 +144,7 @@ public enum CardProcessor {
         }
         let best = (0..<4).max { votes[$0] < votes[$1] }!
         let total = votes.reduce(0, +)
-        if lines[best] >= 4 && votes[best] >= 20 && votes[best] >= total * 0.8 { return (best, true, "text") }
-        let words = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
+        if lines[best] >= 4 && votes[best] >= 20 && votes[best] >= total * 0.8 { return (best, true, codeCard ? "pokemon-code-text" : "text") }
         if let turns = try PokemonBackOrientation.rotation(data, words: words) {
             return (turns, true, "pokemon-back-pattern")
         }
@@ -151,6 +155,6 @@ public enum CardProcessor {
         let properties = source.flatMap { CGImageSourceCopyPropertiesAtIndex($0, 0, nil) as? [CFString: Any] }
         let width = properties?[kCGImagePropertyPixelWidth] as? Int ?? 0
         let height = properties?[kCGImagePropertyPixelHeight] as? Int ?? 0
-        return (width > height ? 1 : 0, false, "unknown")
+        return (width > height ? 1 : 0, false, codeCard ? "pokemon-code-text" : "unknown")
     }
 }

@@ -63,6 +63,7 @@ export type Batch = Omit<Job, "scannerID" | "progress"> & {
 export type CardGameDetection = {
   number: number;
   game: "pokemon" | "yugioh" | "unknown";
+  contentKind?: "pokemonCodeCard";
   frontSequence?: number;
   backSequence?: number;
   reason: string;

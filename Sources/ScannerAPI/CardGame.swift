@@ -2,10 +2,13 @@ import Foundation
 
 public enum CardGame: String, Codable, Sendable { case pokemon, yugioh, unknown }
 
+public enum CardContentKind: String, Codable, Sendable { case pokemonCodeCard }
+
 /// Per-pair classification from a recognized back, never from a batch default.
 public struct CardGameDetection: Codable, Sendable {
     public var number: Int
     public var game: CardGame
+    public var contentKind: CardContentKind?
     public var frontSequence: Int?
     public var backSequence: Int?
     public var backSHA256: String?
@@ -27,6 +30,18 @@ public struct CardGameDetection: Codable, Sendable {
                 case "pokemon-back-pattern": return (original, .pokemon, basis)
                 case "yugioh-back-pattern": return (original, .yugioh, basis)
                 default: return nil
+                }
+            }
+            if backs.isEmpty {
+                let codeSides = images.filter { original in
+                    guard let edit = record.processedImages?.last(where: { $0.request.sequence == original.sequence && $0.cardPreparation != nil }) else { return false }
+                    return edit.sourceSHA256 == original.sha256 && edit.cardPreparation?.orientationBasis == "pokemon-code-text"
+                }
+                if codeSides.count == 2 {
+                    result.contentKind = .pokemonCodeCard
+                    result.method = "pokemon-code-text-v1"
+                    result.reason = "Printed Pokémon online/redemption wording detected on both sides; not a playable card."
+                    return result
                 }
             }
             guard backs.count == 1, let back = backs.first else {

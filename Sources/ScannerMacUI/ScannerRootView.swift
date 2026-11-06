@@ -59,7 +59,7 @@ struct DashboardView: View {
                     HStack(spacing: 16) {
                         Metric(title: "Scanners", value: "\(model.devices.count)", icon: "scanner")
                         Metric(title: "Queue", value: "\(service.queuedJobs)", icon: "list.bullet")
-                        Metric(title: "Service", value: service.paused ? "Paused" : (service.activeJobID == nil ? "Idle" : "Scanning"), icon: "waveform.path")
+                        Metric(title: "Service", value: service.paused ? "Paused" : (service.activeJobID == nil ? "Idle" : "Busy"), icon: "waveform.path")
                     }
                     if let failure = service.persistenceError { Text(failure.message).foregroundStyle(.red) }
                     if let active = service.activeJobID {
@@ -134,7 +134,7 @@ struct JobRow: View {
                 Text("\(job.progress.imagesSaved) images · \(job.batchNumber.map(BatchNaming.batchFolder) ?? String(job.id.uuidString.prefix(8)))").font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            Text(job.state.rawValue.capitalized).font(.caption).padding(6).background(.quaternary, in: Capsule())
+            Text(job.state == .scanning ? "Receiving images" : job.state.rawValue.capitalized).font(.caption).padding(6).background(.quaternary, in: Capsule())
         }.padding(.vertical, 10).contentShape(Rectangle())
     }
 }

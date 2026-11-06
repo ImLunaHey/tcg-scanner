@@ -15,6 +15,7 @@ import { CardPrice, matchingCardPrice, type CardValuation } from "./Pricing";
 export function CardSummary({
   label,
   game,
+  contentKind,
   identification,
   check,
   pending,
@@ -25,6 +26,7 @@ export function CardSummary({
 }: {
   label: string;
   game: CardGameDetection["game"];
+  contentKind?: CardGameDetection["contentKind"];
   identification?: Identification;
   check?: ConditionCheck;
   pending: boolean;
@@ -39,10 +41,16 @@ export function CardSummary({
       <>
         <div className="card-summary-top">
           <span className="card-reference">{label}</span>
-          <span className="badge">{gameLabel(game)}</span>
+          <span className="badge">{contentKind === "pokemonCodeCard" ? "Pokémon code card" : gameLabel(game)}</span>
         </div>
         <div className="card-summary-identity">
-          {game === "yugioh" ? (
+          {contentKind === "pokemonCodeCard" ? (
+            <>
+              <h2>Pokémon online/code card</h2>
+              <p>Redemption card · not a playable card.</p>
+              <p className="small muted">Identity, finish and condition checks do not apply.</p>
+            </>
+          ) : game === "yugioh" ? (
             <>
               {card ? (
                 <>
