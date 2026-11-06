@@ -20,7 +20,7 @@ subsequently added; inventory creation and selling integration remain out of sco
 
 ## Printed rarity as supporting identity evidence
 
-New Pokémon identifications use `apple-vision-tcgdex-text-rarity-v2`. TCGdex's
+New Pokémon identifications use `apple-vision-tcgdex-text-symbols-v3`. TCGdex's
 `rarity` field is retained in each candidate's `rarities` and shown beside its
 collector number in the web card summary. This is catalogue rarity, not foil finish.
 
@@ -356,3 +356,6 @@ missing set codes and competing standalone numbers. Repeat the saved-image check
 SCANNER_RETRY_FIXTURE=/Volumes/scans/B-009 \
   swift test --filter ScannerRecognitionTests --disable-index-store
 ```
+
+Unnumbered basic Energy can expose `evidence.energySymbol` independently of a
+catalogue match. See [Energy symbol recognition](energy-symbols.md).

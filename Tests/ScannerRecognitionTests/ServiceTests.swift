@@ -16,11 +16,17 @@ private struct NoHardware: ScannerBackend {
 private actor RecognitionStub: CardRecognizing {
     var calls = 0
     var fail: Bool
-    init(fail: Bool = false) { self.fail = fail }
+    var energy: Bool
+    init(fail: Bool = false, energy: Bool = false) { self.fail = fail; self.energy = energy }
     func recognize(_ data: Data, language: CardLanguage) async throws -> RecognitionEvidence {
         calls += 1
         try await Task.sleep(for: .milliseconds(200))
         if fail { throw ScannerError("catalogueUnavailable", "Offline fixture") }
+        if energy {
+            var evidence = RecognitionEvidence(lines: [], candidates: [])
+            evidence.energySymbol = EnergySymbolEvidence(type: "Psychic", similarity: 0.8, region: ImageCrop(x: 0.9, y: 0.03, width: 0.05, height: 0.04))
+            return evidence
+        }
         return RecognitionEvidence(lines: [RecognizedLine(text: "Furret", y: 0.9)], candidates: [
             CardCandidate(id: "swsh3-136", name: "Furret", localID: "136", setID: "swsh3", setName: "Darkness Ablaze", officialSetCount: 189, evidence: ["Fixture match"], availableFinishes: [.normal, .reverseHolo])])
     }
@@ -205,5 +211,25 @@ func otherGamesNeverInvokePokemonAnalysis(basis: String) async throws {
     #expect(await stub.calls == 0)
     await #expect(throws: ScannerError.self) { try await service.estimateFinish(jobID: record.id, sequence: 1, identificationID: request.id) }
     await #expect(throws: ScannerError.self) { try await service.checkCondition(jobID: record.id, sequence: 1, identificationID: request.id) }
+    await service.shutdownScans()
+}
+
+@Test func energySymbolPersistsWithoutFabricatingCatalogueIdentity() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let database = try ScannerDatabase()
+    let record = try savedBatch(root: root, database: database)
+    let service = try ScannerCoordinator(backend: NoHardware(), storageRoot: root, database: database, cardRecognizer: RecognitionStub(energy: true))
+    _ = try await service.identifyCard(IdentificationRequest(jobID: record.id, sequence: 1))
+    let result = try await completed(service, job: record.id)
+    #expect(result.state == .noMatch && result.selectedCardID == nil)
+    #expect(result.evidence?.energySymbol?.displayName == "Psychic Energy")
+    #expect(result.evidence?.candidates.isEmpty == true)
+    #expect(result.finish == .unverified && result.condition == .unassessed)
+    let encoded = try Wire.encoder().encode(result)
+    let decoded = try Wire.decoder().decode(CardIdentification.self, from: encoded)
+    #expect(decoded.evidence?.energySymbol == result.evidence?.energySymbol)
+    let persisted = try await service.scanStatus(record.id)
+    #expect(persisted.cardIdentifications?.first?.evidence?.energySymbol == result.evidence?.energySymbol)
     await service.shutdownScans()
 }

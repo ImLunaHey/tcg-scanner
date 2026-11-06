@@ -62,6 +62,7 @@ public struct RecognitionEvidence: Codable, Sendable {
     public var warnings: [String]
     public var orientation: Int
     public var raritySymbol: RaritySymbolEvidence?
+    public var energySymbol: EnergySymbolEvidence?
     public init(lines: [RecognizedLine], candidates: [CardCandidate], warnings: [String] = [], orientation: Int = 0) {
         self.lines = lines; self.candidates = candidates; self.warnings = warnings; self.orientation = orientation
     }
@@ -79,7 +80,7 @@ public struct CardIdentification: Codable, Sendable {
     public var evidence: RecognitionEvidence?
     public var selectedCardID: String?
     public var error: ScannerError?
-    public var method = "apple-vision-tcgdex-text-rarity-v2"
+    public var method = "apple-vision-tcgdex-text-symbols-v3"
     public var finishEstimate: FinishEstimate?
     public var conditionCheck: ConditionCheck?
     public var finish: CardFinish = .unverified

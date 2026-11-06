@@ -20,10 +20,27 @@ public actor CardRecognizer: CardRecognizing {
         guard orientations.contains(where: { !$0.lines.isEmpty }) else {
             return RecognitionEvidence(lines: [], candidates: [], warnings: ["No readable card text. Select the front image."])
         }
+        let energyTask = Task.detached(priority: .utility) { () throws -> (CardOCR.Reading, EnergySymbolEvidence)? in
+            for reading in orientations where EnergySymbolDetector.hasEnergyHeading(reading.lines) {
+                if let symbol = try EnergySymbolDetector.analyze(data, reading: reading) { return (reading, symbol) }
+            }
+            return nil
+        }
+        let energy = try await withTaskCancellationHandler { try await energyTask.value } onCancel: { energyTask.cancel() }
+        if let (reading, symbol) = energy, !Self.hasPrintedIdentifier(reading.lines) {
+            // Unnumbered basic Energy is useful identity evidence on its own.
+            // Do not require a network lookup or invent a catalogue printing.
+            var result = RecognitionEvidence(lines: reading.lines, candidates: [], warnings: [
+                "Energy type recognized from the top-right symbol. Exact printing is unknown; the symbol does not establish set, price or finish."
+            ], orientation: reading.rotation)
+            result.energySymbol = symbol
+            return result
+        }
         guard let catalogue = catalogues[language] else { throw ScannerError("unsupportedLanguage", "No catalogue client is configured for this card language.") }
         let cards = try await catalogue.catalogue()
         let ranked = orientations.map { ($0, CardMatcher.rank(lines: $0.lines, catalogue: cards, language: language)) }
-        var best = ranked.max { ($0.1.first?.score ?? 0) < ($1.1.first?.score ?? 0) }!
+        var best = energy.flatMap { symbol in ranked.first { $0.0.rotation == symbol.0.rotation } }
+            ?? ranked.max { ($0.1.first?.score ?? 0) < ($1.1.first?.score ?? 0) }!
         var candidates = try await candidates(for: best.1, catalogue: catalogue)
         var warnings = ["Suggestions require manual confirmation. A base-card catalogue match alone does not establish finish, stamped edition or condition."]
         if language == .korean {
@@ -61,10 +78,20 @@ public actor CardRecognizer: CardRecognizing {
         } catch is CancellationError { throw CancellationError() }
         catch { warnings.append("Rarity symbol could not be checked; text-based identification is retained.") }
         if best.1.count > 5 { warnings.append("Showing up to five candidates. Other printings may match; do not choose one unless its set and number agree.") }
-        if candidates.isEmpty { warnings.append("No supported match. Check the front orientation, text clarity and catalogue coverage; originals are preserved.") }
+        if candidates.isEmpty {
+            warnings.append(energy == nil ? "No supported match. Check the front orientation, text clarity and catalogue coverage; originals are preserved." : "Energy type recognized from the top-right symbol; exact printing is unknown.")
+        }
         var result = RecognitionEvidence(lines: best.0.lines, candidates: candidates, warnings: warnings, orientation: best.0.rotation)
         result.raritySymbol = raritySymbol
+        if let energy, energy.0.rotation == best.0.rotation { result.energySymbol = energy.1 }
         return result
+    }
+
+    private static func hasPrintedIdentifier(_ lines: [RecognizedLine]) -> Bool {
+        lines.contains { line in
+            guard line.y < 0.3 else { return false }
+            return line.text.range(of: #"(?i)(\d\s*/\s*\d|\b(?:SVE|SWSH|SVP|SM|XY)\s*\d|^\s*\d{1,4}\s*$)"#, options: .regularExpression) != nil
+        }
     }
 
     private func candidates(for ranked: [CardMatcher.Ranked], catalogue: TCGdexClient) async throws -> [CardCandidate] {
