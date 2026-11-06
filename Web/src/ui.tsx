@@ -40,7 +40,7 @@ export function StateBadge({ state }: { state: JobState }) {
   return (
     <span className={`badge state-${state}`}>
       <span className="status-dot" />
-      {state}
+      {state === "scanning" ? "Receiving images" : state}
     </span>
   );
 }

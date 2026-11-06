@@ -38,6 +38,7 @@ struct CatalogueDetail: Decodable, Sendable {
 /// Only catalogue GETs to the fixed TCGdex HTTPS host. No scan or OCR text is uploaded.
 actor TCGdexClient {
     private var cache: (Date, [CatalogueCard])?
+    private var catalogueTask: Task<[CatalogueCard], Error>?
     private let session: URLSession
     private let language: CardLanguage
     private let load: (@Sendable (URL, Int) async throws -> Data)?
@@ -53,6 +54,15 @@ actor TCGdexClient {
     }
     func catalogue() async throws -> [CatalogueCard] {
         if let cache, Date().timeIntervalSince(cache.0) < 24 * 3600 { return cache.1 }
+        if let catalogueTask { return try await catalogueTask.value }
+        let task = Task { try await self.fetchCatalogue() }
+        catalogueTask = task
+        defer { catalogueTask = nil }
+        let cards = try await task.value
+        cache = (Date(), cards)
+        return cards
+    }
+    private func fetchCatalogue() async throws -> [CatalogueCard] {
         let data = try await get(path: "cards", limit: 12 * 1024 * 1024)
         let cards = try JSONDecoder().decode([CatalogueCard].self, from: data)
         guard cards.count <= 100_000 else { throw ScannerError("catalogue", "TCGdex catalogue exceeds the supported limit.") }
@@ -61,7 +71,6 @@ actor TCGdexClient {
             !$0.id.isEmpty && $0.id.utf8.count <= 100 && $0.name.utf8.count <= 128 && $0.localId.utf8.count <= 32
                 && !($0.image?.contains("/tcgp/") ?? false)
         }
-        cache = (Date(), physical)
         return physical
     }
     func detail(_ id: String) async throws -> CatalogueDetail {

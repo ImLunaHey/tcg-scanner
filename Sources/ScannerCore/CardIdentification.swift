@@ -136,11 +136,23 @@ extension ScannerCoordinator {
             let check = Task.detached(priority: .utility) { ConditionInspector.check(data, preparation: preparation) }
             result.conditionCheck = await withTaskCancellationHandler { await check.value } onCancel: { check.cancel() }
             try Task.checkCancellation()
-            // Local stamp evidence survives unavailable OCR/catalogue services and unknown cards.
-            result.finishEstimate = await finishAnalyzer.estimate(data,
-                evidence: RecognitionEvidence(lines: [], candidates: []), preparation: preparation, language: language)
-            try Task.checkCancellation()
-            result.evidence = try await cardRecognizer.recognize(data, language: language)
+            if pair?.backSequence == pending.request.sequence {
+                // Known backs need condition analysis, not four-way OCR, catalogue
+                // requests or finish/stamp passes. Keep their condition record.
+                result.state = .noMatch
+                result.evidence = RecognitionEvidence(lines: [], candidates: [], warnings: ["Recognized Pokémon back; identity and finish checks run on the paired front."])
+                result.completedAt = Date()
+                return result
+            }
+            // Run the full finish/stamp pass once. If OCR fails, still retain
+            // image-only stamp evidence, but do not duplicate it on success.
+            do { result.evidence = try await cardRecognizer.recognize(data, language: language) }
+            catch is CancellationError { throw CancellationError() }
+            catch {
+                result.finishEstimate = await finishAnalyzer.estimate(data,
+                    evidence: RecognitionEvidence(lines: [], candidates: []), preparation: preparation, language: language)
+                throw error
+            }
             if let evidence = result.evidence {
                 result.finishEstimate = await finishAnalyzer.estimate(data, evidence: evidence, preparation: preparation, language: language)
                 try Task.checkCancellation()

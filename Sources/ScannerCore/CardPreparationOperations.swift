@@ -28,42 +28,50 @@ extension ScannerCoordinator {
     }
 
     func prepareCapturedCards(_ store: ScanStorage) async {
-        // Reserve the recognizer before awaiting an existing manual request. This
-        // keeps automatic and manual OCR serialized without dropping either job.
+        // Manual requests stay excluded while the bounded automatic pool runs.
         automaticallyIdentifyingCards = true
         defer { automaticallyIdentifyingCards = false }
         for worker in Array(identificationTasks.values) { await worker.value }
         let snapshot = await store.snapshot()
-        for image in snapshot.images {
-            if Task.isCancelled { break }
+        let pairs = Dictionary(grouping: snapshot.images, by: { ($0.sequence + 1) / 2 })
+            .sorted { $0.key < $1.key }.map { $0.value.sorted { $0.sequence < $1.sequence } }
+        await CardProcessingPool.run(pairs) { images in
+            await self.prepareCapturedPair(images, snapshot: snapshot, store: store)
+        }
+    }
+
+    private func prepareCapturedPair(_ images: [OriginalImage], snapshot: ScanRecord, store: ScanStorage) async {
+        for image in images {
+            guard !Task.isCancelled else { return }
             do {
                 let edit = try await renderPreparedCard(record: snapshot, image: image, id: UUID())
                 try await store.addPreparedImage(edit)
-            } catch {
+            } catch is CancellationError { return }
+            catch {
                 try? await store.addPreparationWarning("Card preparation failed for image \(image.sequence): \(error.localizedDescription). Original retained; use manual review.")
             }
-            // A back may arrive second. Prepare both sides before choosing a game.
-            guard image.sequence.isMultiple(of: 2) else { continue }
-            for sequence in [image.sequence - 1, image.sequence] {
-                if Task.isCancelled { break }
-                do {
-                    let current = await store.snapshot()
-                    let game = current.detectedGame(for: sequence)
-                    let pair = CardGameDetection.resolve(current).first { $0.number == (sequence + 1) / 2 }
-                    guard game == .pokemon || (game == .yugioh && pair?.frontSequence == sequence),
-                          let original = current.images.first(where: { $0.sequence == sequence }) else { continue }
-                    let prepared = current.processedImages?.last { $0.request.sequence == sequence && $0.cardPreparation != nil }
-                    let source = prepared?.image ?? original
-                    var pending = CardIdentification(request: IdentificationRequest(jobID: current.id, sequence: sequence,
-                        language: current.request.resolvedCardLanguage.rawValue), sourceSHA256: source.sha256)
-                    pending.sourceEditID = prepared?.id
-                    if game == .yugioh { pending.method = "apple-vision-ygoprodeck-text-v1" }
-                    try await store.saveIdentification(pending)
-                    let result = await recognizeCard(pending, record: current, image: source)
-                    try await store.saveIdentification(result)
-                } catch {
-                    try? await store.addPreparationWarning("Identification could not be saved for image \(sequence): \(error.localizedDescription). Original retained; retry from review.")
-                }
+        }
+        // Both sides must be prepared before game/side routing. Each pair can
+        // finish independently; cards are still displayed in acquisition order.
+        let current = await store.snapshot()
+        for image in images {
+            guard !Task.isCancelled else { return }
+            let sequence = image.sequence
+            let game = current.detectedGame(for: sequence)
+            let pair = CardGameDetection.resolve(current).first { $0.number == (sequence + 1) / 2 }
+            guard game == .pokemon || (game == .yugioh && pair?.frontSequence == sequence) else { continue }
+            do {
+                let prepared = current.processedImages?.last { $0.request.sequence == sequence && $0.cardPreparation != nil }
+                let source = prepared?.image ?? image
+                var pending = CardIdentification(request: IdentificationRequest(jobID: current.id, sequence: sequence,
+                    language: current.request.resolvedCardLanguage.rawValue), sourceSHA256: source.sha256)
+                pending.sourceEditID = prepared?.id
+                if game == .yugioh { pending.method = "apple-vision-ygoprodeck-text-v1" }
+                try await store.saveIdentification(pending)
+                let result = await recognizeCard(pending, record: current, image: source)
+                try await store.saveIdentification(result)
+            } catch {
+                try? await store.addPreparationWarning("Identification could not be saved for image \(sequence): \(error.localizedDescription). Original retained; retry from review.")
             }
         }
     }

@@ -71,7 +71,11 @@ public struct ScanRecord: Codable, Sendable {
     public var profile: ScanProfile?
     public var batchNumber: Int?
     public var batchID: UUID { id }
-    public var progress: ScanProgress { ScanProgress(imagesSaved: images.count) }
+    public var progress: ScanProgress {
+        var value = ScanProgress(imagesSaved: images.count)
+        if state == .processing || state.terminal { value.totalImages = images.count }
+        return value
+    }
     public var outputDirectory: String
     public var images: [OriginalImage] = []
     public var processedImages: [ProcessedImage]?

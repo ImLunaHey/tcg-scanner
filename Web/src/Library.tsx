@@ -16,6 +16,7 @@ import { useAuth } from "./auth";
 import { Modal } from "./Modal";
 import { ImageLightbox, type LightboxImage } from "./ImageLightbox";
 import { IdentificationReview, IdentitySummary } from "./Identification";
+import { batchProgressLabel } from "./jobProgress";
 import { CardSummary } from "./CardSummary";
 import { StoreTransfer } from "./StoreTransfer";
 import { BatchPrice, pricingRevision, type BatchValuation } from "./Pricing";
@@ -527,7 +528,7 @@ export function BatchDetail({ id }: { id: string }) {
       )}
       {!finished && (
         <Loading
-          label={`${record.state} · ${record.images.length} images saved. Total count is unknown until feeding finishes.`}
+          label={batchProgressLabel(record)}
         />
       )}
       {grouped ? (

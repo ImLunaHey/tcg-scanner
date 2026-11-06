@@ -205,7 +205,7 @@ func savedPairsAutomaticallyPrepareAndRouteByGame() async throws {
     #expect(result.processedImages?.count == count)
     #expect(result.cardGames?.count == count / 2)
     #expect(result.cardGames?.allSatisfy { $0.game == expected } == true)
-    #expect(await recognizer.calls == (expected == .pokemon ? count : count / 2))
+    #expect(await recognizer.calls == (count / 2))
     if expected == .yugioh {
         #expect(result.cardIdentifications?.allSatisfy { $0.request.sequence.isMultiple(of: 2) && $0.finishEstimate == nil && $0.conditionCheck == nil } == true)
     }
