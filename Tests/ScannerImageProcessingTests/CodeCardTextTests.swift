@@ -36,7 +36,7 @@ import Testing
     for text in ["pokemon.com/redeem", "Visit https://www.pokemon.com/redeem.", "pokemon . com / redeem", "www.pokemon.com/tcgo"] {
         #expect(CodeCardText.hasRedemptionURL([text]))
     }
-    for text in ["notpokemon.com/redeem", "pokemon.com/redeemer", "pokemon.com/redeem/other", "pokemon.com.evil/redeem", "example.com/pokemon.com/redeem", "Redeem your rewards", "Pokémon TCG Live"] {
+    for text in ["notpokemon.com/redeem", "pokemon.com/redeemer", "pokemon.com/redeem/other", "pokemon.com/redeem.html", "pokemon.com.evil/redeem", "example.com/pokemon.com/redeem", "Redeem your rewards", "Pokémon TCG Live"] {
         #expect(!CodeCardText.hasRedemptionURL([text]))
     }
 }

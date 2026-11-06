@@ -7,7 +7,7 @@ enum CodeCardText {
         let text = words.joined(separator: " ")
         // Exact public host/path, allowing OCR whitespace. Do not accept lookalike
         // domains or longer paths, and never extract the private redemption code.
-        return text.range(of: #"(?i)(?<![a-z0-9.\-/])(?:https?://)?(?:www\.)?pokemon\s*\.\s*com\s*/\s*(?:redeem|tcgo)(?![a-z0-9/_-])"#, options: .regularExpression) != nil
+        return text.range(of: #"(?i)(?<![a-z0-9.\-/])(?:https?://)?(?:www\.)?pokemon\s*\.\s*com\s*/\s*(?:redeem|tcgo)(?![a-z0-9/_-]|\.[a-z0-9])"#, options: .regularExpression) != nil
     }
     static func hasRedemptionWording(_ words: [String]) -> Bool {
         let text = words.joined(separator: " ").lowercased()
