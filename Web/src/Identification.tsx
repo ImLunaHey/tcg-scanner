@@ -65,6 +65,7 @@ export type Identification = {
   conditionCheck?: import("./ConditionReview").ConditionCheck;
   evidence?: {
     candidates: CardCandidate[];
+    energySymbol?: { type: string; similarity: number; method: string };
     lines: { text: string }[];
     warnings: string[];
   };
@@ -347,8 +348,9 @@ export function IdentificationReview({
             )}
             {result?.state === "noMatch" && (
               <p>
-                No matching card found. Check that this is a clear front image;
-                a back cannot identify the card.
+                {energyIdentityName(result)
+                  ? `${energyIdentityName(result)} · Exact printing unknown.`
+                  : "No matching card found. Check that this is a clear front image; a back cannot identify the card."}
               </p>
             )}
             {result?.state === "confirmed" && (
@@ -569,6 +571,13 @@ export function identityCard(
       : undefined;
 }
 
+export function energyIdentityName(value?: Identification): string | undefined {
+  const symbol = value?.evidence?.energySymbol;
+  return value?.state === "noMatch" && symbol
+    ? `${symbol.type} Energy`
+    : undefined;
+}
+
 export function IdentitySummary({
   identification,
   pending = false,
@@ -586,6 +595,9 @@ export function IdentitySummary({
     );
   const card = identityCard(identification);
   const edition = editionPresentation(identification);
+  const energyName = energyIdentityName(identification);
+  if (energyName)
+    return <p className="small"><strong>{energyName}</strong><br />Exact printing unknown · type recognised from the corner symbol.</p>;
   if (card)
     return (
       <p className="small">

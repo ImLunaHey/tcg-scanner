@@ -3,6 +3,7 @@ import { ArrowUpRight, Check, CircleHelp, Clock3, Minus } from "lucide-react";
 import {
   conditions,
   editionPresentation,
+  energyIdentityName,
   finishPresentation,
   identityCard,
   IdentitySummary,
@@ -36,6 +37,7 @@ export function CardSummary({
   pricingLoading?: boolean;
 }) {
   const card = identityCard(identification);
+  const energyName = energyIdentityName(identification);
   if (game !== "pokemon") {
     return (
       <>
@@ -154,6 +156,11 @@ export function CardSummary({
             )}
           </p>
           {edition && <p title={edition.detail}>{edition.label}</p>}
+        </div>
+      ) : energyName ? (
+        <div className="card-summary-identity">
+          <h2>{energyName}</h2>
+          <p>Exact printing unknown</p>
         </div>
       ) : (
         <div className="card-summary-identity">

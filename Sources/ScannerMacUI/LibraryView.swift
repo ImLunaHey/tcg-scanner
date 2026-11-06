@@ -141,7 +141,11 @@ private struct CardIdentitySummary: View {
                 switch identification.state {
                 case .processing: Text("Identifying card…")
                 case .reviewRequired: Text("\(identification.evidence?.candidates.count ?? 0) possible matches · review identity")
-                case .noMatch: Text("No card match found")
+                case .noMatch:
+                    if let energy = identification.evidence?.energySymbol {
+                        Text(energy.displayName).bold()
+                        Text("Exact printing unknown · type recognised from the corner symbol.")
+                    } else { Text("No card match found") }
                 case .failed: Text("Identification failed · retry in review")
                 case .rejected: Text("Suggestions rejected")
                 case .confirmed: Text("Identity unavailable")
