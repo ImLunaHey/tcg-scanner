@@ -31,7 +31,8 @@ private let energyHeading = [RecognizedLine(text: "ENERGY", x: 0.06, y: 0.94, wi
         let data = try Data(contentsOf: URL(fileURLWithPath: path))
         let result = try EnergySymbolDetector.analyze(data, reading: .init(rotation: 0, lines: energyHeading))
         print("ENERGY_SYMBOL", URL(fileURLWithPath: path).lastPathComponent, result?.type ?? "unreadable", result?.similarity ?? 0)
-        if path.contains("edit-") { #expect(result?.type == "Psychic") }
+        if path.contains("B-045/edit-") { #expect(result?.type == "Psychic") }
+        if path.contains("B-046/edit-") { #expect(result?.type == "Metal") }
     }
 }
 
@@ -39,8 +40,9 @@ private let energyHeading = [RecognizedLine(text: "ENERGY", x: 0.06, y: 0.94, wi
     guard let file = ProcessInfo.processInfo.environment["SCANNER_ENERGY_RECOGNITION_IMAGE"] else { return }
     let source = try CardOCR.image(Data(contentsOf: URL(fileURLWithPath: file)))
     let recognizer = CardRecognizer()
+    let expected = ProcessInfo.processInfo.environment["SCANNER_ENERGY_RECOGNITION_TYPE"] ?? "Psychic"
     // Removing only the corner icon must remove the type evidence, despite
-    // unchanged purple background and the large central Psychic symbol.
+    // unchanged background and the large central Energy symbol.
     let base = CIImage(cgImage: source)
     let region = CGRect(x: Double(source.width) * 0.82, y: Double(source.height) * 0.87,
                         width: Double(source.width) * 0.18, height: Double(source.height) * 0.13)
@@ -59,7 +61,7 @@ private let energyHeading = [RecognizedLine(text: "ENERGY", x: 0.06, y: 0.94, wi
         CGImageDestinationAddImage(writer, image, nil)
         #expect(CGImageDestinationFinalize(writer))
         let evidence = try await recognizer.recognize(bytes as Data, language: .english)
-        #expect(evidence.energySymbol?.type == "Psychic")
+        #expect(evidence.energySymbol?.type == expected)
         #expect(evidence.candidates.isEmpty)
         #expect(evidence.warnings.contains { $0.contains("Exact printing is unknown") })
     }
@@ -77,5 +79,18 @@ private let energyHeading = [RecognizedLine(text: "ENERGY", x: 0.06, y: 0.94, wi
         }
         print("KNOWN_ENERGY", fixture.name, symbols.map(\.displayName))
         #expect(symbols.count == 1 && symbols.first?.displayName == fixture.name)
+    }
+}
+
+@Test func cachedTCGdexEnergyReferencesCoverEveryBasicType() async throws {
+    guard ProcessInfo.processInfo.environment["SCANNER_CHECK_TCGDEX_ENERGIES"] == "1" else { return }
+    let names = ["Grass", "Fire", "Water", "Lightning", "Psychic", "Fighting", "Darkness", "Metal", "Fairy"]
+    let cache = TCGdexReferenceCache()
+    for (offset, name) in names.enumerated() {
+        let id = "xy1-\(132 + offset)"
+        let reference = try #require(try await cache.reference(cardID: id))
+        let symbol = try EnergySymbolDetector.analyze(reference.data, reading: .init(rotation: 0, lines: energyHeading))
+        print("TCGDEX_ENERGY", id, name, symbol?.type ?? "unresolved", symbol?.similarity ?? 0)
+        #expect(symbol?.type == name)
     }
 }
