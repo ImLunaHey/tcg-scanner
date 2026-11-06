@@ -18,6 +18,56 @@ Korean are supported as explicit batch settings. This feature was separately req
 initial scanner milestones. [Cardmarket GBP price guides](card-pricing.md) were
 subsequently added; inventory creation and selling integration remain out of scope.
 
+## Printed rarity as supporting identity evidence
+
+New Pokémon identifications use `apple-vision-tcgdex-text-rarity-v2`. TCGdex's
+`rarity` field is retained in each candidate's `rarities` and shown beside its
+collector number in the web card summary. This is catalogue rarity, not foil finish.
+
+The in-process Swift detector locates an English footer fraction with Vision,
+using character-range bounds to separate the number from a merged symbol. It
+checks adjacent black ink for a circle, diamond, single star or paired stars at
+two thresholds. Accepted shape overlap and its upright, top-left-origin region
+are persisted in `evidence.raritySymbol`, together with the independently read
+collector number and set total. Similarity is not a probability.
+
+Rarity evidence reorders only existing text/catalogue candidates with matching
+number and set total. Agreement corroborates; conflicts remain available with
+explicit review evidence. An unclear symbol or unknown catalogue rarity leaves
+ordering unchanged. No card can be created from rarity alone. This change does
+not alter finish or condition algorithms, mutate originals or backfill saved
+identifications. Future automatic identification uses it without a new setting.
+
+Scope: black footer symbols beside numeric fractions on English cards. Metallic,
+outlined, promo and Korean rarity layouts are not validated and do not receive
+special inference rules. Double stars have a pixel-fixture test; physical saved
+scan validation below covers circles, diamonds and single stars. Catalogue gaps
+and special printings can prevent a useful cross-check.
+
+Validation on 2026-11-06:
+
+- B-025–B-027: 41 saved prepared fronts checked read-only; 28 accepted symbols,
+  all agreeing with current catalogue rarity. The other 13 contributed no symbol.
+- After committing the detector, separate B-024 validation accepted seven stars
+  from 16 fronts: six agreed with `Rare`; Kilowattrel's catalogue label was `None`,
+  so it could not corroborate identity. Nine symbols remained unreadable.
+- A saved Goodra front retained its symbol, number and upright region through all
+  four orientations. All 230 Swift tests passed, including blank/hollow/clipped
+  negatives, single/paired stars, metadata validation and candidate conflicts.
+- These counts measure symbol coverage and catalogue agreement on these scans,
+  not general identification accuracy or foil detection accuracy. No new physical
+  scan was started, and saved identifications/finish assessments were unchanged.
+
+Reproduce local read-only pixel diagnostics with a JSON array of prepared image
+paths in `SCANNER_RARITY_IMAGES`, then run `swift test --filter savedRarityScans`.
+Set `SCANNER_RARITY_ROTATION_IMAGE` to a readable prepared front to run
+`swift test --filter rarityCoordinatesFollowSavedCardRotation`.
+
+References: [TCGdex card metadata](https://tcgdex.dev/rest/card) and
+[CGC's rarity-symbol guide](https://www.cgccards.uk/news/article/12438/pokemon-rarity-symbols/).
+Rarity and finish are separate: the same rarity symbol can occur on different
+foil variants of a numbered card.
+
 ## Use it
 
 Enable **Auto-crop, orient and identify cards** and select **Card language** when starting a card scan.

@@ -139,6 +139,11 @@ export function CardSummary({
               {card.localID}
               {card.officialSetCount ? `/${card.officialSetCount}` : ""}
             </span>
+            {!!card.rarities?.length && (
+              <span title="Catalogue rarity; this does not identify the foil finish">
+                {" · "}{card.rarities.join(" / ")}
+              </span>
+            )}
           </p>
           {edition && <p title={edition.detail}>{edition.label}</p>}
         </div>
