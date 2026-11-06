@@ -22,6 +22,7 @@ struct CatalogueDetail: Decodable, Sendable {
     var id: String; var localId: String; var name: String; var set: CardSet
     var image: String?
     var variants: [String: Bool]?
+    var rarity: String?
     var category: String?
     var types: [String]?
     var variants_detailed: [Variant]?
@@ -68,7 +69,7 @@ actor TCGdexClient {
         let detail = try JSONDecoder().decode(CatalogueDetail.self, from: await get(path: "cards/" + id, limit: 256 * 1024))
         guard detail.id == id, detail.localId.utf8.count <= 32, detail.name.utf8.count <= 128,
               detail.set.id.utf8.count <= 100, detail.set.name.utf8.count <= 256,
-              (detail.category?.utf8.count ?? 0) <= 64, (detail.types?.count ?? 0) <= 8,
+              (detail.category?.utf8.count ?? 0) <= 64, (detail.rarity?.utf8.count ?? 0) <= 128, (detail.types?.count ?? 0) <= 8,
               detail.types?.allSatisfy({ $0.utf8.count <= 64 }) != false,
               (detail.variants_detailed?.count ?? 0) <= 100,
               detail.variants_detailed?.allSatisfy({ variant in

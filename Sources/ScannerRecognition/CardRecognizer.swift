@@ -46,9 +46,25 @@ public actor CardRecognizer: CardRecognizing {
                 warnings.append("Collector number and set total re-read from the footer after whole-card OCR failed catalogue validation.")
             }
         }
+        var raritySymbol: RaritySymbolEvidence?
+        let rotation = best.0.rotation
+        let symbolTask = Task.detached(priority: .utility) {
+            try RaritySymbolDetector.analyze(data, rotation: rotation, language: language)
+        }
+        do {
+            let symbol = try await withTaskCancellationHandler { try await symbolTask.value } onCancel: { symbolTask.cancel() }
+            raritySymbol = symbol
+            candidates = RarityEvidence.apply(symbol, to: candidates)
+            if candidates.contains(where: { $0.evidence.contains(where: { $0.hasPrefix("Rarity symbol conflict:") }) }) {
+                warnings.append("Printed rarity and catalogue metadata disagree for a candidate. Review the identity; rarity does not establish foil finish.")
+            }
+        } catch is CancellationError { throw CancellationError() }
+        catch { warnings.append("Rarity symbol could not be checked; text-based identification is retained.") }
         if best.1.count > 5 { warnings.append("Showing up to five candidates. Other printings may match; do not choose one unless its set and number agree.") }
         if candidates.isEmpty { warnings.append("No supported match. Check the front orientation, text clarity and catalogue coverage; originals are preserved.") }
-        return RecognitionEvidence(lines: best.0.lines, candidates: candidates, warnings: warnings, orientation: best.0.rotation)
+        var result = RecognitionEvidence(lines: best.0.lines, candidates: candidates, warnings: warnings, orientation: best.0.rotation)
+        result.raritySymbol = raritySymbol
+        return result
     }
 
     private func candidates(for ranked: [CardMatcher.Ranked], catalogue: TCGdexClient) async throws -> [CardCandidate] {
@@ -66,6 +82,7 @@ public actor CardRecognizer: CardRecognizing {
             var candidate = CardCandidate(id: detail.id, name: detail.name, localID: detail.localId,
                 setID: detail.set.id, setName: detail.set.name, officialSetCount: total, evidence: evidence, availableFinishes: finishes, category: detail.category, types: detail.types)
             candidate.printingVariants = detail.printingVariants
+            candidate.rarities = detail.rarity.map { [$0] }
             candidates.append(candidate)
             if candidates.count == 5 { break }
         }
@@ -87,7 +104,7 @@ enum CardOCR {
         request.usesLanguageCorrection = false // Preserve collector numbers and Pokémon spelling.
         return request
     }
-    private static func image(_ data: Data) throws -> CGImage {
+    static func image(_ data: Data) throws -> CGImage {
         guard data.count <= 32 * 1024 * 1024,
               let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
               CGImageSourceGetCount(source) == 1,
