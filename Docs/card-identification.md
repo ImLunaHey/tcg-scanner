@@ -54,6 +54,12 @@ Validation on 2026-11-06:
 - A saved Goodra front retained its symbol, number and upright region through all
   four orientations. All 230 Swift tests passed, including blank/hollow/clipped
   negatives, single/paired stars, metadata validation and candidate conflicts.
+- The opt-in full recognizer check identified saved Goodra as `me04-068`, retained
+  catalogue `Rare`, measured a star, added agreeing evidence, and round-tripped
+  the structured symbol through JSON. This uses public catalogue GETs only.
+- Signed service/CLI/MCP and HTTP gateway updates were installed with the existing
+  configuration. The web build passed all 41 tests and the HTTPS endpoint served
+  its new asset hash. The service remained idle with storage `/Volumes/scans`.
 - These counts measure symbol coverage and catalogue agreement on these scans,
   not general identification accuracy or foil detection accuracy. No new physical
   scan was started, and saved identifications/finish assessments were unchanged.

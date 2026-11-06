@@ -106,3 +106,16 @@ import ScannerAPI
     let invalid = TCGdexClient(load: { _,_ in Data(oversized.utf8) })
     await #expect(throws: ScannerError.self) { try await invalid.detail("test-1") }
 }
+
+@Test func savedRarityIdentityDiagnostic() async throws {
+    guard let file = ProcessInfo.processInfo.environment["SCANNER_RARITY_IDENTITY_IMAGE"] else { return }
+    // Local image processing plus public catalogue GETs; no image upload or history mutation.
+    let result = try await CardRecognizer().recognize(Data(contentsOf: URL(fileURLWithPath: file)), language: .english)
+    let symbol = try #require(result.raritySymbol)
+    let candidate = try #require(result.candidates.first)
+    #expect(candidate.localID == symbol.collectorNumber)
+    #expect(candidate.evidence.contains { $0.hasPrefix("Printed black rarity symbol agrees") })
+    let roundTrip = try JSONDecoder().decode(RecognitionEvidence.self, from: JSONEncoder().encode(result))
+    #expect(roundTrip.raritySymbol == result.raritySymbol)
+    print("RARITY_IDENTITY", candidate.id, candidate.name, candidate.rarities ?? [], symbol.symbol)
+}
