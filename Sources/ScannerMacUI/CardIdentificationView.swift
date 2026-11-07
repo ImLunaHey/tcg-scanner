@@ -24,7 +24,7 @@ struct CardIdentificationView: View {
                 Text("Identify C-\(BatchNaming.number(sequence))").font(.title2.bold())
                 Spacer(); Button("Close") { dismiss() }.keyboardShortcut(.cancelAction)
             }
-            Text("\(language.displayName) card fronts. OCR runs on this Mac; \(game == .yugioh ? "YGOPRODeck" : "TCGdex") supplies catalogue data. Your image is not uploaded.").font(.callout).foregroundStyle(.secondary)
+            Text("\(language.displayName) card fronts. OCR runs on this Mac; \(game == .yugioh ? "YGOPRODeck" : game == .starwarsUnlimited ? "SWU-DB" : "TCGdex") supplies catalogue data. Your image is not uploaded.").font(.callout).foregroundStyle(.secondary)
             if let error { Text(error).foregroundStyle(.red).textSelection(.enabled) }
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {

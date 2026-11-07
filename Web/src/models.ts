@@ -62,14 +62,14 @@ export type Batch = Omit<Job, "scannerID" | "progress"> & {
 };
 export type CardGameDetection = {
   number: number;
-  game: "pokemon" | "yugioh" | "unknown";
+  game: "pokemon" | "yugioh" | "starwarsUnlimited" | "unknown";
   contentKind?: "pokemonCodeCard";
   frontSequence?: number;
   backSequence?: number;
   reason: string;
 };
 export const gameLabel = (game: CardGameDetection["game"]) =>
-  ({ pokemon: "Pokémon", yugioh: "Yu-Gi-Oh!", unknown: "Unknown game" })[game];
+  ({ pokemon: "Pokémon", yugioh: "Yu-Gi-Oh!", starwarsUnlimited: "Star Wars: Unlimited", unknown: "Unknown game" })[game];
 export type EditedImage = {
   request: {
     id: string;
@@ -219,7 +219,9 @@ export function presentCardPair(
       };
     }
     return {
-      identity: undefined,
+      identity: detection.game === "starwarsUnlimited"
+        ? entries.find(({ identity }) => identity?.evidence?.candidates.length)?.identity
+        : undefined,
       sides: entries.map(({ image }, index) => ({
         image,
         label: `Side ${index + 1}`,

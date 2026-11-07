@@ -52,7 +52,7 @@ export function CardSummary({
               <p>Redemption card · not a playable card.</p>
               <p className="small muted">Identity, finish and condition checks do not apply.</p>
             </>
-          ) : game === "yugioh" ? (
+          ) : game === "yugioh" || game === "starwarsUnlimited" ? (
             <>
               {card ? (
                 <>

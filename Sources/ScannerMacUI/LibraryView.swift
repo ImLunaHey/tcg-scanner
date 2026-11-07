@@ -57,19 +57,19 @@ private struct BatchDetail: View {
                         let prepared = record.processedImages?.last(where: { $0.request.sequence == image.sequence && $0.cardPreparation != nil })
                         let game = record.detectedGame(for: image.sequence)
                         let pair = record.cardGames?.first { $0.number == (image.sequence + 1) / 2 }
-                        let side = pair?.frontSequence == image.sequence ? "Front" : pair?.backSequence == image.sequence ? "Back" : "Side \(image.side)"
+                        let side = pair?.frontSequence == image.sequence ? "Front" : pair?.backSequence == image.sequence ? "Back" : "Side \((image.sequence - 1) % 2 + 1)"
                         VStack(alignment: .leading, spacing: 8) {
                             ScanThumbnail(model: model, job: record.id, sequence: image.sequence, edit: prepared?.id).frame(height: 230)
                             Text("C-\(BatchNaming.number(record.request.duplex ? (image.sequence + 1) / 2 : image.sequence)) · \(prepared == nil ? "original" : "cropped card")").font(.headline)
                             Text("\(prepared?.image.width ?? image.width) × \(prepared?.image.height ?? image.height) · \(side)").font(.caption).foregroundStyle(.secondary)
-                            Text(pair?.contentKind == .pokemonCodeCard ? "Pokémon online/code card" : game == .pokemon ? "Pokémon" : game == .yugioh ? "Yu-Gi-Oh!" : "Unknown game").font(.caption)
+                            Text(pair?.contentKind == .pokemonCodeCard ? "Pokémon online/code card" : game == .pokemon ? "Pokémon" : game == .yugioh ? "Yu-Gi-Oh!" : game == .starwarsUnlimited ? "Star Wars: Unlimited" : "Unknown game").font(.caption)
                             if game != .unknown {
                                 if let identification = record.cardIdentifications?.first(where: { $0.request.sequence == image.sequence }) {
                                     CardIdentitySummary(identification: identification)
                                     if let check = identification.conditionCheck { Button(check.summary) { checkingCondition = EditingImage(image: image) }.font(.caption).buttonStyle(.link) }
                                 }
                                 if game == .pokemon { Button("Check condition…") { checkingCondition = EditingImage(image: image) }.disabled(!record.state.terminal) }
-                                if game == .pokemon || pair?.frontSequence == image.sequence {
+                                if game == .pokemon || pair?.frontSequence == image.sequence || game == .starwarsUnlimited {
                                     Button("Identify / review card…") { identifying = EditingImage(image: image) }.disabled(!record.state.terminal)
                                 }
                             } else {
