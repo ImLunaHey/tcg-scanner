@@ -374,3 +374,14 @@ can establish that it is a Pokémon back; the layout still determines rotation.
 This fixes B-047 C-023 without manually assigning its sides. The saved original
 and all four rotations of its prepared back pass, while its Meddling Memo front
 is rejected by the back detector.
+
+If ordinary footer OCR still merges a rarity circle into the set total, the
+recognizer retries two lighter grayscale versions of the pixels using Core
+Image and Vision. Both readings must agree on the printing and a single set
+total, which must also match TCGdex. The independently read title and collector
+number remain required; digits are never removed to fit a catalogue entry.
+This bounded fallback runs only after the ordinary footer retry fails and does
+not alter stored images. B-049 C-023 (Binacle 042/088) is covered by the opt-in
+`SCANNER_BINACLE_FIXTURE` regression, alongside offline tests rejecting
+conflicting totals and collector numbers. This improves OCR recovery, not a
+guarantee that every footer or catalogue printing can be identified.

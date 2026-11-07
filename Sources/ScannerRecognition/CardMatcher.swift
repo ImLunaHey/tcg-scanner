@@ -9,6 +9,15 @@ enum CardMatcher {
         var evidence: [String]
         var totals: Set<Int>
     }
+    /// Require the same printing and one identical, independently read set total.
+    /// Never repair an OCR number by trimming digits to match catalogue data.
+    static func agreeingFooterRanks(_ first: [Ranked], _ second: [Ranked]) -> [Ranked] {
+        first.filter { match in
+            match.totals.count == 1 && second.contains {
+                $0.card.id == match.card.id && $0.totals == match.totals
+            }
+        }
+    }
     static func normalized(_ text: String) -> String {
         text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
             .unicodeScalars.map { CharacterSet.alphanumerics.contains($0) ? String($0) : " " }

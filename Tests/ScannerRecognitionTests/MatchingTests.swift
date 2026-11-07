@@ -137,3 +137,32 @@ func deskewedMixedBatchKeepsAllElevenPrintingMatches() async throws {
         #expect(result.orientation == 0)
     }
 }
+
+@Test func footerRecoveryRequiresAgreementWithoutTrimmingNumbers() {
+    let catalogue = [CatalogueCard(id: "example-042", localId: "042", name: "Binacle")]
+    let title = RecognizedLine(text: "Binacle", y: 0.91, height: 0.04)
+    func ranks(_ number: String) -> [CardMatcher.Ranked] {
+        CardMatcher.rank(lines: [title, RecognizedLine(text: number, y: 0.03, height: 0.02)], catalogue: catalogue)
+    }
+    #expect(CardMatcher.agreeingFooterRanks(ranks("042/088"), ranks("042/088 0")).first?.totals == [88])
+    #expect(CardMatcher.agreeingFooterRanks(ranks("042/088"), ranks("042/0880")).isEmpty)
+    #expect(CardMatcher.agreeingFooterRanks(ranks("042/088"), ranks("043/088")).isEmpty)
+    #expect(CardMatcher.agreeingFooterRanks(ranks("042/0880"), ranks("042/0880")).first?.totals == [880])
+    #expect(CardMatcher.agreeingFooterRanks(ranks(""), ranks("")).isEmpty)
+}
+
+@Test(.enabled(if: ProcessInfo.processInfo.environment["SCANNER_BINACLE_FIXTURE"] != nil))
+func savedOutlinedRarityCircleSeparatesFromSetTotal() async throws {
+    let path = try #require(ProcessInfo.processInfo.environment["SCANNER_BINACLE_FIXTURE"])
+    let data = try Data(contentsOf: URL(fileURLWithPath: path))
+    let initial = try #require(CardOCR.read(data).first)
+    #expect(initial.lines.contains { $0.text == "042/0880" })
+    for brightness in [0.15, 0.30] {
+        let footer = try CardOCR.refineFooter(data, reading: initial, brightness: brightness)
+        #expect(footer.lines.contains { $0.text == "042/088" || $0.text == "042/088 0" })
+    }
+    let result = try await CardRecognizer().recognize(data)
+    #expect(result.candidates.map(\.id) == ["me03-042"])
+    #expect(result.candidates.first?.evidence.contains("Printed set total 88") == true)
+    #expect(result.warnings.contains { $0.contains("re-read") })
+}

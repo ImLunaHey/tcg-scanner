@@ -1,4 +1,5 @@
 import Foundation
+import CoreImage
 import ImageIO
 import ScannerAPI
 import Vision
@@ -56,9 +57,25 @@ public actor CardRecognizer: CardRecognizing {
             let refinedRank = CardMatcher.rank(lines: refined.lines, catalogue: cards, language: language).filter {
                 previousIDs.contains($0.card.id) && !$0.totals.isEmpty
             }
-            let refinedCandidates = try await self.candidates(for: refinedRank, catalogue: catalogue)
+            var refinedCandidates = try await self.candidates(for: refinedRank, catalogue: catalogue)
+            var footerReading = refined
+            var footerRank = refinedRank
+            if refinedCandidates.isEmpty {
+                // Outlined rarity circles can remain joined to digits on dark
+                // backgrounds. Require two independent pixel readings to agree.
+                let contrastRetry = Task.detached(priority: .utility) {
+                    try [0.15, 0.30].map { brightness in
+                        try CardOCR.refineFooter(data, reading: reading, language: language, brightness: brightness)
+                    }
+                }
+                let readings = try await withTaskCancellationHandler { try await contrastRetry.value } onCancel: { contrastRetry.cancel() }
+                let ranks = readings.map { CardMatcher.rank(lines: $0.lines, catalogue: cards, language: language) }
+                footerRank = CardMatcher.agreeingFooterRanks(ranks[0], ranks[1]).filter { previousIDs.contains($0.card.id) }
+                refinedCandidates = try await self.candidates(for: footerRank, catalogue: catalogue)
+                footerReading = readings[0]
+            }
             if !refinedCandidates.isEmpty {
-                best = (refined, refinedRank)
+                best = (footerReading, footerRank)
                 candidates = refinedCandidates
                 warnings.append("Collector number and set total re-read from the footer after whole-card OCR failed catalogue validation.")
             }
@@ -199,7 +216,7 @@ enum CardOCR {
         }
     }
 
-    static func refineFooter(_ data: Data, reading: Reading, language: CardLanguage = .english) throws -> Reading {
+    static func refineFooter(_ data: Data, reading: Reading, language: CardLanguage = .english, brightness: Double? = nil) throws -> Reading {
         try Task.checkCancellation()
         let orientations: [CGImagePropertyOrientation] = [.up, .right, .down, .left]
         guard orientations.indices.contains(reading.rotation) else { throw ScannerError("recognition", "Invalid OCR orientation.") }
@@ -211,7 +228,18 @@ enum CardOCR {
         // observation and its nearby rarity mark inside the region.
         let x = number.x + number.width <= 0.45 ? 0 : min(0.55, max(0, number.x + number.width / 2 - 0.225))
         request.regionOfInterest = CGRect(x: x, y: 0, width: 0.45, height: 0.15)
-        try VNImageRequestHandler(cgImage: image(data), orientation: orientations[reading.rotation]).perform([request])
+        var input = try image(data)
+        if let brightness {
+            // Only OCR sees this transform; stored scans and prepared images stay unchanged.
+            let source = CIImage(cgImage: input)
+            let filtered = source.applyingFilter("CIColorControls", parameters: [
+                kCIInputSaturationKey: 0, kCIInputContrastKey: 1, kCIInputBrightnessKey: brightness])
+            guard let rendered = CIContext().createCGImage(filtered, from: source.extent) else {
+                throw ScannerError("recognition", "Cannot render footer recognition image.")
+            }
+            input = rendered
+        }
+        try VNImageRequestHandler(cgImage: input, orientation: orientations[reading.rotation]).perform([request])
         let footer = (request.results ?? []).prefix(32).compactMap { observation -> RecognizedLine? in
             guard let text = observation.topCandidates(1).first, text.confidence >= 0.35 else { return nil }
             // Vision normalizes these observations to regionOfInterest. Map
