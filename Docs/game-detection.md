@@ -24,7 +24,7 @@ original checksum. It does not trust a client-supplied game or cached label.
   and simplex scans remain unknown. Missing captures never shift later pairs.
 
 Pokémon and Yu-Gi-Oh! get crop, deskew, upright orientation and front/back presentation.
-SWU dark-border crops retain a safety margin without fine deskew.
+SWU dark-border crops preserve faint edge pixels for fine deskew and retain a small interpolation margin.
 Detected Pokémon pairs enter Pokémon catalogue matching, finish assessment,
 condition checks, pricing and Store staging. Detected English Yu-Gi-Oh! fronts
 use [local OCR and YGOPRODeck](yugioh-identification.md) for name, set-code and

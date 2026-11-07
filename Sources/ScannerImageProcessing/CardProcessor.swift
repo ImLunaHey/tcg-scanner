@@ -31,20 +31,18 @@ public enum CardProcessor {
         // Dark SWU borders can be disconnected from artwork. Use a conservative
         // union only when the resulting image independently proves SWU branding.
         if background == .black, let points = try? foregroundBoundary(rgba: rgba, width: width, height: height, background: background, darkUnion: true).points {
-            var crop = CardDeskew.bounds(points: points, width: width, height: height, degrees: 0)
-            let unionArea = crop.width * crop.height
-            let margin = 0.004
-            let right = min(1, crop.x + crop.width + margin), bottom = min(1, crop.y + crop.height + margin)
-            crop.x = max(0, crop.x - margin); crop.y = max(0, crop.y - margin)
-            crop.width = right - crop.x; crop.height = bottom - crop.y
+            let sourceCrop = CardDeskew.bounds(points: points, width: width, height: height, degrees: 0)
+            let unionArea = sourceCrop.width * sourceCrop.height
             let standardCrop = standardBoundary.map { CardDeskew.bounds(points: $0.points, width: width, height: height, degrees: 0) }
             if standardCrop == nil || unionArea > standardCrop!.width * standardCrop!.height * 1.03 {
-                let rendered = try ImageProcessor.render(data, request: ImageEditRequest(jobID: UUID(), sequence: 1, crop: crop))
+                let geometry = CardDeskew.analyze(points: points, width: width, height: height)
+                let crop = geometry.crop
+                let rendered = try ImageProcessor.render(data, request: ImageEditRequest(jobID: UUID(), sequence: 1, crop: crop, deskewDegrees: geometry.degrees))
                 let orientation = try uprightRotation(rendered.data, language: language)
                 if orientation.basis.hasPrefix("starwars-") {
                     return CardPreparation(crop: crop, quarterTurns: orientation.turns, orientationVerified: true,
-                        warnings: ["Dark-border crop retains a safety margin; fine deskew is not applied."],
-                        deskewDegrees: 0, orientationBasis: orientation.basis, sourceCrop: crop)
+                        warnings: geometry.warnings,
+                        deskewDegrees: geometry.degrees, orientationBasis: orientation.basis, sourceCrop: sourceCrop)
                 }
             }
         }
@@ -68,7 +66,7 @@ public enum CardProcessor {
         return CardDeskew.bounds(points: boundary.points, width: width, height: height, degrees: 0)
     }
 
-    private static func foregroundBoundary(rgba: [UInt8], width: Int, height: Int, background: ScanBackground, darkUnion: Bool = false) throws -> (points: [CGPoint], touchesEdge: Bool) {
+    static func foregroundBoundary(rgba: [UInt8], width: Int, height: Int, background: ScanBackground, darkUnion: Bool = false) throws -> (points: [CGPoint], touchesEdge: Bool) {
         var bestPixels: [Int] = []
         var mask = [UInt8](repeating: 0, count: width * height)
         let backing: [Double] = background == .white ? (0..<height).map { y in
@@ -94,6 +92,7 @@ public enum CardProcessor {
             }
         }
         var components: [Component] = []
+        var unionPixels: [Int] = []
         var queue: [Int] = []; queue.reserveCapacity(width * height / 4)
         for start in mask.indices where mask[start] == 1 {
             queue.removeAll(keepingCapacity: true); queue.append(start); mask[start] = 0
@@ -110,14 +109,18 @@ public enum CardProcessor {
                     if mask[n] == 1 { mask[n] = 0; queue.append(n) }
                 } }
             }
-            if c.count > (darkUnion ? 8 : width * height / 500) { components.append(c) }
+            if c.count > (darkUnion ? 8 : width * height / 500) {
+                components.append(c)
+                if darkUnion { unionPixels.append(contentsOf: queue) }
+            }
             if c.count > bestPixels.count { bestPixels = queue }
         }
         guard var card = components.max(by: { $0.count < $1.count }) else { throw ScannerError("cardNotFound", "No clear card boundary found against the selected background. Original retained.") }
         if darkUnion {
             card.minX = components.map(\.minX).min()!; card.maxX = components.map(\.maxX).max()!
             card.minY = components.map(\.minY).min()!; card.maxY = components.map(\.maxY).max()!
-            bestPixels = components.flatMap { c in [c.minY * width + c.minX, c.minY * width + c.maxX, c.maxY * width + c.minX, c.maxY * width + c.maxX] }
+            // Retain real edge pixels; component bounding-box corners erase tilt.
+            bestPixels = unionPixels
         }
         let w = Double(card.maxX - card.minX + 1), h = Double(card.maxY - card.minY + 1)
         let ratio = min(w, h) / max(w, h)

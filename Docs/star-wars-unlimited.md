@@ -21,11 +21,13 @@ printings omit the set total, so a bare collector number is valid next to the
 set/language code. Token-only faces without a catalogue identifier may remain
 unmatched. A match is a suggestion requiring review, not an assessed foil finish.
 
-The dark-border crop fallback encloses disconnected foreground components and
-retains a safety margin. It is accepted only with SWU text/logo evidence and a
-card-shaped enclosing area. It deliberately avoids fine deskew because sparse
-black-border pixels do not establish a reliable straight edge. Original PNGs
-are preserved. Cropping or recognition failures do not discard captures.
+The dark-border crop fallback retains actual pixels from disconnected foreground
+components, including the faint outer border. Minimum-area and straight-edge
+analysis corrects small tilts before cropping; component bounding-box corners
+are not used because they erase the tilt. The crop retains one analysis pixel
+around the observed edges for interpolation safety. It is accepted only with
+SWU text/logo evidence and a card-shaped enclosing area. Original PNGs are
+preserved. Cropping or recognition failures do not discard captures.
 
 Pokémon finish, condition, price and Store export logic does not run on SWU
 cards. Supporting SWU pricing or Store staging needs separate provider/contracts
