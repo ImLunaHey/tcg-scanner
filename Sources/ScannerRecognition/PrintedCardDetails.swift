@@ -18,6 +18,7 @@ enum PrintedCardDetails {
         let titles = lines.filter {
             $0.confidence >= 0.7 && $0.y > 0.8 && $0.height > 0.025 && $0.height < 0.12 &&
             $0.text.rangeOfCharacter(from: .letters) != nil &&
+            $0.text.range(of: #"(?i)^\s*(?:HP\s*\d+|\d+\s*HP)"#, options: .regularExpression) == nil &&
             !["basic", "stage 1", "stage 2", "stage1", "stage2", "trainer", "energy", "hp", "supporter", "item", "stadium", "pokemon tool"].contains(CardMatcher.normalized($0.text)) &&
             !$0.text.lowercased().hasPrefix("evolves from")
         }.sorted { $0.height > $1.height }

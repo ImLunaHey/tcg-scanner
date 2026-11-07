@@ -104,6 +104,13 @@ public actor CardRecognizer: CardRecognizing {
         var result = RecognitionEvidence(lines: best.0.lines, candidates: candidates, warnings: warnings, orientation: best.0.rotation)
         if candidates.isEmpty, language == .english {
             result.uncataloguedCard = PrintedCardDetails.read(best.0.lines)
+            if result.uncataloguedCard == nil, CardMatcher.footerOrientationScore(best.0.lines) > 0 {
+                let codeRetry = Task.detached(priority: .utility) {
+                    try CardOCR.englishSetCode(data, rotation: rotation)
+                }
+                let codeLines = try await withTaskCancellationHandler { try await codeRetry.value } onCancel: { codeRetry.cancel() }
+                result.uncataloguedCard = PrintedCardDetails.read(best.0.lines + codeLines)
+            }
             if result.uncataloguedCard != nil {
                 result.warnings.append("Printed details read locally; no matching catalogue entry. These are OCR transcriptions, not a verified printing. Catalogue lookup will retry automatically.")
             }
