@@ -128,3 +128,25 @@ func invertedBackRetriesLogoOCRInPatternOrientation() throws {
     #expect(try PokemonBackOrientation.patternRotation(bytes) == 2)
     #expect(try PokemonBackOrientation.rotation(bytes, words: ["PaKCMOy"]) == 2)
 }
+
+@Test func savedOppositeBackLogoConfirmsLayoutWithoutChangingRotation() throws {
+    guard let file = ProcessInfo.processInfo.environment["SCANNER_OPPOSITE_BACK_LOGO_IMAGE"] else { return }
+    let bytes = try Data(contentsOf: URL(fileURLWithPath: file))
+    #expect(try PokemonBackOrientation.patternRotation(bytes) == 2)
+    for turns in 0..<4 {
+        let rotated = try ImageProcessor.render(bytes, request: ImageEditRequest(jobID: UUID(), sequence: 1, quarterTurns: turns))
+        let expected = (6 - turns) % 4
+        #expect(try PokemonBackOrientation.rotation(rotated.data, words: []) == expected)
+        let plan = try CardProcessor.uprightRotation(rotated.data)
+        #expect(plan.verified && plan.basis == "pokemon-back-pattern" && plan.turns == expected)
+    }
+    if let original = ProcessInfo.processInfo.environment["SCANNER_OPPOSITE_BACK_ORIGINAL"] {
+        let plan = try CardProcessor.analyze(Data(contentsOf: URL(fileURLWithPath: original)))
+        #expect(plan.orientationVerified && plan.orientationBasis == "pokemon-back-pattern")
+        #expect(plan.quarterTurns == 2)
+    }
+    if let front = ProcessInfo.processInfo.environment["SCANNER_OPPOSITE_BACK_FRONT"] {
+        let data = try Data(contentsOf: URL(fileURLWithPath: front))
+        #expect(try PokemonBackOrientation.rotation(data, words: ["Pokemon"]) == nil)
+    }
+}

@@ -26,7 +26,14 @@ enum PokemonBackOrientation {
         request.regionOfInterest = CGRect(x: 0.04, y: 0.70, width: 0.92, height: 0.28)
         try VNImageRequestHandler(data: data, orientation: orientations[turns]).perform([request])
         let logos = (request.results ?? []).compactMap { $0.topCandidates(1).first }
-        return logos.contains { $0.confidence >= 0.5 && resemblesLogo($0.string) } ? turns : nil
+        if logos.contains(where: { $0.confidence >= 0.5 && resemblesLogo($0.string) }) { return turns }
+        // The back has opposing logos. Either can establish identity, just as
+        // whole-card words above can; only the ball/layout establishes rotation.
+        // A faint or stylized reading at one end must not hide a clear other end.
+        try Task.checkCancellation()
+        try VNImageRequestHandler(data: data, orientation: orientations[(turns + 2) % 4]).perform([request])
+        let oppositeLogos = (request.results ?? []).compactMap { $0.topCandidates(1).first }
+        return oppositeLogos.contains { $0.confidence >= 0.5 && resemblesLogo($0.string) } ? turns : nil
     }
 
     /// Independent colour/layout evidence for orientation-invariant border checks.

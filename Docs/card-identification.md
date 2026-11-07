@@ -366,3 +366,11 @@ URL on either side. The other side need not have readable branding. Weaker
 branding still requires agreement on both sides; stale evidence and conflicts
 with a recognised playable-card back do not classify the pair. Detection stores
 only the evidence kind, never the private redemption string or QR payload.
+
+Pokémon back recognition requires the existing blue-border, yellow-logo and
+red/white ball layout checks plus readable logo evidence. If the proposed top
+logo is unreadable, OCR checks the opposite end before giving up. Either logo
+can establish that it is a Pokémon back; the layout still determines rotation.
+This fixes B-047 C-023 without manually assigning its sides. The saved original
+and all four rotations of its prepared back pass, while its Meddling Memo front
+is rejected by the back detector.
