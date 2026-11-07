@@ -102,7 +102,7 @@ describe("stamped edition presentation", () => {
         openMarks: () => undefined,
       }),
     );
-    expect(panel).toContain("No card match found");
+    expect(panel).toContain("Couldn’t read or match card details");
     expect(panel).toContain("Pumpkin stamp · edition unresolved");
     expect(panel).not.toContain("Trick or Trade");
   });

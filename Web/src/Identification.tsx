@@ -57,6 +57,7 @@ export type Identification = {
     | "processing"
     | "reviewRequired"
     | "noMatch"
+    | "awaitingCatalogue"
     | "failed"
     | "confirmed"
     | "rejected";
@@ -65,6 +66,7 @@ export type Identification = {
   conditionCheck?: import("./ConditionReview").ConditionCheck;
   evidence?: {
     candidates: CardCandidate[];
+    uncataloguedCard?: { name: string; setCode: string; collectorNumber: string; setName?: string };
     energySymbol?: { type: string; similarity: number; method: string };
     lines: { text: string }[];
     warnings: string[];
@@ -306,7 +308,7 @@ export function IdentificationReview({
     estimateFinish.isPending ||
     result?.state === "processing";
   const mayIdentify =
-    !result || ["failed", "noMatch", "rejected"].includes(result.state);
+    !result || ["failed", "noMatch", "rejected", "awaitingCatalogue"].includes(result.state);
   return (
     <Modal close={close}>
       <section
@@ -593,6 +595,14 @@ export function IdentitySummary({
           : "Not identified yet"}
       </p>
     );
+  const unlisted = identification.evidence?.uncataloguedCard;
+  if (identification.state === "awaitingCatalogue" && unlisted)
+    return <div className="card-summary-identity">
+      <h2>{unlisted.name}</h2>
+      <p>{unlisted.setName ? `${unlisted.setName} · ` : ""}{unlisted.setCode} · {unlisted.collectorNumber}</p>
+      <span className="finish-pill finish-uncertain">Awaiting catalogue data</span>
+      <p className="small muted">Read from card · not yet verified. Retried automatically each day.</p>
+    </div>;
   const card = identityCard(identification);
   const edition = editionPresentation(identification);
   const energyName = energyIdentityName(identification);
@@ -634,7 +644,7 @@ export function IdentitySummary({
         : identification.state === "reviewRequired"
           ? `${identification.evidence?.candidates.length || 0} possible matches · review identity`
           : identification.state === "noMatch"
-            ? "No card match found"
+            ? "Couldn’t read or match card details"
             : identification.state === "failed"
               ? "Identification failed · retry in review"
               : identification.state === "rejected"
