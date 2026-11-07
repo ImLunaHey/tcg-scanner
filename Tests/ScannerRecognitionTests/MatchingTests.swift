@@ -54,6 +54,8 @@ func missingPrintingDoesNotMatchUpsideDownFlavourText() async throws {
     #expect(result.orientation == 0)
     #expect(result.candidates.isEmpty)
     #expect(result.lines.contains { $0.text.contains("026/103") && $0.y < 0.3 })
+    #expect(result.uncataloguedCard?.name == "Kyogre")
+    #expect(result.uncataloguedCard?.setCode == "DLR")
 }
 @Test func invalidRecognitionRequestsAndImagesAreRejected() throws {
     #expect(throws: ScannerError.self) { try IdentificationRequest(jobID: UUID(), sequence: 0).validate() }

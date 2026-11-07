@@ -4,6 +4,20 @@ import ScannerRecognition
 import ScannerImageProcessing
 
 extension ScannerCoordinator {
+    /// One due card at a time while idle; persisted deadlines survive restarts.
+    public func retryAwaitingCatalogue(now: Date = Date()) async throws {
+        guard !stopping, !paused, activeScanID == nil, queue.isEmpty,
+              preparingCardJobs.isEmpty, editingJobs.isEmpty,
+              identificationTasks.isEmpty, !automaticallyIdentifyingCards,
+              let record = try database.nextCatalogueRetryJob(),
+              let pending = record.cardIdentifications?.filter({
+                  [.awaitingCatalogue, .failed].contains($0.state) &&
+                  $0.catalogueRetryAfter.map { $0 <= now } == true
+              }).min(by: { $0.catalogueRetryAfter! < $1.catalogueRetryAfter! }) else { return }
+        _ = try await identifyCard(IdentificationRequest(jobID: record.id,
+            sequence: pending.request.sequence, language: pending.request.language))
+    }
+
     public func identifyCard(_ request: IdentificationRequest) async throws -> CardIdentification {
         try request.validate()
         guard !stopping else { throw ScannerError("busy", "Service is shutting down.") }
@@ -20,7 +34,7 @@ extension ScannerCoordinator {
             return existing
         }
         if let existing = record.cardIdentifications?.first(where: { $0.request.sequence == request.sequence }),
-           ![IdentificationState.failed, .noMatch, .rejected].contains(existing.state) {
+           ![IdentificationState.failed, .noMatch, .rejected, .awaitingCatalogue].contains(existing.state) {
             throw ScannerError("conflict", "This image already has an identification. Review or reject it before trying again.")
         }
         guard identificationTasks.isEmpty, !automaticallyIdentifyingCards else { throw ScannerError("busy", "Another identification is running; retry when it finishes.") }
@@ -28,6 +42,10 @@ extension ScannerCoordinator {
         let image = prepared?.image ?? original
         guard image.bytes <= 32 * 1024 * 1024 else { throw ScannerError("resourceLimit", "OCR source exceeds 32 MiB.") }
         var identification = CardIdentification(request: request, sourceSHA256: image.sha256)
+        if let previous = record.cardIdentifications?.first(where: { $0.request.sequence == request.sequence }),
+           previous.catalogueRetryAfter != nil {
+            identification.catalogueRetryAfter = Date().addingTimeInterval(24 * 3600)
+        }
         identification.sourceEditID = prepared?.id
         if record.detectedGame(for: request.sequence) == .yugioh { identification.method = "apple-vision-ygoprodeck-text-v1" }
         if record.detectedGame(for: request.sequence) == .starwarsUnlimited { identification.method = "apple-vision-swu-db-text-v1" }
@@ -75,6 +93,7 @@ extension ScannerCoordinator {
             result.state = .rejected; result.selectedCardID = nil; result.finish = .unverified; result.condition = .unassessed
         }
         result.reviewedAt = Date()
+        result.catalogueRetryAfter = nil
         replaceIdentification(result, in: &record)
         try database.save(record)
         try BatchFiles.writeManifest(record, root: storageRoot)
@@ -173,6 +192,12 @@ extension ScannerCoordinator {
         } catch {
             result.state = .failed
             result.error = error is CancellationError ? ScannerError("interrupted", "Identification stopped; retry explicitly.") : ScannerError("recognition", error: error)
+        }
+        if result.evidence?.uncataloguedCard != nil && result.state == .noMatch {
+            result.state = .awaitingCatalogue
+            result.catalogueRetryAfter = Date().addingTimeInterval(24 * 3600)
+        } else if result.state != .failed {
+            result.catalogueRetryAfter = nil
         }
         result.completedAt = Date()
         return result

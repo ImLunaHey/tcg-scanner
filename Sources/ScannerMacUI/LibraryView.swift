@@ -141,6 +141,13 @@ private struct CardIdentitySummary: View {
                 switch identification.state {
                 case .processing: Text("Identifying card…")
                 case .reviewRequired: Text("\(identification.evidence?.candidates.count ?? 0) possible matches · review identity")
+                case .awaitingCatalogue:
+                    if let printed = identification.evidence?.uncataloguedCard {
+                        Text(printed.name).bold()
+                        Text([printed.setName, printed.setCode, printed.collectorNumber].compactMap { $0 }.joined(separator: " · "))
+                    }
+                    Text("Awaiting catalogue data").foregroundStyle(.orange)
+                    Text("Read from card · not yet verified. Retried automatically each day.")
                 case .noMatch:
                     if let energy = identification.evidence?.energySymbol {
                         Text(energy.displayName).bold()

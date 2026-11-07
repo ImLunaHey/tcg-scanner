@@ -102,6 +102,12 @@ public actor CardRecognizer: CardRecognizing {
             warnings.append(energy == nil ? "No supported match. Check the front orientation, text clarity and catalogue coverage; originals are preserved." : "Energy type recognized from the top-right symbol; exact printing is unknown.")
         }
         var result = RecognitionEvidence(lines: best.0.lines, candidates: candidates, warnings: warnings, orientation: best.0.rotation)
+        if candidates.isEmpty, language == .english {
+            result.uncataloguedCard = PrintedCardDetails.read(best.0.lines)
+            if result.uncataloguedCard != nil {
+                result.warnings.append("Printed details read locally; no matching catalogue entry. These are OCR transcriptions, not a verified printing. Catalogue lookup will retry automatically.")
+            }
+        }
         result.raritySymbol = raritySymbol
         if let energy, energy.0.rotation == best.0.rotation { result.energySymbol = energy.1 }
         return result

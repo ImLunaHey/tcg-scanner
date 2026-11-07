@@ -1,7 +1,7 @@
 import Foundation
 
 public enum IdentificationState: String, Codable, Sendable {
-    case processing, reviewRequired, noMatch, failed, confirmed, rejected
+    case processing, reviewRequired, awaitingCatalogue, noMatch, failed, confirmed, rejected
 }
 
 public enum CardFinish: String, Codable, Sendable, CaseIterable { case unverified, normal, holo, reverseHolo, other }
@@ -56,6 +56,18 @@ public struct CardCandidate: Codable, Sendable, Equatable {
     }
 }
 
+public struct UncataloguedCard: Codable, Sendable, Equatable {
+    public var name: String
+    public var setCode: String
+    public var collectorNumber: String
+    /// User-confirmed set label; the printed code remains the source of truth.
+    public var setName: String?
+    public init(name: String, setCode: String, collectorNumber: String) {
+        self.name = name; self.setCode = setCode; self.collectorNumber = collectorNumber
+        self.setName = setCode == "DLR" ? "Delta Reign" : nil
+    }
+}
+
 public struct RecognitionEvidence: Codable, Sendable {
     public var lines: [RecognizedLine]
     public var candidates: [CardCandidate]
@@ -63,6 +75,7 @@ public struct RecognitionEvidence: Codable, Sendable {
     public var orientation: Int
     public var raritySymbol: RaritySymbolEvidence?
     public var energySymbol: EnergySymbolEvidence?
+    public var uncataloguedCard: UncataloguedCard?
     public init(lines: [RecognizedLine], candidates: [CardCandidate], warnings: [String] = [], orientation: Int = 0) {
         self.lines = lines; self.candidates = candidates; self.warnings = warnings; self.orientation = orientation
     }
@@ -77,6 +90,7 @@ public struct CardIdentification: Codable, Sendable {
     public var createdAt = Date()
     public var completedAt: Date?
     public var reviewedAt: Date?
+    public var catalogueRetryAfter: Date?
     public var evidence: RecognitionEvidence?
     public var selectedCardID: String?
     public var error: ScannerError?

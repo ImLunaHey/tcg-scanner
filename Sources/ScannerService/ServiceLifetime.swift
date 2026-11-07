@@ -11,6 +11,7 @@ final class ServiceLifetime {
     private let log: @Sendable (String) -> Void
     private var signals: [DispatchSourceSignal] = []
     private var monitor: Task<Void, Never>?
+    private var catalogueMonitor: Task<Void, Never>?
     private var sleepTask: Task<Void, Never>?
     private var observers: [NSObjectProtocol] = []
     private var shuttingDown = false
@@ -37,6 +38,13 @@ final class ServiceLifetime {
                 }
             }
         })
+        catalogueMonitor = Task { [coordinator, log] in
+            while !Task.isCancelled {
+                do { try await coordinator.retryAwaitingCatalogue() }
+                catch { if !Task.isCancelled { log("Catalogue retry: \(error.localizedDescription)") } }
+                do { try await Task.sleep(for: .seconds(30)) } catch { break }
+            }
+        }
         monitor = Task { [coordinator, log] in
             var lastError: String?
             while !Task.isCancelled {
@@ -66,6 +74,7 @@ final class ServiceLifetime {
         guard !shuttingDown else { return }
         shuttingDown = true
         monitor?.cancel()
+        catalogueMonitor?.cancel()
         for observer in observers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
         observers.removeAll()
         server.stopAccepting(releaseLockWhenDrained: false)
@@ -74,6 +83,7 @@ final class ServiceLifetime {
             let deadline = ContinuousClock.now + .seconds(55)
             await coordinator.shutdownScans()
             await monitor?.value
+            await catalogueMonitor?.value
             await sleepTask?.value
             while server.activeConnections > 0 && ContinuousClock.now < deadline {
                 try? await Task.sleep(for: .milliseconds(100))

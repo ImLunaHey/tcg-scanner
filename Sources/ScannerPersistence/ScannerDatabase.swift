@@ -108,6 +108,17 @@ public final class ScannerDatabase: Sendable {
             try Data.fetchOne(db, sql: "SELECT record FROM jobs WHERE id = ?", arguments: [id.uuidString]).map { try Wire.decoder().decode(ScanRecord.self, from: $0) }
         }
     }
+    public func nextCatalogueRetryJob() throws -> ScanRecord? {
+        try queue.read { db in
+            try Data.fetchOne(db, sql: """
+                SELECT jobs.record FROM jobs, json_each(CAST(jobs.record AS TEXT), '$.cardIdentifications') AS item
+                WHERE jobs.state IN ('completed', 'failed', 'cancelled')
+                  AND json_extract(item.value, '$.state') IN ('awaitingCatalogue', 'failed')
+                  AND json_extract(item.value, '$.catalogueRetryAfter') IS NOT NULL
+                ORDER BY json_extract(item.value, '$.catalogueRetryAfter') LIMIT 1
+                """).map { try Wire.decoder().decode(ScanRecord.self, from: $0) }
+        }
+    }
     public func submission(_ id: UUID) throws -> ScanRequest? {
         try queue.read { db in
             try Data.fetchOne(db, sql: "SELECT request FROM jobs WHERE id = ?", arguments: [id.uuidString]).map { try Wire.decoder().decode(ScanRequest.self, from: $0) }

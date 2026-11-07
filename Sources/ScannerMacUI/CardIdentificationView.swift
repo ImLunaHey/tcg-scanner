@@ -33,7 +33,7 @@ struct CardIdentificationView: View {
                         Text("Identification: " + result.state.rawValue).font(.headline)
                         if let error = result.error { Text(error.message).foregroundStyle(.red) }
                     }
-                    if !loading && (result == nil || [.failed, .noMatch, .rejected].contains(result!.state)) {
+                    if !loading && (result == nil || [.failed, .noMatch, .rejected, .awaitingCatalogue].contains(result!.state)) {
                         Button(result == nil ? "Identify this image" : "Try identification again") { identify() }.buttonStyle(.borderedProminent).disabled(saving)
                     }
                     if let edition = result?.editionPresentation(for: selected.isEmpty ? nil : selected) {
