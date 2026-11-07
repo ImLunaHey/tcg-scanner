@@ -9,10 +9,14 @@ extension ScannerCoordinator {
         guard (1...100).contains(sequence) else { throw ScannerError("invalidParams", "Sequence must be 1–100.") }
         preparingCardJobs.insert(jobID); defer { preparingCardJobs.remove(jobID) }
         try validateStorage()
-        let record = try await scanStatus(jobID)
+        var record = try await scanStatus(jobID)
         guard record.state.terminal, scans[jobID] == nil else { throw ScannerError("busy", "Wait for scanning to finish.") }
         if let existing = record.processedImages?.first(where: { $0.id == id }) {
             guard existing.request.sequence == sequence, existing.cardPreparation != nil else { throw ScannerError("conflict", "Image operation ID already has different inputs.") }
+            if record.processedImages?.last(where: { $0.request.sequence == sequence && $0.cardPreparation != nil })?.id == existing.id {
+                record.warnings.removeAll { $0.hasPrefix("Card preparation failed for image \(sequence):") }
+                try database.save(record)
+            }
             try BatchFiles.writeManifest(record, root: storageRoot)
             return existing
         }
@@ -22,6 +26,7 @@ extension ScannerCoordinator {
         // Reload after analysis: a concurrent identification or edit may have been saved.
         var updated = try await scanStatus(jobID)
         updated.processedImages = (updated.processedImages ?? []) + [edit]
+        updated.warnings.removeAll { $0.hasPrefix("Card preparation failed for image \(sequence):") }
         updated.cardGames = CardGameDetection.resolve(updated)
         try database.save(updated); try BatchFiles.writeManifest(updated, root: storageRoot)
         return edit

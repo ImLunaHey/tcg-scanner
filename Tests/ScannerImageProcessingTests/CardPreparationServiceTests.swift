@@ -213,3 +213,28 @@ func savedPairsAutomaticallyPrepareAndRouteByGame() async throws {
     #expect(manifest.cardGames?.map(\.game) == result.cardGames?.map(\.game))
     await coordinator.shutdownScans()
 }
+
+@Test func successfulPreparationClearsOnlyItsResolvedFailureWarning() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let database = try ScannerDatabase()
+    let coordinator = try ScannerCoordinator(backend: CardPaper(), storageRoot: root, database: database)
+    let job = try await coordinator.startScan(ScanRequest())
+    var record = try await waitForCard(coordinator, id: job.id)
+    record.warnings += ["Card preparation failed for image 1: old failure", "Card preparation failed for image 10: unrelated", "Keep this warning"]
+    try database.save(record)
+    let id = UUID()
+    _ = try await coordinator.prepareCard(jobID: job.id, sequence: 1, id: id)
+    var saved = try await coordinator.scanStatus(job.id)
+    #expect(!saved.warnings.contains { $0.hasPrefix("Card preparation failed for image 1:") })
+    #expect(saved.warnings.contains("Card preparation failed for image 10: unrelated"))
+    #expect(saved.warnings.contains("Keep this warning"))
+    saved.warnings.append("Card preparation failed for image 1: recovered ledger")
+    try database.save(saved)
+    _ = try await coordinator.prepareCard(jobID: job.id, sequence: 1, id: id)
+    let retried = try await coordinator.scanStatus(job.id)
+    #expect(retried.processedImages?.count == saved.processedImages?.count)
+    #expect(!retried.warnings.contains { $0.hasPrefix("Card preparation failed for image 1:") })
+    #expect(retried.images.map(\.sha256) == record.images.map(\.sha256))
+    await coordinator.shutdownScans()
+}
