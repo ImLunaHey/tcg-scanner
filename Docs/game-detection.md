@@ -7,7 +7,7 @@ card. Different games can coexist in a batch.
 
 The service exposes `cardGames` on a scan record and saves it with prepared
 images in the manifest. Each entry contains its physical card `number`, `game`
-(`pokemon`, `yugioh`, or `unknown`), and, when detected, `frontSequence`,
+(`pokemon`, `yugioh`, `starwarsUnlimited`, or `unknown`), and, when detected, `frontSequence`,
 `backSequence`, `backSHA256`, `method`, and a human-readable `reason`.
 The API derives this evidence from preparation metadata matched to the current
 original checksum. It does not trust a client-supplied game or cached label.
@@ -18,10 +18,13 @@ original checksum. It does not trust a client-supplied game or cached label.
   bottom. One OCR character error in “Trading Card Game” is tolerated only with
   all the other spatial and colour checks. A brown image or KONAMI alone is not
   sufficient.
-- Missing sides, two recognized backs, unknown backs, stale preparation evidence,
+- SWU uses its dark logo back or printed SWU footer evidence for two-sided cards.
+  It retains numbered sides when neither face is a standard back.
+- Missing sides, two recognized backs, unsupported backs without SWU footer evidence, stale preparation evidence,
   and simplex scans remain unknown. Missing captures never shift later pairs.
 
-Both games get crop, deskew, upright orientation and front/back presentation.
+Pokémon and Yu-Gi-Oh! get crop, deskew, upright orientation and front/back presentation.
+SWU dark-border crops retain a safety margin without fine deskew.
 Detected Pokémon pairs enter Pokémon catalogue matching, finish assessment,
 condition checks, pricing and Store staging. Detected English Yu-Gi-Oh! fronts
 use [local OCR and YGOPRODeck](yugioh-identification.md) for name, set-code and
@@ -80,3 +83,6 @@ Validation: 216 Swift tests, 38 web tests, production web build and Swift releas
 build passed. Saved-image tests passed on four Yu-Gi-Oh! and four Pokémon pairs,
 including all quarter turns of each back and the automatic preparation pipeline.
 No Yu-Gi-Oh! catalogue, rarity, condition, pricing or Store support is claimed.
+
+Star Wars: Unlimited detection and its two-sided card handling are documented in
+[star-wars-unlimited.md](star-wars-unlimited.md).

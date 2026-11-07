@@ -233,3 +233,24 @@ func otherGamesNeverInvokePokemonAnalysis(basis: String) async throws {
     #expect(persisted.cardIdentifications?.first?.evidence?.energySymbol == result.evidence?.energySymbol)
     await service.shutdownScans()
 }
+
+@Test func starWarsServiceRoutesOnlyToItsRecognizerAndSkipsPokemonAssessments() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let database = try ScannerDatabase()
+    var record = try savedBatch(root: root, database: database)
+    record.processedImages?[0].cardPreparation?.orientationBasis = "starwars-back-pattern"
+    try database.save(record)
+    let pokemon = RecognitionStub(), starWars = RecognitionStub()
+    let service = try ScannerCoordinator(backend: NoHardware(), storageRoot: root, database: database,
+        cardRecognizer: pokemon, starWarsRecognizer: starWars)
+    _ = try await service.identifyCard(IdentificationRequest(jobID: record.id, sequence: 1))
+    let result = try await completed(service, job: record.id)
+    #expect(result.method == "apple-vision-swu-db-text-v1")
+    #expect(result.state == .reviewRequired && result.finishEstimate == nil && result.conditionCheck == nil)
+    #expect(await starWars.calls == 1)
+    #expect(await pokemon.calls == 0)
+    await #expect(throws: ScannerError.self) {
+        try await service.estimateFinish(jobID: record.id, sequence: 1, identificationID: result.request.id)
+    }
+}

@@ -69,3 +69,12 @@ private func gameRecord(_ bases: [String?]) -> ScanRecord {
         #expect(conflict.reason.contains("conflict"))
     }
 }
+
+@Test func starWarsPairsUseLogoBackOrRetainTwoNumberedFaces() {
+    let standard = CardGameDetection.resolve(gameRecord(["starwars-back-pattern", "text"]))[0]
+    #expect(standard.game == .starwarsUnlimited && standard.frontSequence == 2 && standard.backSequence == 1)
+    let dual = CardGameDetection.resolve(gameRecord(["text", "starwars-card-text"]))[0]
+    #expect(dual.game == .starwarsUnlimited && dual.frontSequence == nil && dual.backSequence == nil)
+    #expect(CardGameDetection.resolve(gameRecord(["starwars-back-pattern", "pokemon-back-pattern"]))[0].game == .unknown)
+    #expect(CardGameDetection.resolve(gameRecord(["starwars-back-pattern", "pokemon-code-url"]))[0].game == .unknown)
+}

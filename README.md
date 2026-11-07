@@ -44,7 +44,11 @@ every ICA scanner or trading-card game.
   local OCR and a cached YGOPRODeck catalogue for names, printed set codes and
   catalogue rarities. Yu-Gi-Oh! finish/condition assessment, pricing and Store
   export are not implemented. See [Yu-Gi-Oh! identification](Docs/yugioh-identification.md).
-  See [game detection and validation](Docs/game-detection.md).
+  Star Wars: Unlimited backs and printed English footer identifiers are also
+  supported, with SWU-DB catalogue suggestions and two-sided card handling.
+  SWU finish/condition, pricing and Store export are not implemented. See
+  [Star Wars: Unlimited](Docs/star-wars-unlimited.md) and
+  [game detection and validation](Docs/game-detection.md).
 - Identity and finish results are suggestions. Condition checks inspect selected
   features of standard Pokémon backs; they do **not** establish a selling grade
   or reliably detect every scratch, dent or crease.

@@ -30,6 +30,7 @@ extension ScannerCoordinator {
         var identification = CardIdentification(request: request, sourceSHA256: image.sha256)
         identification.sourceEditID = prepared?.id
         if record.detectedGame(for: request.sequence) == .yugioh { identification.method = "apple-vision-ygoprodeck-text-v1" }
+        if record.detectedGame(for: request.sequence) == .starwarsUnlimited { identification.method = "apple-vision-swu-db-text-v1" }
         // A retry must not erase a physical mark if reading/OCR later fails.
         if let previous = record.cardIdentifications?.first(where: {
             $0.request.sequence == request.sequence && $0.sourceSHA256 == image.sha256 && $0.sourceEditID == prepared?.id
@@ -101,9 +102,9 @@ extension ScannerCoordinator {
         let game = snapshot.detectedGame(for: pending.request.sequence)
         let pair = CardGameDetection.resolve(snapshot).first { $0.number == (pending.request.sequence + 1) / 2 }
         if game == .yugioh { result.method = "apple-vision-ygoprodeck-text-v1" }
-        guard game == .pokemon || (game == .yugioh && pair?.frontSequence == pending.request.sequence) else {
+        guard game == .starwarsUnlimited || game == .pokemon || (game == .yugioh && pair?.frontSequence == pending.request.sequence) else {
             result.state = .noMatch
-            result.evidence = RecognitionEvidence(lines: [], candidates: [], warnings: ["Identification requires a supported card pair and a readable front; Yu-Gi-Oh! backs and unknown games are not assessed."])
+            result.evidence = RecognitionEvidence(lines: [], candidates: [], warnings: ["Identification requires a supported card pair and a readable front; unknown games are not assessed."])
             result.completedAt = Date()
             return result
         }
@@ -125,6 +126,16 @@ extension ScannerCoordinator {
             }
             let data = try await withTaskCancellationHandler { try await sourceTask.value } onCancel: { sourceTask.cancel() }
             try Task.checkCancellation()
+            if game == .starwarsUnlimited {
+                result.method = "apple-vision-swu-db-text-v1"
+                if pair?.backSequence == pending.request.sequence {
+                    result.evidence = RecognitionEvidence(lines: [], candidates: [], warnings: ["Recognized SWU logo back; identity runs on the front."])
+                } else { result.evidence = try await starWarsRecognizer.recognize(data, language: language) }
+                try Task.checkCancellation()
+                result.state = result.evidence?.candidates.isEmpty == false ? .reviewRequired : .noMatch
+                result.completedAt = Date()
+                return result
+            }
             if game == .yugioh {
                 result.evidence = try await yugiohRecognizer.recognize(data, language: language)
                 try Task.checkCancellation()

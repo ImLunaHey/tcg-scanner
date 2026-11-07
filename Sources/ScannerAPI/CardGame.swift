@@ -1,6 +1,6 @@
 import Foundation
 
-public enum CardGame: String, Codable, Sendable { case pokemon, yugioh, unknown }
+public enum CardGame: String, Codable, Sendable { case pokemon, yugioh, starwarsUnlimited, unknown }
 
 public enum CardContentKind: String, Codable, Sendable { case pokemonCodeCard }
 
@@ -29,6 +29,7 @@ public struct CardGameDetection: Codable, Sendable {
                 switch basis {
                 case "pokemon-back-pattern": return (original, .pokemon, basis)
                 case "yugioh-back-pattern": return (original, .yugioh, basis)
+                case "starwars-back-pattern": return (original, .starwarsUnlimited, basis)
                 default: return nil
                 }
             }
@@ -40,6 +41,12 @@ public struct CardGameDetection: Codable, Sendable {
             let hasRedemptionURL = codeBases.contains("pokemon-code-url")
             if hasRedemptionURL && !backs.isEmpty {
                 result.reason = "Redemption URL and playable-card back evidence conflict; check pairing."
+                return result
+            }
+            if backs.isEmpty, codeBases.contains("starwars-card-text"), !hasRedemptionURL {
+                result.game = .starwarsUnlimited
+                result.method = "starwars-card-text"
+                result.reason = "Printed SWU footer detected. No standard logo back; retain numbered sides for two-sided cards."
                 return result
             }
             if backs.isEmpty {

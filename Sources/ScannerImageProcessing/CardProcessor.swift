@@ -27,7 +27,28 @@ public enum CardProcessor {
             throw ScannerError("image", "Cannot inspect card boundaries.")
         }
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-        let boundary = try foregroundBoundary(rgba: rgba, width: width, height: height, background: background)
+        let standardBoundary = try? foregroundBoundary(rgba: rgba, width: width, height: height, background: background)
+        // Dark SWU borders can be disconnected from artwork. Use a conservative
+        // union only when the resulting image independently proves SWU branding.
+        if background == .black, let points = try? foregroundBoundary(rgba: rgba, width: width, height: height, background: background, darkUnion: true).points {
+            var crop = CardDeskew.bounds(points: points, width: width, height: height, degrees: 0)
+            let unionArea = crop.width * crop.height
+            let margin = 0.004
+            let right = min(1, crop.x + crop.width + margin), bottom = min(1, crop.y + crop.height + margin)
+            crop.x = max(0, crop.x - margin); crop.y = max(0, crop.y - margin)
+            crop.width = right - crop.x; crop.height = bottom - crop.y
+            let standardCrop = standardBoundary.map { CardDeskew.bounds(points: $0.points, width: width, height: height, degrees: 0) }
+            if standardCrop == nil || unionArea > standardCrop!.width * standardCrop!.height * 1.03 {
+                let rendered = try ImageProcessor.render(data, request: ImageEditRequest(jobID: UUID(), sequence: 1, crop: crop))
+                let orientation = try uprightRotation(rendered.data, language: language)
+                if orientation.basis.hasPrefix("starwars-") {
+                    return CardPreparation(crop: crop, quarterTurns: orientation.turns, orientationVerified: true,
+                        warnings: ["Dark-border crop retains a safety margin; fine deskew is not applied."],
+                        deskewDegrees: 0, orientationBasis: orientation.basis, sourceCrop: crop)
+                }
+            }
+        }
+        let boundary = try standardBoundary ?? foregroundBoundary(rgba: rgba, width: width, height: height, background: background)
         let geometry = CardDeskew.analyze(points: boundary.points, width: width, height: height)
         let crop = geometry.crop
         let request = ImageEditRequest(jobID: UUID(), sequence: 1, crop: crop, deskewDegrees: geometry.degrees)
@@ -47,7 +68,7 @@ public enum CardProcessor {
         return CardDeskew.bounds(points: boundary.points, width: width, height: height, degrees: 0)
     }
 
-    private static func foregroundBoundary(rgba: [UInt8], width: Int, height: Int, background: ScanBackground) throws -> (points: [CGPoint], touchesEdge: Bool) {
+    private static func foregroundBoundary(rgba: [UInt8], width: Int, height: Int, background: ScanBackground, darkUnion: Bool = false) throws -> (points: [CGPoint], touchesEdge: Bool) {
         var bestPixels: [Int] = []
         var mask = [UInt8](repeating: 0, count: width * height)
         let backing: [Double] = background == .white ? (0..<height).map { y in
@@ -63,7 +84,7 @@ public enum CardProcessor {
             let red = Int(rgba[i]), green = Int(rgba[i + 1]), blue = Int(rgba[i + 2])
             let maximum = max(red, green, blue), minimum = min(red, green, blue)
             if background == .black {
-                if maximum > 50 && red + green + blue > 70 { mask[pixel] = 1 }
+                if maximum > (darkUnion ? 5 : 50) && red + green + blue > (darkUnion ? 7 : 70) { mask[pixel] = 1 }
             } else {
                 // Estimate backing brightness per row from both outside margins.
                 // This follows the real driver's grey backing / white padding transition.
@@ -89,10 +110,15 @@ public enum CardProcessor {
                     if mask[n] == 1 { mask[n] = 0; queue.append(n) }
                 } }
             }
-            if c.count > width * height / 500 { components.append(c) }
+            if c.count > (darkUnion ? 8 : width * height / 500) { components.append(c) }
             if c.count > bestPixels.count { bestPixels = queue }
         }
-        guard let card = components.max(by: { $0.count < $1.count }) else { throw ScannerError("cardNotFound", "No clear card boundary found against the selected background. Original retained.") }
+        guard var card = components.max(by: { $0.count < $1.count }) else { throw ScannerError("cardNotFound", "No clear card boundary found against the selected background. Original retained.") }
+        if darkUnion {
+            card.minX = components.map(\.minX).min()!; card.maxX = components.map(\.maxX).max()!
+            card.minY = components.map(\.minY).min()!; card.maxY = components.map(\.maxY).max()!
+            bestPixels = components.flatMap { c in [c.minY * width + c.minX, c.minY * width + c.maxX, c.maxY * width + c.minX, c.maxY * width + c.maxX] }
+        }
         let w = Double(card.maxX - card.minX + 1), h = Double(card.maxY - card.minY + 1)
         let ratio = min(w, h) / max(w, h)
         guard (0.60...0.83).contains(ratio), w * h >= Double(width * height) * 0.015, w * h < Double(width * height) * 0.85 else {
@@ -118,6 +144,7 @@ public enum CardProcessor {
     }
 
     static func uprightRotation(_ data: Data, language: CardLanguage = .english) throws -> (turns: Int, verified: Bool, basis: String) {
+        if let turns = try StarWarsBackOrientation.rotation(data) { return (turns, true, "starwars-back-pattern") }
         if let turns = try YugiohBackOrientation.rotation(data) { return (turns, true, "yugioh-back-pattern") }
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
@@ -165,7 +192,7 @@ public enum CardProcessor {
                     detectedBasis = "pokemon-code-url"
                 } else if CodeCardText.matches(reread.map(\.string)) { detectedBasis = "pokemon-code-text" }
             }
-            return (best, true, detectedBasis ?? "text")
+            return (best, true, detectedBasis ?? (StarWarsPrintedText.isCard(words) ? "starwars-card-text" : StarWarsPrintedText.isLeaderUnit(words) ? "starwars-leader-unit-text" : "text"))
         }
         if let turns = try PokemonBackOrientation.rotation(data, words: words) {
             return (turns, true, "pokemon-back-pattern")
