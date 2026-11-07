@@ -32,6 +32,29 @@ private let cards = [
     #expect(CardMatcher.normalized("Farfetch’d") == "farfetch d")
     #expect(CardMatcher.rank(lines: [RecognizedLine(text: "SuperFurret", y: 0.9)], catalogue: cards).isEmpty)
 }
+
+@Test func invertedFooterCannotPromoteFlavourTextToCardName() {
+    let catalogue = [CatalogueCard(id: "col1-6", localId: "6", name: "Groudon")]
+    let inverted = [RecognizedLine(text: "Kyogre", y: 0.05, height: 0.04),
+                    RecognizedLine(text: "battled ferociously against Groudon.", y: 0.94, height: 0.02),
+                    RecognizedLine(text: "026/103", y: 0.94, height: 0.02)]
+    #expect(CardMatcher.rank(lines: inverted, catalogue: catalogue).isEmpty)
+    #expect(CardMatcher.footerOrientationScore(inverted) == 0)
+    let upright = inverted.map { line in
+        RecognizedLine(text: line.text, y: 1 - line.y - line.height, height: line.height)
+    }
+    #expect(CardMatcher.footerOrientationScore(upright) == 1)
+    #expect(CardMatcher.rank(lines: upright, catalogue: catalogue).isEmpty)
+}
+
+@Test(.enabled(if: ProcessInfo.processInfo.environment["SCANNER_B051_FIXTURE"] != nil))
+func missingPrintingDoesNotMatchUpsideDownFlavourText() async throws {
+    let path = try #require(ProcessInfo.processInfo.environment["SCANNER_B051_FIXTURE"])
+    let result = try await CardRecognizer().recognize(Data(contentsOf: URL(fileURLWithPath: path)))
+    #expect(result.orientation == 0)
+    #expect(result.candidates.isEmpty)
+    #expect(result.lines.contains { $0.text.contains("026/103") && $0.y < 0.3 })
+}
 @Test func invalidRecognitionRequestsAndImagesAreRejected() throws {
     #expect(throws: ScannerError.self) { try IdentificationRequest(jobID: UUID(), sequence: 0).validate() }
     #expect(throws: ScannerError.self) { try IdentificationRequest(jobID: UUID(), sequence: 1, language: "../en").validate() }

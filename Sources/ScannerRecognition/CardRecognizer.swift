@@ -41,7 +41,10 @@ public actor CardRecognizer: CardRecognizing {
         let cards = try await catalogue.catalogue()
         let ranked = orientations.map { ($0, CardMatcher.rank(lines: $0.lines, catalogue: cards, language: language)) }
         var best = energy.flatMap { symbol in ranked.first { $0.0.rotation == symbol.0.rotation } }
-            ?? ranked.max { ($0.1.first?.score ?? 0) < ($1.1.first?.score ?? 0) }!
+            ?? ranked.max {
+                (CardMatcher.footerOrientationScore($0.0.lines), $0.1.first?.score ?? 0) <
+                (CardMatcher.footerOrientationScore($1.0.lines), $1.1.first?.score ?? 0)
+            }!
         var candidates = try await candidates(for: best.1, catalogue: catalogue)
         var warnings = ["Suggestions require manual confirmation. A base-card catalogue match alone does not establish finish, stamped edition or condition."]
         if language == .korean {

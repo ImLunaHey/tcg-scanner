@@ -30,7 +30,19 @@ enum CardMatcher {
         let suffix = value.dropFirst(prefix.count)
         return String(prefix) + (Int(suffix).map(String.init) ?? String(suffix))
     }
+    /// Vision can read inverted text while leaving its boxes upside down. A
+    /// collector fraction near the top must not turn flavour text into a title.
+    static func collectorLines(_ lines: [RecognizedLine]) -> [RecognizedLine] {
+        lines.filter {
+            $0.confidence >= 0.35 && $0.height <= 0.10 &&
+            $0.text.range(of: #"(?i)^\s*[A-Z]{0,5}[0-9]{1,4}\s*/\s*[A-Z]{0,5}[0-9]{1,4}(?:\s*[^A-Z0-9/\s]+|\s+[O0])?\s*$"#, options: .regularExpression) != nil
+        }
+    }
+    static func footerOrientationScore(_ lines: [RecognizedLine]) -> Int {
+        collectorLines(lines).contains { $0.y < 0.30 } ? 1 : 0
+    }
     static func rank(lines: [RecognizedLine], catalogue: [CatalogueCard], language: CardLanguage = .english) -> [Ranked] {
+        guard !collectorLines(lines).contains(where: { $0.y > 0.65 }) else { return [] }
         let readable = lines.filter { $0.confidence >= 0.35 }
         let titles = readable.filter { $0.y + $0.height > 0.65 && $0.height < 0.15 }.map { " " + normalized($0.text) + " " }
         let footers = readable.filter { $0.y < 0.30 && $0.height <= 0.10 }.map(\.text)
