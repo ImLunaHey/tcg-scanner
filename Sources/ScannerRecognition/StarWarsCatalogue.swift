@@ -6,7 +6,7 @@ struct StarWarsCard: Decodable, Sendable {
     var `Type`: String; var Rarity: String?; var VariantType: String?; var FrontArt: String?
 }
 struct StarWarsSet: Decodable, Sendable {
-    var setId: String; var fullName: String; var numberCards: Int
+    var setId: String; var fullName: String; var numberCards: Int; var releaseDate: String?
 }
 
 /// Fixed public GETs, bounded responses, no redirects or image uploads.

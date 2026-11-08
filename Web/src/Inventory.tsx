@@ -6,6 +6,7 @@ import { useAuth } from "./auth";
 import { batchLabel, captureLabel, gameLabel, type CardGameDetection } from "./models";
 import { Empty, ErrorNote, Loading } from "./ui";
 import { InventoryThumbnail, type InventoryPreview } from "./InventoryThumbnail";
+import { newestSetsFirst, setReleaseLabel } from "./inventorySetOrder";
 import { inventoryURL } from "./inventoryNavigation";
 import { MissingInventoryCard, type MissingCards } from "./InventoryMissing";
 import { ImageLightbox } from "./ImageLightbox";
@@ -16,11 +17,11 @@ export type InventoryEntry = {
   quantity: number; confirmedQuantity: number; preview?: InventoryPreview;
   copies: { batchID: string; batchNumber?: number; cardNumber: number }[];
 };
-export type InventorySet = { id: string; name: string; game: CardGameDetection["game"]; quantity: number; entries: number; previews: InventoryPreview[] };
+export type InventorySet = { id: string; name: string; game: CardGameDetection["game"]; quantity: number; entries: number; releaseDate?: string; previews: InventoryPreview[] };
 type InventoryPage = {
   entries: InventoryEntry[]; sets: InventorySet[]; totalCopies: number; catalogueCopies: number;
   awaitingCatalogueCopies: number; unresolvedCopies: number; excludedCodeCards: number;
-  matchingEntries: number; nextOffset?: number;
+  matchingEntries: number; nextOffset?: number; releaseDatesPending?: boolean;
 };
 export function InventoryCard({ entry, open }: { entry: InventoryEntry; open?: () => void }) {
   const status = entry.status === "awaitingCatalogue" ? "Awaiting catalogue data"
@@ -47,7 +48,7 @@ export function InventoryCard({ entry, open }: { entry: InventoryEntry; open?: (
 export function InventorySetTile({ set, select }: { set: InventorySet; select: () => void }) {
   return <button className="inventory-set-tile" onClick={select} aria-label={`View ${set.name}`}>
     <span className="inventory-set-covers">{set.previews.length ? set.previews.map((preview, index) => <span key={index} style={{ "--cover-ratio": preview.image.width / preview.image.height } as CSSProperties}><InventoryThumbnail preview={preview} /></span>) : <span className="inventory-set-placeholder" style={{ "--cover-ratio": 63 / 88 } as CSSProperties}><ImageIcon size={38} aria-hidden="true" /></span>}</span>
-    <strong>{set.name}</strong><span>{gameLabel(set.game)} · {set.quantity.toLocaleString()} copies</span>
+    <strong>{set.name}</strong><span>{gameLabel(set.game)} · {set.quantity.toLocaleString()} copies</span><span className="inventory-set-date">{setReleaseLabel(set.releaseDate)}</span>
   </button>;
 }
 export function Inventory({ view = "cards", setID = "" }: { view?: "cards" | "sets"; setID?: string }) {
@@ -63,12 +64,12 @@ export function Inventory({ view = "cards", setID = "" }: { view?: "cards" | "se
     return () => clearTimeout(timer);
   }, [search]);
   const inventory = useInfiniteQuery({
-    queryKey: ["inventory", debouncedSearch, setID],
+    queryKey: ["inventory", "entries", debouncedSearch, setID],
     queryFn: ({ signal, pageParam }) => api.get<InventoryPage>(`inventory?limit=100&offset=${pageParam}&search=${encodeURIComponent(debouncedSearch)}&set=${encodeURIComponent(setID)}`, signal),
     initialPageParam: 0,
     getNextPageParam: (page) => page.nextOffset,
     placeholderData: keepPreviousData,
-    refetchInterval: 30_000,
+    refetchInterval: query => view === "sets" && query.state.data?.pages[0]?.releaseDatesPending ? 2_000 : 30_000,
   });
   useEffect(() => {
     if (view === "cards" && inventory.hasNextPage && !inventory.isFetching && !inventory.isPlaceholderData && !inventory.isFetchNextPageError)
@@ -83,7 +84,7 @@ export function Inventory({ view = "cards", setID = "" }: { view?: "cards" | "se
   });
   const data = inventory.data?.pages[0];
   const entries = inventory.data?.pages.flatMap(page => page.entries) || [];
-  const sets = data?.sets.filter(set => `${set.name} ${gameLabel(set.game)}`.toLowerCase().includes(search.toLowerCase())) || [];
+  const sets = newestSetsFirst(data?.sets.filter(set => `${set.name} ${gameLabel(set.game)}`.toLowerCase().includes(search.toLowerCase())) || []);
   const selectedSet = data?.sets.find(set => set.id === setID);
   const gallery = entries.map(entry => ({ id: entry.id, number: entry.number || "", node: <InventoryCard entry={entry} open={() => setLightbox(entry)} /> }));
   if (showMissing) {
@@ -103,6 +104,7 @@ export function Inventory({ view = "cards", setID = "" }: { view?: "cards" | "se
       {view === "cards" && setID && <label className="inventory-missing-toggle"><input type="checkbox" checked={showMissing} onChange={e => navigate(inventoryURL({ setID, search, missing: e.target.checked }))} />Show missing cards</label>}
     </div>
     {showMissing && <><ErrorNote error={missing.error} />{missing.isPending ? <p className="small muted" role="status">Loading set checklist…</p> : missing.data?.note ? <p className="small muted">{missing.data.note}</p> : missing.data && <p className="small muted">{missing.data.cards.length} missing · {missing.data.catalogueCount} catalogue cards</p>}</>}
+    {view === "sets" && data?.releaseDatesPending && <p className="small muted" role="status">Loading release dates…</p>}
     <ErrorNote error={inventory.error} />
     {inventory.isPending ? <Loading /> : view === "sets" ? sets.length ? <div className="inventory-set-grid">{sets.map(set => <InventorySetTile key={set.id} set={set} select={() => chooseSet(set.id)} />)}</div> : <Empty title="No matching sets">Try another set name.</Empty>
       : data && !gallery.length ? <Empty title={search || setID ? "No matching cards" : "No scanned cards yet"}>{search || setID ? "Try another name or set." : "Completed card batches will appear here."}</Empty>

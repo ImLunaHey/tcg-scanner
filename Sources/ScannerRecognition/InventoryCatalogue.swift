@@ -3,11 +3,13 @@ import ScannerAPI
 
 public protocol InventoryCatalogueProviding: Sendable {
     func cards(in source: InventoryCatalogueSource) async throws -> [InventoryCatalogueCard]
+    func releaseDates(for sources: [InventoryCatalogueSource]) async -> InventoryReleaseDateSnapshot
     func thumbnail(key: String) async throws -> ImageThumbnail
 }
 
 /// Catalogue lists are separate from scan inventory: no synthetic stock or scans.
 public actor InventoryCatalogue: InventoryCatalogueProviding {
+    private let dates = InventoryReleaseDates()
     private let pokemon: [CardLanguage: TCGdexClient]
     private let yugioh: YugiohCatalogue
     private let starwars: StarWarsCatalogue
@@ -65,6 +67,9 @@ public actor InventoryCatalogue: InventoryCatalogueProviding {
             throw ScannerError("catalogueUnavailable", "The catalogue does not have a usable card list for this set yet.")
         }
         return result.sorted { $0.number.localizedStandardCompare($1.number) == .orderedAscending }
+    }
+    public func releaseDates(for sources: [InventoryCatalogueSource]) async -> InventoryReleaseDateSnapshot {
+        await dates.snapshot(sources)
     }
     public func thumbnail(key: String) async throws -> ImageThumbnail { try await thumbnails.thumbnail(key: key) }
 }

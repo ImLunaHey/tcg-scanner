@@ -73,6 +73,13 @@ actor TCGdexClient {
         }
         return physical
     }
+    func releaseDate(_ id: String) async throws -> String? {
+        struct CardSet: Decodable { var id: String; var releaseDate: String? }
+        try validate(id)
+        let set = try JSONDecoder().decode(CardSet.self, from: await get(path: "sets/" + id, limit: 2 * 1024 * 1024))
+        guard set.id == id else { throw ScannerError("catalogue", "Invalid set metadata.") }
+        return set.releaseDate
+    }
     func setCards(_ id: String) async throws -> [CatalogueCard] {
         struct CardSet: Decodable { var id: String; var cards: [CatalogueCard] }
         try validate(id)

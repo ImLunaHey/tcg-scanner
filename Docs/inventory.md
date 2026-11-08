@@ -74,3 +74,10 @@ URLs, downloads bounded images without redirects and caches 512px JPEGs locally
 viewport through the same bounded client queue as scan previews. Provider sources:
 [TCGdex sets](https://tcgdex.dev/rest/set), [SWU DB](https://www.swu-db.com/api) and
 [YGOPRODeck](https://ygoprodeck.com/api-guide/).
+
+Sets are ordered newest release first, with unknown dates last and names breaking
+ties. The API adds `releaseDate` (ISO date) to set facets and
+`releaseDatesPending` to inventory pages. Provider metadata refreshes in the
+background with at most three concurrent requests; inventory does not wait for
+network calls. Dates persist locally for a day, with failed requests retried after
+five minutes. Date order uses the represented catalogue language/region.

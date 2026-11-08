@@ -2047,3 +2047,5 @@
 .inventory-card-missing .inventory-card-image { cursor: default; }
 .inventory-card-missing .inventory-card-caption { opacity: .65; }
 .inventory-card-missing .inventory-copy-badge { font-size: .7rem; font-weight: 500; }
+
+.inventory-set-tile .inventory-set-date { font-size: .75rem; opacity: .5; }

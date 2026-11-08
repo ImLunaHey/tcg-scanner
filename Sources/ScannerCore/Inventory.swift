@@ -104,6 +104,13 @@ struct InventoryBuilder: Sendable {
         let value = words.joined(separator: "-")
         return value.isEmpty ? "unidentified" : String(value.prefix(200))
     }
+    func catalogueSourcesBySlug() -> [String: InventoryCatalogueSource] {
+        let slugs = setSlugs()
+        return Dictionary(uniqueKeysWithValues: catalogueSources.compactMap { key, sources in
+            guard let slug = slugs[key], let source = sources.sorted(by: { $0.language.rawValue < $1.language.rawValue }).first else { return nil }
+            return (slug, source)
+        })
+    }
     func catalogueSource(set: String) throws -> InventoryCatalogueSource? {
         guard let key = setSlugs().first(where: { $0.value == set })?.key else { throw ScannerError("notFound", "Inventory set not found.") }
         return catalogueSources[key]?.sorted { $0.language.rawValue < $1.language.rawValue }.first
@@ -160,7 +167,14 @@ extension ScannerCoordinator {
             throw ScannerError("invalidParams", "Inventory requires limit 1–100, a valid offset and search up to 160 bytes.")
         }
         let builder = try await inventorySnapshot()
-        return builder.page(limit: limit, offset: offset, search: search, set: set)
+        var page = builder.page(limit: limit, offset: offset, search: search, set: set)
+        let sources = builder.catalogueSourcesBySlug()
+        let dates = await inventoryCatalogue.releaseDates(for: Array(sources.values))
+        page.releaseDatesPending = dates.pending
+        for index in page.sets.indices {
+            if let source = sources[page.sets[index].id] { page.sets[index].releaseDate = dates.dates[source] }
+        }
+        return page
     }
     public func missingInventoryCards(set: String) async throws -> InventoryMissingCards {
         guard !set.isEmpty, set.utf8.count <= 256 else { throw ScannerError("invalidParams", "Select an inventory set.") }

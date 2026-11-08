@@ -22,6 +22,7 @@ public struct InventorySet: Codable, Sendable {
     public var game: CardGame
     public var quantity: Int
     public var entries: Int
+    public var releaseDate: String?
     public var previews: [InventoryPreview]
     public init(id: String, name: String, game: CardGame, quantity: Int, entries: Int, previews: [InventoryPreview]) {
         self.id = id; self.name = name; self.game = game; self.quantity = quantity; self.entries = entries; self.previews = previews
@@ -50,6 +51,7 @@ public struct InventoryEntry: Codable, Sendable {
 public struct InventoryPage: Codable, Sendable {
     public var schemaVersion = 1
     public var sets: [InventorySet] = []
+    public var releaseDatesPending = false
     public var entries: [InventoryEntry]
     public var totalCopies: Int
     public var catalogueCopies: Int

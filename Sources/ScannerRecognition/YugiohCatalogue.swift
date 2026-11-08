@@ -22,6 +22,7 @@ actor YugiohCatalogue {
     static let diskImageLimit = 256 * 1024 * 1024
     private let root: URL
     private let fetch: @Sendable (URL, Int) async throws -> Data
+    private var setDates: (Date, [String: String])?
     private var memory: Snapshot?
     private var refreshAfter = Date.distantPast
     private var pending: Task<Snapshot, any Error>?
@@ -71,6 +72,18 @@ actor YugiohCatalogue {
         }
     }
 
+    func setReleaseDate(_ code: String) async throws -> String? {
+        if let setDates, Date().timeIntervalSince(setDates.0) < 86400 { return setDates.1[code] }
+        struct CardSet: Decodable { var set_code: String; var tcg_date: String? }
+        let data = try await fetch(URL(string: "https://db.ygoprodeck.com/api/v7/cardsets.php")!, 2 * 1024 * 1024)
+        guard data.count <= 2 * 1024 * 1024 else { throw ScannerError("resourceLimit", "Set list exceeds size limit.") }
+        let sets = try JSONDecoder().decode([CardSet].self, from: data)
+        guard sets.count <= 5000 else { throw ScannerError("resourceLimit", "Too many catalogue sets.") }
+        var dates: [String: String] = [:]
+        for set in sets { if let date = set.tcg_date { dates[set.set_code] = date } }
+        setDates = (Date(), dates)
+        return dates[code]
+    }
     static func decode(_ data: Data) throws -> [YugiohCard] {
         guard data.count <= catalogueLimit else { throw ScannerError("resourceLimit", "Yu-Gi-Oh! catalogue exceeds 64 MiB.") }
         let cards = try JSONDecoder().decode(Envelope.self, from: data).data
