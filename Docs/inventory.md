@@ -22,3 +22,18 @@ to entries; summary quantities describe the whole inventory. Reads use a single
 SQLite snapshot and stream records into summaries without opening image files or
 requesting prices. Work runs off the coordinator actor, with at most four readers.
 Daily catalogue updates regroup previously unresolved printings on the next read.
+
+## Visual browsing
+
+Inventory entries include a representative `preview` with batch ID, image metadata
+and the prepared edit ID when available. The service chooses the detected front or
+identity-bearing side, preserving the original capture sequence. Unknown pairs
+use their first capture without claiming it is a front. The web gallery loads
+cached authenticated JPEG thumbnails near the viewport; full images load only
+when opening the existing lightbox.
+
+The `sets` array covers the complete inventory regardless of entry pagination or
+search. Each set has its game, total copies, entry count and up to three cover
+previews. The optional `set` query/RPC parameter filters by the exact set facet ID
+(up to 512 bytes), and combines with search. Set tiles open the corresponding
+card gallery. Quantities and grouping rules remain unchanged.

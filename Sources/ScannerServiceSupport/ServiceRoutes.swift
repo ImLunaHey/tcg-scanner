@@ -15,14 +15,19 @@ extension DiagnosticRouter {
         let result: JSONValue
         switch request.method {
         case "v1.inventory.list":
-            try only(params, keys: ["limit", "offset", "search"])
+            try only(params, keys: ["limit", "offset", "search", "set"])
             let search: String
             if let value = params["search"] {
                 guard case .string(let text) = value else { throw RPCFailure(code: -32602, message: "Expected search text.") }
                 search = text
             } else { search = "" }
+            let set: String
+            if let value = params["set"] {
+                guard case .string(let text) = value else { throw RPCFailure(code: -32602, message: "Expected set text.") }
+                set = text
+            } else { set = "" }
             result = try .wrapping(await coordinator.inventory(limit: integer(params, "limit", default: 50, range: 1...100),
-                offset: integer(params, "offset", default: 0, range: 0...1_000_000), search: search))
+                offset: integer(params, "offset", default: 0, range: 0...1_000_000), search: search, set: set))
         case "v1.diagnostics.buttonMonitor":
             try only(params, keys: ["seconds"])
             let seconds = try integer(params, "seconds", default: 300, range: 30...300)

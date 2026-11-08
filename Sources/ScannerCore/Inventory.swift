@@ -44,6 +44,14 @@ struct InventoryBuilder {
                     name: complete ? "Needs identification" : "Incomplete card pair", setName: nil, number: nil,
                     status: "unresolved", copy: copy, confirmed: false)
             }
+            let sequence = detection?.frontSequence ?? matched.first?.0.request.sequence
+                ?? waiting.first?.request.sequence ?? images.map(\.sequence).min()
+            if let original = images.first(where: { $0.sequence == sequence }) {
+                let prepared = record.processedImages?.last {
+                    $0.request.sequence == original.sequence && $0.cardPreparation != nil && $0.sourceSHA256 == original.sha256
+                }
+                entry.preview = InventoryPreview(batchID: record.id, image: prepared?.image ?? original, editID: prepared?.id)
+            }
             if var existing = entries[entry.id] {
                 existing.quantity += 1; existing.confirmedQuantity += entry.confirmedQuantity
                 existing.copies.append(copy); entry = existing
@@ -52,28 +60,35 @@ struct InventoryBuilder {
         }
     }
     private func key(_ parts: [String]) -> String { (try! JSONEncoder().encode(parts)).base64EncodedString() }
-    func page(limit: Int, offset: Int, search: String) -> InventoryPage {
+    func page(limit: Int, offset: Int, search: String, set: String = "") -> InventoryPage {
         let all = Array(entries.values)
         let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
         let filtered = all.filter {
-            query.isEmpty || [$0.name, $0.setName ?? "", $0.number ?? "", $0.game.rawValue, $0.language]
-                .joined(separator: " ").localizedCaseInsensitiveContains(query)
+            (set.isEmpty || $0.setKey == set) && (query.isEmpty || [$0.name, $0.setName ?? "", $0.number ?? "", $0.game.rawValue, $0.language]
+                .joined(separator: " ").localizedCaseInsensitiveContains(query))
         }.sorted {
             if $0.quantity != $1.quantity { return $0.quantity > $1.quantity }
             if $0.name != $1.name { return $0.name.localizedStandardCompare($1.name) == .orderedAscending }
             return $0.id < $1.id
         }
         func count(_ status: String) -> Int { all.filter { $0.status == status }.reduce(0) { $0 + $1.quantity } }
-        return InventoryPage(entries: Array(filtered.dropFirst(offset).prefix(limit)), totalCopies: all.reduce(0) { $0 + $1.quantity },
+        var page = InventoryPage(entries: Array(filtered.dropFirst(offset).prefix(limit)), totalCopies: all.reduce(0) { $0 + $1.quantity },
             catalogueCopies: count("catalogue"), awaitingCatalogueCopies: count("awaitingCatalogue"), unresolvedCopies: count("unresolved"),
             excludedCodeCards: excludedCodeCards, matchingEntries: filtered.count,
             nextOffset: offset + limit < filtered.count ? offset + limit : nil)
+        page.sets = Dictionary(grouping: all, by: \.setKey).map { id, entries in
+            let sorted = entries.sorted { $0.id < $1.id }
+            return InventorySet(id: id, name: sorted[0].setName ?? "Unidentified", game: sorted[0].game,
+                quantity: sorted.reduce(0) { $0 + $1.quantity }, entries: sorted.count,
+                previews: Array(sorted.compactMap(\.preview).prefix(3)))
+        }.sorted { $0.name != $1.name ? $0.name.localizedStandardCompare($1.name) == .orderedAscending : $0.id < $1.id }
+        return page
     }
 }
 
 extension ScannerCoordinator {
-    public func inventory(limit: Int = 50, offset: Int = 0, search: String = "") async throws -> InventoryPage {
-        guard (1...100).contains(limit), (0...1_000_000).contains(offset), search.utf8.count <= 160 else {
+    public func inventory(limit: Int = 50, offset: Int = 0, search: String = "", set: String = "") async throws -> InventoryPage {
+        guard (1...100).contains(limit), (0...1_000_000).contains(offset), search.utf8.count <= 160, set.utf8.count <= 512 else {
             throw ScannerError("invalidParams", "Inventory requires limit 1–100, a valid offset and search up to 160 bytes.")
         }
         guard inventoryWorkers < 4 else { throw ScannerError("busy", "Inventory is busy; retry shortly.") }
@@ -83,7 +98,7 @@ extension ScannerCoordinator {
         let worker = Task.detached(priority: .utility) {
             var builder = InventoryBuilder()
             try database.readInventoryRecords { builder.add($0) }
-            return builder.page(limit: limit, offset: offset, search: search)
+            return builder.page(limit: limit, offset: offset, search: search, set: set)
         }
         return try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
     }

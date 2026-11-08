@@ -65,10 +65,10 @@ extension ScannerGateway {
         if method == .get {
             switch parts {
             case ["inventory"]:
-                rpc = "inventory.list"; try path.only(["limit", "offset", "search"])
+                rpc = "inventory.list"; try path.only(["limit", "offset", "search", "set"])
                 params = ["limit": .number(Double(try path.number("limit", default: 50, range: 1...100))),
                           "offset": .number(Double(try path.number("offset", default: 0, range: 0...1_000_000))),
-                          "search": .string(path.query["search"] ?? "")]
+                          "search": .string(path.query["search"] ?? ""), "set": .string(path.query["set"] ?? "")]
             case ["devices"]: rpc = "devices"; try path.only([])
             case ["profiles"]: rpc = "profiles.list"; try path.only([])
             case ["jobs"], ["batches"]:

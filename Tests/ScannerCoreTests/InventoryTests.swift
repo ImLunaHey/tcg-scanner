@@ -30,6 +30,9 @@ private func inventoryRecord(batch: Int = 1, language: CardLanguage = .english, 
     #expect(page.totalCopies == 2 && page.catalogueCopies == 2 && page.entries.count == 1)
     #expect(page.entries[0].quantity == 2 && page.entries[0].confirmedQuantity == 0)
     #expect(page.entries[0].copies.map(\.cardNumber) == [1, 1])
+    #expect(page.entries[0].preview?.image.sequence == 2)
+    #expect(page.entries[0].preview?.editID == first.processedImages?[1].id)
+    #expect(page.entries[0].preview?.batchID == first.id)
 }
 @Test func inventorySeparatesLanguagePendingAndAmbiguousCards() {
     var builder = InventoryBuilder()
@@ -71,4 +74,20 @@ private func inventoryRecordMissingSide() -> ScanRecord {
     let page = builder.page(limit: 50, offset: 0, search: "")
     #expect(page.excludedCodeCards == 1 && page.totalCopies == 2)
     #expect(page.entries.first?.confirmedQuantity == 1)
+}
+
+@Test func inventorySetsCoverAllPagesAndFilterExactly() {
+    var builder = InventoryBuilder()
+    builder.add(inventoryRecord()); builder.add(inventoryRecord(waiting: true))
+    builder.add(inventoryRecord(batch: 2, waiting: true))
+    let first = builder.page(limit: 1, offset: 0, search: "")
+    #expect(first.sets.count == 2 && first.entries.count == 1)
+    let delta = first.sets.first { $0.name == "Delta Reign" }!
+    #expect(delta.quantity == 2 && delta.entries == 1)
+    #expect(delta.previews.count == 1 && delta.previews[0].image.sequence == 2)
+    let selected = builder.page(limit: 50, offset: 0, search: "", set: delta.id)
+    #expect(selected.entries.count == 1 && selected.entries[0].quantity == 2)
+    #expect(selected.totalCopies == 3 && selected.sets.count == 2)
+    #expect(builder.page(limit: 50, offset: 0, search: "does not exist", set: delta.id).entries.isEmpty)
+    #expect(builder.page(limit: 50, offset: 0, search: "", set: "wrong").entries.isEmpty)
 }
