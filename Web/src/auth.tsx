@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queries.clear();
   }, [queries]);
   const api = useMemo(
-    () => new Api(session?.token || "", clear),
+    () => new Api(session?.token || "", clear, session?.imageCacheScope),
     [session, clear],
   );
   async function connect(key: string) {

@@ -76,6 +76,7 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
         #expect(session.status.code == 201)
         let sessionValue = try decode(session, as: JSONValue.self)
         guard case .object(let fields) = sessionValue, case .string(let token) = fields["token"] else { throw ScannerError("test", "Missing session token") }
+        #expect(fields["imageCacheScope"] != nil)
         let headers = httpHeaders(token)
         for route in ["devices", "devices/http-mock", "devices/http-mock/settings", "devices/http-mock/capabilities", "diagnostics", "status", "profiles", "jobs", "batches", "inventory"] {
             #expect(try await client.execute(uri: "/api/v1/" + route, method: .get, headers: headers).status.code == 200)

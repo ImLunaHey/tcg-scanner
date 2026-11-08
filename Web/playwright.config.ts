@@ -6,6 +6,7 @@ if (!process.env.SCANNER_BROWSER_HOST)
   );
 export default defineConfig({
   testDir: "./tests",
+  testIgnore: "image-cache.spec.ts",
   workers: 1,
   timeout: 45_000,
   use: {

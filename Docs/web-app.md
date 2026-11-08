@@ -262,3 +262,34 @@ Production build and 27 web tests passed. Browser checks cover both sidebar
 states at 1440, 768, 390 and 320 px, keyboard toggling, preference persistence,
 route selection, system themes, removed labels and connection recovery. Session
 screenshots and results are ignored under `Diagnostics/sidebar-ui/`.
+
+## Browser image cache
+
+Thumbnails and full images use a 24 MiB memory cache plus a 256 MiB IndexedDB
+cache. Disk entries survive reloads, rebuilt web bundles and renewed logins. The
+session response supplies `imageCacheScope`, an opaque value derived from the
+server root credential with a domain-separated HMAC. It is stable across gateway
+restarts and session renewal, changes when the root credential changes, and grants
+no API access. Bearer tokens are not stored in the image database. Signing out
+removes the in-memory session; cached image bytes can be reused after signing back
+into the same server, just like browser HTTP cache entries.
+
+Keys include that scope, image path, edit ID and source hash. Entries expire after
+30 days for scans with hashes, or one day for catalogue references. Images over
+32 MiB bypass disk caching. Least-recently-used entries are evicted at the byte
+limit. Browser storage eviction, private mode and quota failures fall back to
+ordinary authenticated HTTP requests. ArrayBuffers are stored and reconstructed
+as Blobs on read so the same format works in WebKit and Chromium.
+
+The database and renderer-key version do not change for routine deployments. A
+new renderer-key version is only needed if image output changes while its source
+hash and edit URL remain identical. HTTP caching still uses private responses,
+ETags and `Vary: Authorization`; the persistent cache avoids making renewed
+Bearer tokens force duplicate image downloads. See
+[HTTP Vary](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Vary)
+and [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API).
+
+`Scripts/test-browser-image-cache.sh` runs isolated Chromium and WebKit tests
+without a server or scanner. They disable HTTP caching and verify reuse across a
+full reload and token change, invalidation for new hashes/edits/server scopes,
+byte eviction, expiry and storage-unavailable fallback.

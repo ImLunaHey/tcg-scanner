@@ -12,7 +12,7 @@ extension ScannerGateway {
             try path.only([]); try only(body, [])
             if method == .post {
                 let (token, expiry) = try await access.issue(for: principal)
-                return try jsonResponse(.object(["schemaVersion": .number(1), "token": .string(token), "expiresAt": .string(ISO8601DateFormatter().string(from: expiry))]), status: 201)
+                return try jsonResponse(.object(["schemaVersion": .number(1), "token": .string(token), "imageCacheScope": .string(access.imageCacheScope), "expiresAt": .string(ISO8601DateFormatter().string(from: expiry))]), status: 201)
             }
             if method == .delete { try await access.revoke(principal); return try jsonResponse(.object(["revoked": .bool(true)])) }
         }
