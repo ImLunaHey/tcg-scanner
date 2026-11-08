@@ -82,6 +82,11 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
         }
         #expect(try await client.execute(uri: "/api/v1/inventory?limit=101", method: .get, headers: headers).status.code == 400)
         #expect(try await client.execute(uri: "/api/v1/inventory", method: .get, headers: [HTTPField.Name("Host")!: "127.0.0.1:8170"]).status.code == 401)
+        #expect(try await client.execute(uri: "/api/v1/inventory/missing?set=unavailable", method: .get, headers: headers).status.code == 404)
+        #expect(try await client.execute(uri: "/api/v1/inventory/references/not-a-key/thumbnail", method: .get, headers: headers).status.code == 422)
+        for route in ["/api/v1/inventory/missing?set=anything", "/api/v1/inventory/references/anything/thumbnail"] {
+            #expect(try await client.execute(uri: route, method: .get, headers: [HTTPField.Name("Host")!: "127.0.0.1:8170"]).status.code == 401)
+        }
         #expect(await backend.captures == 0)
         let settings = try buffer(.object(["dpi": .number(300), "duplex": .bool(true), "format": .string("png")]))
         #expect(try await client.execute(uri: "/api/v1/devices/http-mock/settings", method: .patch, headers: headers, body: settings).status.code == 200)

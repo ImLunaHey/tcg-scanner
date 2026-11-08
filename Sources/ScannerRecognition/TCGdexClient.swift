@@ -73,6 +73,17 @@ actor TCGdexClient {
         }
         return physical
     }
+    func setCards(_ id: String) async throws -> [CatalogueCard] {
+        struct CardSet: Decodable { var id: String; var cards: [CatalogueCard] }
+        try validate(id)
+        let set = try JSONDecoder().decode(CardSet.self, from: await get(path: "sets/" + id, limit: 2 * 1024 * 1024))
+        guard set.id == id, !set.cards.isEmpty, set.cards.count <= 5000,
+              Set(set.cards.map(\.id)).count == set.cards.count,
+              set.cards.allSatisfy({ $0.id.hasPrefix(id + "-") && $0.id.utf8.count <= 100 && !$0.name.isEmpty && $0.name.utf8.count <= 256 && $0.localId.utf8.count <= 32 }) else {
+            throw ScannerError("catalogue", "Invalid set catalogue response.")
+        }
+        return set.cards
+    }
     func detail(_ id: String) async throws -> CatalogueDetail {
         try validate(id)
         let detail = try JSONDecoder().decode(CatalogueDetail.self, from: await get(path: "cards/" + id, limit: 256 * 1024))

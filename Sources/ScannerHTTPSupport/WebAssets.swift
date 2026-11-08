@@ -60,7 +60,8 @@ public struct WebAssets: Sendable {
         guard request.headers[.transferEncoding] == nil, request.headers[.contentLength] == nil || request.headers[.contentLength] == "0" else {
             throw GatewayError(400, "invalidParams", "Web asset requests cannot contain a body.")
         }
-        try path.only(inventoryRoute ? ["search"] : batchRoute ? ["card"] : [])
+        try path.only(inventoryRoute ? ["search", "missing"] : batchRoute ? ["card"] : [])
+        if inventoryRoute { _ = try path.number("missing", default: 0, range: 0...1) }
         if let search = path.query["search"], search.utf8.count > 160 { throw GatewayError(400, "invalidParams", "Search is too long.") }
         if batchRoute { _ = try path.number("card", default: 1, range: 1...100) }
         return Response(status: .ok, headers: [.contentType: asset.type],

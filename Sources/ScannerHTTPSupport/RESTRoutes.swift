@@ -22,6 +22,10 @@ extension ScannerGateway {
             return try jsonResponse(await service.call(method == .get ? "batches.storeStatus" : "batches.sendToStore",
                 ["id": .string(try uuid(parts[1]))]), status: method == .post ? 202 : 200)
         }
+        if parts.count == 4, parts[0] == "inventory", parts[1] == "references", parts[3] == "thumbnail", method == .get {
+            try path.only([])
+            return try thumbnailResponse(await service.call("inventory.reference", ["key": .string(parts[2])]).decode(ImageThumbnail.self), request: request)
+        }
         if parts == ["events"], method == .get { return try await events(request, path: path, principal: principal) }
         if parts.count == 3, parts[0] == "images", parts[2] == "prepare-card", method == .post {
             try path.only([]); try only(body, ["id"])
@@ -64,6 +68,9 @@ extension ScannerGateway {
         var status = 200
         if method == .get {
             switch parts {
+            case ["inventory", "missing"]:
+                rpc = "inventory.missing"; try path.only(["set"])
+                params = ["set": .string(path.query["set"] ?? "")]
             case ["inventory"]:
                 rpc = "inventory.list"; try path.only(["limit", "offset", "search", "set"])
                 params = ["limit": .number(Double(try path.number("limit", default: 50, range: 1...100))),

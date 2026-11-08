@@ -1,9 +1,12 @@
 import Foundation
 import ScannerAPI
+import ScannerRecognition
 
 /// Counts acquisition pairs, never image edits or OCR attempts. Rescans in a
 /// different batch intentionally remain additional copies.
-struct InventoryBuilder {
+struct InventoryBuilder: Sendable {
+    var catalogueSources: [String: Set<InventoryCatalogueSource>] = [:]
+    var ownedCatalogueIDs: [InventoryCatalogueSource: Set<String>] = [:]
     var entries: [String: InventoryEntry] = [:]
     var excludedCodeCards = 0
     mutating func add(_ record: ScanRecord) {
@@ -32,6 +35,9 @@ struct InventoryBuilder {
             var entry: InventoryEntry
             if complete, game != .unknown, matched.count == 1, let (identity, card) = matched.first {
                 let id = key(base + ["catalogue", card.provider ?? "tcgdex", card.id])
+                let source = InventoryCatalogueSource(provider: card.provider ?? "tcgdex", setID: catalogueSetID(card), language: record.request.resolvedCardLanguage)
+                catalogueSources[catalogueSetKey(card, game: game), default: []].insert(source)
+                ownedCatalogueIDs[source, default: []].insert(card.id)
                 entry = InventoryEntry(id: id, game: game, language: language, name: card.name, setName: card.setName,
                     number: card.localID + (card.officialSetCount.map { "/\($0)" } ?? ""), status: "catalogue", setKey: catalogueSetKey(card, game: game), copy: copy, confirmed: identity.state == .confirmed)
             } else if complete, game != .unknown, matched.isEmpty, waiting.count == 1, let printed = waiting.first?.evidence?.uncataloguedCard {
@@ -59,13 +65,15 @@ struct InventoryBuilder {
             entries[entry.id] = entry
         }
     }
-    private func catalogueSetKey(_ card: CardCandidate, game: CardGame) -> String {
+    private func catalogueSetID(_ card: CardCandidate) -> String {
         // YGOPRODeck stores a full printing code (DUEA-EN001); the prefix
         // identifies the set shared by its other cards.
-        let setID = card.provider == "ygoprodeck"
+        return card.provider == "ygoprodeck"
             ? card.setID.split(separator: "-").first.map(String.init) ?? "unidentified"
             : card.setID
-        return game.rawValue + "-" + (card.provider ?? "tcgdex") + "-" + setID
+    }
+    private func catalogueSetKey(_ card: CardCandidate, game: CardGame) -> String {
+        game.rawValue + "-" + (card.provider ?? "tcgdex") + "-" + catalogueSetID(card)
     }
     private func setSlugs() -> [String: String] {
         let groups = Dictionary(grouping: entries.values, by: \.setKey)
@@ -95,6 +103,14 @@ struct InventoryBuilder {
             .filter { !$0.isEmpty }
         let value = words.joined(separator: "-")
         return value.isEmpty ? "unidentified" : String(value.prefix(200))
+    }
+    func catalogueSource(set: String) throws -> InventoryCatalogueSource? {
+        guard let key = setSlugs().first(where: { $0.value == set })?.key else { throw ScannerError("notFound", "Inventory set not found.") }
+        return catalogueSources[key]?.sorted { $0.language.rawValue < $1.language.rawValue }.first
+    }
+    func missingCards(_ cards: [InventoryCatalogueCard], source: InventoryCatalogueSource) -> InventoryMissingCards {
+        let owned = ownedCatalogueIDs[source] ?? []
+        return InventoryMissingCards(cards: cards.filter { !owned.contains($0.id) }, catalogueCount: cards.count)
     }
     private func key(_ parts: [String]) -> String { (try! JSONEncoder().encode(parts)).base64EncodedString() }
     func page(limit: Int, offset: Int, search: String, set: String = "") -> InventoryPage {
@@ -143,6 +159,25 @@ extension ScannerCoordinator {
         guard (1...100).contains(limit), (0...1_000_000).contains(offset), search.utf8.count <= 160, set.utf8.count <= 512 else {
             throw ScannerError("invalidParams", "Inventory requires limit 1–100, a valid offset and search up to 160 bytes.")
         }
+        let builder = try await inventorySnapshot()
+        return builder.page(limit: limit, offset: offset, search: search, set: set)
+    }
+    public func missingInventoryCards(set: String) async throws -> InventoryMissingCards {
+        guard !set.isEmpty, set.utf8.count <= 256 else { throw ScannerError("invalidParams", "Select an inventory set.") }
+        let builder = try await inventorySnapshot()
+        guard let source = try builder.catalogueSource(set: set) else {
+            return InventoryMissingCards(note: "A catalogue checklist is not available for this set yet.")
+        }
+        let cards = try await inventoryCatalogue.cards(in: source)
+        return builder.missingCards(cards, source: source)
+    }
+    public func inventoryReference(key: String) async throws -> ImageThumbnail {
+        guard thumbnailWorkers < 2 else { throw ScannerError("resourceLimit", "Previews are busy; retry shortly.") }
+        thumbnailWorkers += 1
+        defer { thumbnailWorkers -= 1 }
+        return try await inventoryCatalogue.thumbnail(key: key)
+    }
+    private func inventorySnapshot() async throws -> InventoryBuilder {
         guard inventoryWorkers < 4 else { throw ScannerError("busy", "Inventory is busy; retry shortly.") }
         inventoryWorkers += 1
         defer { inventoryWorkers -= 1 }
@@ -150,7 +185,7 @@ extension ScannerCoordinator {
         let worker = Task.detached(priority: .utility) {
             var builder = InventoryBuilder()
             try database.readInventoryRecords { builder.add($0) }
-            return builder.page(limit: limit, offset: offset, search: search, set: set)
+            return builder
         }
         return try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
     }

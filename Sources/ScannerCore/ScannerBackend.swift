@@ -48,6 +48,7 @@ public actor ScannerCoordinator {
     var requiresRestart = false
     var persistenceError: ScannerError?
     var eventWaiters = 0
+    let inventoryCatalogue: any InventoryCatalogueProviding
     var inventoryWorkers = 0
     var thumbnailWorkers = 0
     var thumbnailCache = ThumbnailCache()
@@ -65,7 +66,8 @@ public actor ScannerCoordinator {
     var activeScanID: UUID?
     let storageRoot: URL
     let validateStorage: @Sendable () throws -> Void
-    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil, validateStorage: @escaping @Sendable () throws -> Void = {}, cardRecognizer: any CardRecognizing = CardRecognizer(), cardPricing: any CardPricingProviding = CardPricingProvider(), scanButtonDeviceID: String? = nil, storeClient: (any StoreStaging)? = nil, cardPrintings: any CardPrintingProviding = CardPrintingProvider(), cardReferences: any CardReferenceProviding = TCGdexReferenceCache(), yugiohRecognizer: any CardRecognizing = YugiohRecognizer(), starWarsRecognizer: any CardRecognizing = StarWarsRecognizer()) throws {
+    public init(backend: any ScannerBackend, storageRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Scans"), database: ScannerDatabase? = nil, validateStorage: @escaping @Sendable () throws -> Void = {}, cardRecognizer: any CardRecognizing = CardRecognizer(), cardPricing: any CardPricingProviding = CardPricingProvider(), scanButtonDeviceID: String? = nil, storeClient: (any StoreStaging)? = nil, cardPrintings: any CardPrintingProviding = CardPrintingProvider(), cardReferences: any CardReferenceProviding = TCGdexReferenceCache(), yugiohRecognizer: any CardRecognizing = YugiohRecognizer(), starWarsRecognizer: any CardRecognizing = StarWarsRecognizer(), inventoryCatalogue: any InventoryCatalogueProviding = InventoryCatalogue()) throws {
+        self.inventoryCatalogue = inventoryCatalogue
         self.storeClient = storeClient
         self.scanButtonDeviceID = scanButtonDeviceID
         self.backend = backend; self.storageRoot = storageRoot; self.validateStorage = validateStorage

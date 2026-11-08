@@ -4,7 +4,7 @@ import ScannerCore
 
 extension DiagnosticRouter {
     func serviceResponse(_ request: RPCRequest) async throws -> RPCResponse? {
-        let methods: Set<String> = ["v1.inventory.list", "v1.diagnostics.buttonMonitor", "v1.diagnostics.stopButtonMonitor", "v1.jobs.list", "v1.batches.list", "v1.batches.get", "v1.batches.valuation", "v1.batches.storeStatus", "v1.batches.sendToStore", "v1.jobs.get", "v1.jobs.cancel",
+        let methods: Set<String> = ["v1.inventory.missing", "v1.inventory.reference", "v1.inventory.list", "v1.diagnostics.buttonMonitor", "v1.diagnostics.stopButtonMonitor", "v1.jobs.list", "v1.batches.list", "v1.batches.get", "v1.batches.valuation", "v1.batches.storeStatus", "v1.batches.sendToStore", "v1.jobs.get", "v1.jobs.cancel",
             "v1.events", "v1.service.status", "v1.profiles.list", "v1.profiles.get", "v1.profiles.save", "v1.profiles.delete"]
         guard methods.contains(request.method) else { return nil }
         let params: [String: JSONValue]
@@ -14,6 +14,12 @@ extension DiagnosticRouter {
         } else { params = [:] }
         let result: JSONValue
         switch request.method {
+        case "v1.inventory.missing":
+            try only(params, keys: ["set"])
+            result = try .wrapping(await coordinator.missingInventoryCards(set: identifier(params, "set")))
+        case "v1.inventory.reference":
+            try only(params, keys: ["key"])
+            result = try .wrapping(await coordinator.inventoryReference(key: identifier(params, "key")))
         case "v1.inventory.list":
             try only(params, keys: ["limit", "offset", "search", "set"])
             let search: String

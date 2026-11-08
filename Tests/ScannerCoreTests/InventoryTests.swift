@@ -159,3 +159,17 @@ private func inventoryRecordMissingSide() -> ScanRecord {
     }
     #expect(builder.page(limit: 50, offset: 0, search: "", set: "pokemon-tcgdex-set-0").entries.isEmpty)
 }
+
+@Test func inventoryMissingCardsExcludeOwnedPrintingsAndDoNotChangeStock() throws {
+    var builder = InventoryBuilder()
+    builder.add(inventoryRecord()); builder.add(inventoryRecord(batch: 2))
+    let source = try #require(try builder.catalogueSource(set: "set"))
+    let checklist = [InventoryCatalogueCard(id: "set-001", name: "Owned", number: "001", language: "en"),
+                     InventoryCatalogueCard(id: "set-002", name: "Missing", number: "002", language: "en")]
+    let result = builder.missingCards(checklist, source: source)
+    #expect(result.cards.map(\.id) == ["set-002"] && result.catalogueCount == 2)
+    #expect(builder.page(limit: 50, offset: 0, search: "").totalCopies == 2)
+    builder.add(inventoryRecord(waiting: true))
+    #expect(try builder.catalogueSource(set: "delta-reign") == nil)
+    #expect(throws: ScannerError.self) { try builder.catalogueSource(set: "nonexistent") }
+}

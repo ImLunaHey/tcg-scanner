@@ -71,12 +71,7 @@ extension ScannerGateway {
                 guard let format = ThumbnailFormat(rawValue: thumbnailFormat ?? "png") else { throw GatewayError(400, "invalidParams", "Thumbnail format must be png or jpeg.") }
                 params["format"] = .string(format.rawValue)
                 let result = try await service.call("images.thumbnail", params).decode(ImageThumbnail.self)
-                guard let data = Data(base64Encoded: result.base64), SHA256.hash(data: data).hex == result.sha256 else { throw GatewayError(502, "integrity", "Invalid thumbnail response.") }
-                let mediaType = result.mediaType ?? "image/png"
-                guard ["image/png", "image/jpeg"].contains(mediaType) else { throw GatewayError(502, "integrity", "Invalid preview media type.") }
-                let headers = imageCacheHeaders(type: mediaType, sha256: result.sha256)
-                if request.headers[.ifNoneMatch] == headers[.eTag] { return Response(status: .notModified, headers: headers) }
-                return Response(status: .ok, headers: headers, body: .init(byteBuffer: ByteBuffer(bytes: data)))
+                return try thumbnailResponse(result, request: request)
             }
             throw GatewayError(404, "notFound", "Unknown image route.")
         }
@@ -117,6 +112,14 @@ extension ScannerGateway {
             try await writer.finish(nil)
         }
         return Response(status: .ok, headers: headers, body: body)
+    }
+    func thumbnailResponse(_ result: ImageThumbnail, request: Request) throws -> Response {
+        guard let data = Data(base64Encoded: result.base64), SHA256.hash(data: data).hex == result.sha256 else { throw GatewayError(502, "integrity", "Invalid thumbnail response.") }
+        let mediaType = result.mediaType ?? "image/png"
+        guard ["image/png", "image/jpeg"].contains(mediaType) else { throw GatewayError(502, "integrity", "Invalid preview media type.") }
+        let headers = imageCacheHeaders(type: mediaType, sha256: result.sha256)
+        if request.headers[.ifNoneMatch] == headers[.eTag] { return Response(status: .notModified, headers: headers) }
+        return Response(status: .ok, headers: headers, body: .init(byteBuffer: ByteBuffer(bytes: data)))
     }
     private func imageCacheHeaders(type: String, sha256: String) -> HTTPFields {
         [.contentType: type, .eTag: "\"\(sha256)\"", .cacheControl: "private, max-age=3600, immutable", .vary: "Authorization"]

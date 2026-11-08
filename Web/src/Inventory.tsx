@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useSearchParams } from "wouter";
 import { ImageIcon } from "lucide-react";
 import { useAuth } from "./auth";
@@ -7,6 +7,7 @@ import { batchLabel, captureLabel, gameLabel, type CardGameDetection } from "./m
 import { Empty, ErrorNote, Loading } from "./ui";
 import { InventoryThumbnail, type InventoryPreview } from "./InventoryThumbnail";
 import { inventoryURL } from "./inventoryNavigation";
+import { MissingInventoryCard, type MissingCards } from "./InventoryMissing";
 import { ImageLightbox } from "./ImageLightbox";
 
 export type InventoryEntry = {
@@ -54,6 +55,7 @@ export function Inventory({ view = "cards", setID = "" }: { view?: "cards" | "se
   const [, navigate] = useLocation();
   const [params] = useSearchParams();
   const search = params.get("search") || "";
+  const showMissing = !!setID && params.get("missing") === "1";
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [lightbox, setLightbox] = useState<InventoryEntry>();
   useEffect(() => {
@@ -72,21 +74,39 @@ export function Inventory({ view = "cards", setID = "" }: { view?: "cards" | "se
     if (view === "cards" && inventory.hasNextPage && !inventory.isFetching && !inventory.isPlaceholderData && !inventory.isFetchNextPageError)
       void inventory.fetchNextPage({ cancelRefetch: false });
   }, [view, inventory.hasNextPage, inventory.isFetching, inventory.isPlaceholderData, inventory.isFetchNextPageError, inventory.fetchNextPage]);
+  const missing = useQuery({
+    queryKey: ["inventory", "missing", setID],
+    queryFn: ({ signal }) => api.get<MissingCards>(`inventory/missing?set=${encodeURIComponent(setID)}`, signal),
+    enabled: view === "cards" && showMissing,
+    staleTime: 60_000,
+    refetchInterval: showMissing ? 30_000 : false,
+  });
   const data = inventory.data?.pages[0];
   const entries = inventory.data?.pages.flatMap(page => page.entries) || [];
   const sets = data?.sets.filter(set => `${set.name} ${gameLabel(set.game)}`.toLowerCase().includes(search.toLowerCase())) || [];
+  const selectedSet = data?.sets.find(set => set.id === setID);
+  const gallery = entries.map(entry => ({ id: entry.id, number: entry.number || "", node: <InventoryCard entry={entry} open={() => setLightbox(entry)} /> }));
+  if (showMissing) {
+    for (const card of missing.data?.cards || []) {
+      if (`${card.name} ${card.number} ${selectedSet?.name || ""} ${selectedSet?.game || ""} ${card.language}`.toLowerCase().includes(search.trim().toLowerCase()))
+        gallery.push({ id: `missing:${card.id}`, number: card.number, node: <MissingInventoryCard card={card} setName={selectedSet?.name || ""} /> });
+    }
+    gallery.sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }) || a.id.localeCompare(b.id));
+  }
   function chooseSet(id: string) { navigate(inventoryURL({ setID: id })); }
   return <>
     <header className="inventory-heading"><h1>Inventory</h1>{data && <span>{data.totalCopies.toLocaleString()} scanned copies <span title="Rescans count again; all finishes are combined.">ⓘ</span></span>}</header>
     <div className="inventory-gallery-toolbar">
       <div className="inventory-view-switch" role="group" aria-label="Inventory view"><Link href={inventoryURL()} aria-current={view === "cards" ? "page" : undefined}>Cards</Link><Link href={inventoryURL({ view: "sets" })} aria-current={view === "sets" ? "page" : undefined}>Sets</Link></div>
-      <label className="field inventory-search"><span className="sr-only">Search {view}</span><input type="search" maxLength={100} value={search} onChange={e => navigate(inventoryURL({ view, setID, search: e.target.value }), { replace: true })} placeholder={view === "sets" ? "Find a set…" : "Find a card…"} /></label>
-      {view === "cards" && <label className="field inventory-set-filter"><span className="sr-only">Set</span><select value={setID} onChange={e => navigate(inventoryURL({ setID: e.target.value, search }))}><option value="">All sets</option>{data?.sets.map(set => <option key={set.id} value={set.id}>{set.name} ({set.quantity})</option>)}</select></label>}
+      <label className="field inventory-search"><span className="sr-only">Search {view}</span><input type="search" maxLength={100} value={search} onChange={e => navigate(inventoryURL({ view, setID, search: e.target.value, missing: showMissing }), { replace: true })} placeholder={view === "sets" ? "Find a set…" : "Find a card…"} /></label>
+      {view === "cards" && <label className="field inventory-set-filter"><span className="sr-only">Set</span><select value={setID} onChange={e => navigate(inventoryURL({ setID: e.target.value, search, missing: showMissing }))}><option value="">All sets</option>{data?.sets.map(set => <option key={set.id} value={set.id}>{set.name} ({set.quantity})</option>)}</select></label>}
+      {view === "cards" && setID && <label className="inventory-missing-toggle"><input type="checkbox" checked={showMissing} onChange={e => navigate(inventoryURL({ setID, search, missing: e.target.checked }))} />Show missing cards</label>}
     </div>
+    {showMissing && <><ErrorNote error={missing.error} />{missing.isPending ? <p className="small muted" role="status">Loading set checklist…</p> : missing.data?.note ? <p className="small muted">{missing.data.note}</p> : missing.data && <p className="small muted">{missing.data.cards.length} missing · {missing.data.catalogueCount} catalogue cards</p>}</>}
     <ErrorNote error={inventory.error} />
     {inventory.isPending ? <Loading /> : view === "sets" ? sets.length ? <div className="inventory-set-grid">{sets.map(set => <InventorySetTile key={set.id} set={set} select={() => chooseSet(set.id)} />)}</div> : <Empty title="No matching sets">Try another set name.</Empty>
-      : data && !entries.length ? <Empty title={search || setID ? "No matching cards" : "No scanned cards yet"}>{search || setID ? "Try another name or set." : "Completed card batches will appear here."}</Empty>
-      : <div className="inventory-card-grid">{entries.map(entry => <InventoryCard key={entry.id} entry={entry} open={() => setLightbox(entry)} />)}</div>}
+      : data && !gallery.length ? <Empty title={search || setID ? "No matching cards" : "No scanned cards yet"}>{search || setID ? "Try another name or set." : "Completed card batches will appear here."}</Empty>
+      : <div className="inventory-card-grid">{gallery.map(card => <div key={card.id}>{card.node}</div>)}</div>}
     {view === "cards" && inventory.isFetchingNextPage && <p className="small muted" role="status">Loading remaining cards…</p>}
     {inventory.isFetchNextPageError && <button className="button secondary" onClick={() => void inventory.fetchNextPage()}>Retry loading cards</button>}
     {lightbox?.preview && <ImageLightbox batchID={lightbox.preview.batchID} images={[{ ...lightbox.preview.image, editID: lightbox.preview.editID, label: lightbox.name }]} initial={0} close={() => setLightbox(undefined)} />}

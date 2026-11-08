@@ -9,3 +9,9 @@ it("links to card and set views with bookmarkable search", () => {
   expect(new URL(inventoryURL({ search: "Farfetch'd & Pikachu + friends" }), "https://scanner.test").searchParams.get("search"))
     .toBe("Farfetch'd & Pikachu + friends");
 });
+
+it("keeps missing-card selection in set links only", () => {
+  expect(inventoryURL({ setID: "ascended-heroes", search: "Pikachu", missing: true }))
+    .toBe("/inventory/sets/ascended-heroes?search=Pikachu&missing=1");
+  expect(inventoryURL({ missing: true })).toBe("/inventory");
+});

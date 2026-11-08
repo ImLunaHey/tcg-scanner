@@ -265,3 +265,10 @@ for review, never approves or publishes inventory. See
 `GET /api/v1/inventory?limit=50&offset=0&search=Kyogre` returns per-printing
 quantities, pending/unresolved entries, overall totals and batch/card locations.
 Authentication is required. See [inventory counting rules](inventory.md).
+
+`GET /api/v1/inventory/missing?set={slug}` returns a catalogue checklist minus
+owned identities, with `cards`, `catalogueCount`, and an optional unavailable
+`note`. Each missing card has `id`, `name`, `number`, `language` and an optional
+`thumbnailKey`. `GET /api/v1/inventory/references/{thumbnailKey}/thumbnail` serves
+a locally cached JPEG with private caching and ETag validation. Both require the
+same authentication as inventory; clients cannot supply image URLs or paths.

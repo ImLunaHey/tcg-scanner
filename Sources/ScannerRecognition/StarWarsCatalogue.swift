@@ -3,7 +3,7 @@ import ScannerAPI
 
 struct StarWarsCard: Decodable, Sendable {
     var Set: String; var Number: String; var Name: String; var Subtitle: String?
-    var `Type`: String; var Rarity: String?; var VariantType: String?
+    var `Type`: String; var Rarity: String?; var VariantType: String?; var FrontArt: String?
 }
 struct StarWarsSet: Decodable, Sendable {
     var setId: String; var fullName: String; var numberCards: Int

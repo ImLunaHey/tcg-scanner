@@ -2040,3 +2040,10 @@
 @media (prefers-reduced-motion: reduce) { .inventory-card-image { transition: none; } }
 
 .inventory-set-placeholder { display: flex; align-items: center; justify-content: center; border: 1px solid var(--line, #333); color: var(--muted-ink, #888); }
+
+.inventory-missing-toggle { display: flex; align-items: center; gap: .5rem; font-size: .85rem; white-space: nowrap; cursor: pointer; }
+.inventory-missing-toggle input { accent-color: var(--ink); width: 1rem; height: 1rem; }
+.inventory-card-missing .inventory-card-image img { filter: grayscale(1); opacity: .55; }
+.inventory-card-missing .inventory-card-image { cursor: default; }
+.inventory-card-missing .inventory-card-caption { opacity: .65; }
+.inventory-card-missing .inventory-copy-badge { font-size: .7rem; font-weight: 500; }

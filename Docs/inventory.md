@@ -54,3 +54,23 @@ Set IDs in the API and URLs are readable name slugs, such as `ascended-heroes`
 and `delta-reign`. Internal catalogue keys still keep distinct sets separate.
 Colliding slugs receive a game suffix and, if needed, a number.
 Batch location links accept `?card=N` on direct navigation too.
+
+## Missing cards
+
+A set's **Show missing cards** checkbox (`?missing=1`) requests
+`GET /api/v1/inventory/missing?set={slug}` (`v1.inventory.missing`). The service
+subtracts known catalogue identities from the provider's set checklist. Rescans,
+search filters and page boundaries do not create false gaps. Missing cards appear
+in collector-number order with greyscale artwork and never contribute stock.
+Ambiguous identities cannot establish ownership of a particular catalogue card.
+Sets without catalogue data show an unavailable message rather than a complete
+collection. The checklist uses the set's scanned language, preferring English when
+both supported languages are represented; foil finishes are not separate gaps.
+
+Catalogue images use authenticated `/api/v1/inventory/references/{key}/thumbnail`
+requests (`v1.inventory.reference`). ScannerService registers fixed-host catalogue
+URLs, downloads bounded images without redirects and caches 512px JPEGs locally
+(up to 256 MiB, seven days). No scans or OCR are uploaded. Thumbnails load near the
+viewport through the same bounded client queue as scan previews. Provider sources:
+[TCGdex sets](https://tcgdex.dev/rest/set), [SWU DB](https://www.swu-db.com/api) and
+[YGOPRODeck](https://ygoprodeck.com/api-guide/).
