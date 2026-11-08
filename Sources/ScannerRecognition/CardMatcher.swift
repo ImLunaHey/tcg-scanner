@@ -63,13 +63,17 @@ enum CardMatcher {
                 if let range = Range(match.range, in: text) { numbers.insert(number(String(text[range]))) }
             }
         }
-        // Modern basic Energy prints a type symbol in its title and a standalone
-        // number. Require the printed SVE set code as well; "Energy" alone is ambiguous.
+        // Modern basic Energy prints a symbol instead of its type name.
+        // Require a supported printed set code and its own collector number.
         let energyTitle = titles.contains { $0.contains(" energy ") }
-        let sveCode = footers.contains { ["sve", "sveen", "sve en"].contains(normalized($0)) }
+        let energySets = Set(footers.compactMap { text -> String? in
+            let code = normalized(text).replacingOccurrences(of: " ", with: "")
+            return ["sve", "mee"].first { code == $0 || code == $0 + "en" }
+        })
         let standalone = Set(footers.compactMap { text -> String? in
-            let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            return value.count == 3 && value.allSatisfy(\.isNumber) ? number(value) : nil
+            // Vision may join the number and adjacent illustrator credit.
+            guard let match = text.range(of: #"(?i)^\s*[0-9]{3}(?=\s*(?:$|[Il]llus\.))"#, options: .regularExpression) else { return nil }
+            return number(String(text[match]))
         })
         // A limited translated catalogue must not override a clear printed set
         // or card-class suffix just because another printing shares its number.
@@ -85,7 +89,8 @@ enum CardMatcher {
             let name = normalized(card.name)
             guard !name.isEmpty else { return nil }
             let local = number(card.localId)
-            let energyNumber = energyTitle && sveCode && standalone.count == 1 && standalone.contains(local) && card.id.hasPrefix("sve-")
+            let energyNumber = energyTitle && energySets.count == 1 && standalone.count == 1 && standalone.contains(local) && energySets.contains(card.id.split(separator: "-").dropLast().joined(separator: "-"))
+            if energyTitle && !energySets.isEmpty && !energyNumber { return nil }
             let numbered = numbers.contains(local) || energyNumber
             // Valid Korean names can be only one or two Hangul syllables. Their
             // exact title still needs independent printed-number evidence.
@@ -108,7 +113,7 @@ enum CardMatcher {
             // A legible conflicting collector number rules out this printing.
             guard numbers.isEmpty || numbered else { return nil }
             let evidence: [String]
-            if energyNumber { evidence = ["Energy title", "Printed set code SVE", "Collector number " + card.localId] }
+            if energyNumber { evidence = ["Energy title", "Printed set code " + (energySets.first ?? "").uppercased(), "Collector number " + card.localId] }
             else if uncertainSuffix { evidence = ["Name with uncertain ex suffix; collector number agrees", "Collector number " + card.localId] }
             else { evidence = numbered ? ["Name in title area", "Collector number " + card.localId] : ["Name in title area only; printing is ambiguous"] }
             return Ranked(card: card, score: (numbered ? 100 : 0) + name.count,

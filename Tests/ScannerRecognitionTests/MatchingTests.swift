@@ -191,3 +191,27 @@ func savedOutlinedRarityCircleSeparatesFromSetTotal() async throws {
     #expect(result.candidates.first?.evidence.contains("Printed set total 88") == true)
     #expect(result.warnings.contains { $0.contains("re-read") })
 }
+
+@Test func megaEvolutionEnergyUsesPrintedSetAndJoinedIllustratorNumber() {
+    let cards = [CatalogueCard(id: "mee-009", localId: "009", name: "Basic Grass Energy"),
+                 CatalogueCard(id: "sve-009", localId: "009", name: "Basic Grass Energy"),
+                 CatalogueCard(id: "mee-001", localId: "001", name: "Basic Grass Energy")]
+    let title = RecognizedLine(text: "Basic Energy", y: 0.9, height: 0.03)
+    let footer = RecognizedLine(text: "009 Illus. YOSHIROTTEN", y: 0.04, height: 0.02)
+    let code = RecognizedLine(text: "MEE EN", y: 0.04, height: 0.02)
+    let result = CardMatcher.rank(lines: [title, footer, code], catalogue: cards)
+    #expect(result.map(\.card.id) == ["mee-009"])
+    #expect(result[0].evidence.contains("Printed set code MEE"))
+    #expect(CardMatcher.rank(lines: [title, footer], catalogue: cards).isEmpty)
+    #expect(CardMatcher.rank(lines: [title, code], catalogue: cards).isEmpty)
+}
+
+@Test func savedMEECardsMatchTheirPrintedNumbers() async throws {
+    guard let path = ProcessInfo.processInfo.environment["SCANNER_MEE_FIXTURES"] else { return }
+    struct Item: Decodable { let path: String; let id: String }
+    let recognizer = CardRecognizer()
+    for item in try JSONDecoder().decode([Item].self, from: Data(contentsOf: URL(fileURLWithPath: path))) {
+        let evidence = try await recognizer.recognize(Data(contentsOf: URL(fileURLWithPath: item.path)))
+        #expect(evidence.candidates.map(\.id) == [item.id])
+    }
+}

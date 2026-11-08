@@ -123,6 +123,7 @@ public actor CardRecognizer: CardRecognizing {
     private static func hasPrintedIdentifier(_ lines: [RecognizedLine]) -> Bool {
         lines.contains { line in
             guard line.y < 0.3 else { return false }
+            if ["sve", "sveen", "mee", "meeen"].contains(CardMatcher.normalized(line.text).replacingOccurrences(of: " ", with: "")) { return true }
             return line.text.range(of: #"(?i)(\d\s*/\s*\d|\b(?:SVE|SWSH|SVP|SM|XY)\s*\d|^\s*\d{1,4}\s*$)"#, options: .regularExpression) != nil
         }
     }

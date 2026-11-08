@@ -391,3 +391,11 @@ orientations, or the exact public redemption URL on the reverse. They do not nee
 the four text lines required for ordinary card fronts. Private redemption strings
 are never used as orientation evidence. Saved B-001 logo sides C-001, C-007,
 C-009, C-014, C-016 and C-022 all required a half-turn in offline validation.
+
+Modern Basic Energy matching supports the printed `SVE` and `MEE` set codes.
+It requires one explicit collector number and never substitutes a different
+Energy set. OCR may join the three-digit number to `Illus.` (including an OCR
+`I`/`l` ambiguity in that word); the digits themselves are not repaired. All five
+B-001 Energy fronts matched their printed `mee-009`, `mee-014` or `mee-016` IDs
+in an offline scan-image check against the live catalogue. The set is Mega
+Evolution Energy; a 30th-anniversary stamp is separate printing evidence.
