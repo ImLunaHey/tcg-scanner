@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import ScannerAPI
 @testable import ScannerImageProcessing
 
 @Test func codeCardClassificationUsesPrintedBrandingNotCardNumbers() {
@@ -63,8 +64,12 @@ import Testing
     guard let path = ProcessInfo.processInfo.environment["SCANNER_LIVE_LOGO_FIXTURES"] else { return }
     let paths = try JSONDecoder().decode([String].self, from: Data(contentsOf: URL(fileURLWithPath: path)))
     for path in paths {
-        let result = try CardProcessor.uprightRotation(Data(contentsOf: URL(fileURLWithPath: path)))
-        #expect(result.turns == 2)
-        #expect(result.verified && result.basis == "pokemon-code-text")
+        let data = try Data(contentsOf: URL(fileURLWithPath: path))
+        for turn in 0..<4 {
+            let rotated = try ImageProcessor.render(data, request: ImageEditRequest(jobID: UUID(), sequence: 1, quarterTurns: turn)).data
+            let result = try CardProcessor.uprightRotation(rotated)
+            #expect(result.turns == (2 - turn + 4) % 4)
+            #expect(result.verified && result.basis == "pokemon-code-text")
+        }
     }
 }

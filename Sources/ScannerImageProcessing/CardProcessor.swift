@@ -164,6 +164,19 @@ public enum CardProcessor {
             return (code.turns, true, code.basis)
         }
         let words = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
+        let logoWords = words.map { $0.uppercased().filter(\.isLetter) }
+        if logoWords.contains("LIVE") || logoWords.contains("TRADINGCARDGAME") {
+            // Vision sometimes reads only LIVE from an upright stylized logo.
+            // An inverted OCR pass can recover its corroborating banner; map
+            // that direction back to the original pixels, never rotate by guess.
+            let retry = VNRecognizeTextRequest()
+            retry.recognitionLevel = .accurate; retry.recognitionLanguages = language.recognitionLanguages
+            retry.usesLanguageCorrection = true
+            try VNImageRequestHandler(data: data, orientation: .down).perform([retry])
+            if let code = CodeCardOrientation.rotation(retry.results ?? []) {
+                return ((code.turns + 2) % 4, true, code.basis)
+            }
+        }
         let codeCard = CodeCardText.matches(words)
         let confidentWords = (request.results ?? []).compactMap { observation -> String? in
             guard let candidate = observation.topCandidates(1).first, candidate.confidence >= 0.7 else { return nil }

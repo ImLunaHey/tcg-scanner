@@ -391,6 +391,8 @@ orientations, or the exact public redemption URL on the reverse. They do not nee
 the four text lines required for ordinary card fronts. Private redemption strings
 are never used as orientation evidence. Saved B-001 logo sides C-001, C-007,
 C-009, C-014, C-016 and C-022 all required a half-turn in offline validation.
+All six were also checked at every quarter-turn; sparse upright/sideways logos
+use one inverted OCR retry to recover their corroborating banner when necessary.
 
 Modern Basic Energy matching supports the printed `SVE` and `MEE` set codes.
 It requires one explicit collector number and never substitutes a different
