@@ -16,8 +16,8 @@ public struct IdentificationRequest: Codable, Sendable, Equatable {
         self.id = id; self.jobID = jobID; self.sequence = sequence; self.language = language
     }
     public func validate() throws {
-        guard (1...100).contains(sequence), CardLanguage(rawValue: language) != nil else {
-            throw ScannerError("invalidParams", "Identification supports English (en) or Korean (ko), sequence 1–100.")
+        guard ScanLimits.imageSequences.contains(sequence), CardLanguage(rawValue: language) != nil else {
+            throw ScannerError("invalidParams", "Identification supports English (en) or Korean (ko), sequence 1–1000.")
         }
     }
 }

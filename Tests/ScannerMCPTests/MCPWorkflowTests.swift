@@ -72,7 +72,7 @@ private func poll(_ peer: StdioPeer, id: String, terminal: Bool) async throws ->
     _ = try await peer.initialize()
     let tools = try await peer.request("tools/list")
     guard case .object(let object) = tools, case .array(let list) = object["tools"] else { throw ScannerError("test", "Missing tools") }
-    #expect(list.count == 28)
+    #expect(list.count == 29)
     _ = try payload(await peer.tool("scanner_list_devices"))
     _ = try payload(await peer.tool("scanner_get_capabilities"))
     _ = try payload(await peer.tool("scanner_get_settings"))
@@ -109,6 +109,10 @@ private func poll(_ peer: StdioPeer, id: String, terminal: Bool) async throws ->
         } while offset < image.bytes
         #expect(SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined() == image.sha256)
     }
+    let continuation: JSONValue = .object(["id": .string(requestID), "requestID": .string(UUID().uuidString)])
+    for _ in 0..<2 { _ = try payload(await peer.tool("scanner_continue_batch", continuation)) }
+    #expect(try await poll(peer, id: requestID, terminal: true).images.count == 4)
+    #expect(await backend.captures == 2)
     await backend.setHold(true)
     let secondID = UUID().uuidString
     _ = try payload(await peer.tool("scanner_start_scan", .object(["requestID": .string(secondID), "useDeviceSettings": .bool(true)])))
@@ -119,7 +123,7 @@ private func poll(_ peer: StdioPeer, id: String, terminal: Bool) async throws ->
     _ = try payload(await peer.tool("scanner_cancel_job", .object(["id": .string(secondID)])))
     #expect(try await poll(peer, id: secondID, terminal: true).state == .cancelled)
     #expect(try await poll(peer, id: thirdID, terminal: true).state == .cancelled)
-    #expect(await backend.captures == 2)
+    #expect(await backend.captures == 3)
     #expect(try await peer.close() == 0)
     #expect(try await coordinator.scanStatus(completed.id).state == .completed)
     await coordinator.shutdownScans()
@@ -129,7 +133,7 @@ private func poll(_ peer: StdioPeer, id: String, terminal: Bool) async throws ->
     let server = ScannerMCPServer(socketPath: "/tmp/nonexistent-scanner-\(UUID().uuidString)", readOnly: true)
     let tools = await server.tools()
     #expect(tools.allSatisfy { $0.annotations.readOnlyHint == true })
-    #expect(!tools.contains { $0.name == "scanner_start_scan" })
+    #expect(!tools.contains { $0.name == "scanner_start_scan" || $0.name == "scanner_continue_batch" })
     #expect(!tools.contains { $0.name == "scanner_identify_card" || $0.name == "scanner_review_card" })
     #expect(tools.contains { $0.name == "scanner_get_card_identification" })
     let denied = try await server.call(.init(name: "scanner_start_scan", arguments: ["requestID": .string(UUID().uuidString)]))

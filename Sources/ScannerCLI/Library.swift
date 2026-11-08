@@ -24,7 +24,7 @@ struct Configure: ParsableCommand {
     }
 }
 struct Batches: ParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "List batches or retrieve manifests.", subcommands: [List.self, Show.self, Manifest.self])
+    static let configuration = CommandConfiguration(abstract: "List batches or retrieve manifests.", subcommands: [List.self, Show.self, Manifest.self, Continue.self])
     struct List: ParsableCommand {
         @OptionGroup var options: ClientOptions
         @Option var limit = 50
@@ -54,7 +54,7 @@ struct Images: ParsableCommand {
         @Argument var jobID: String
         @Argument var sequence: Int
         func validate() throws {
-            guard UUID(uuidString: jobID) != nil, (1...100).contains(sequence) else { throw ValidationError("Provide a job UUID and sequence 1–100.") }
+            guard UUID(uuidString: jobID) != nil, ScanLimits.imageSequences.contains(sequence) else { throw ValidationError("Provide a job UUID and sequence 1–1000.") }
         }
         func run() throws { _ = try options.perform("images.get", params: .object(["jobID": .string(jobID), "sequence": .number(Double(sequence))])) }
     }
@@ -64,7 +64,7 @@ struct Images: ParsableCommand {
         @Argument var sequence: Int
         @Option(help: "Destination file; existing files are never replaced.") var output: String
         func validate() throws {
-            guard UUID(uuidString: jobID) != nil, (1...100).contains(sequence) else { throw ValidationError("Provide a job UUID and sequence 1–100.") }
+            guard UUID(uuidString: jobID) != nil, ScanLimits.imageSequences.contains(sequence) else { throw ValidationError("Provide a job UUID and sequence 1–1000.") }
         }
         func run() throws {
             do {

@@ -75,7 +75,7 @@ enum UnixIO {
         }
     }
     static func writeLine(_ data: Data, to fd: Int32) throws {
-        guard data.count <= 4 * 1024 * 1024 else { throw ScannerError("resourceLimit", "Response exceeds size limit.") }
+        guard data.count <= ScanLimits.responseBytes else { throw ScannerError("resourceLimit", "Response exceeds size limit.") }
         let bytes = data + Data([10])
         let deadline = ContinuousClock.now + .seconds(10)
         try bytes.withUnsafeBytes { buffer in

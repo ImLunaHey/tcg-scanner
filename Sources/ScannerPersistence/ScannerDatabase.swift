@@ -67,7 +67,24 @@ public final class ScannerDatabase: Sendable {
         migrator.registerMigration("v6-store-transfers") { db in
             try db.execute(sql: "CREATE TABLE storeTransfers (jobID TEXT PRIMARY KEY REFERENCES jobs(id), state TEXT NOT NULL, record BLOB NOT NULL)")
         }
+        migrator.registerMigration("v7-batch-continuations") { db in
+            try db.execute(sql: "CREATE TABLE batchContinuations (requestID TEXT PRIMARY KEY, batchID TEXT NOT NULL REFERENCES jobs(id))")
+        }
         try migrator.migrate(queue)
+    }
+    public func continuationBatch(_ requestID: UUID) throws -> UUID? {
+        try queue.read { db in
+            try String.fetchOne(db, sql: "SELECT batchID FROM batchContinuations WHERE requestID = ?", arguments: [requestID.uuidString]).flatMap(UUID.init(uuidString:))
+        }
+    }
+    public func beginContinuation(_ record: ScanRecord, requestID: UUID) throws {
+        try queue.write { db in
+            try db.execute(sql: "INSERT INTO batchContinuations VALUES (?, ?)", arguments: [requestID.uuidString, record.id.uuidString])
+            try db.execute(sql: "UPDATE jobs SET state = ?, record = ? WHERE id = ? AND state = 'completed'",
+                arguments: [record.state.rawValue, try Wire.encoder().encode(record), record.id.uuidString])
+            guard db.changesCount == 1 else { throw ScannerError("conflict", "Batch is no longer completed.") }
+            try Self.writeMetadata(record, db: db)
+        }
     }
     public func reserveBatchNumber(for id: UUID) throws -> Int {
         try queue.write { db in

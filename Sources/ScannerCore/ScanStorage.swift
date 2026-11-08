@@ -8,6 +8,7 @@ import ScannerAPI
 public actor ScanStorage {
     public nonisolated let incomingDirectory: URL
     public nonisolated let initialRecord: ScanRecord
+    public nonisolated let startingImageCount: Int
     private let directory: URL
     private var record: ScanRecord
     private let validateStorage: @Sendable () throws -> Void
@@ -16,6 +17,7 @@ public actor ScanStorage {
     public init(root: URL, device: Device, request: ScanRequest, batchNumber: Int? = nil, queued: Bool = false, profile: ScanProfile? = nil,
                 validateStorage: @escaping @Sendable () throws -> Void = {},
                 persist: @escaping @Sendable (ScanRecord) throws -> Void = { _ in }) throws {
+        startingImageCount = 0
         self.persist = persist; self.validateStorage = validateStorage
         try validateStorage()
         try request.validate()
@@ -46,9 +48,44 @@ public actor ScanStorage {
         initialRecord = record
         try Wire.encoder().encode(record).write(to: directory.appendingPathComponent("manifest.json"), options: .atomic)
     }
+    public init(root: URL, continuing previous: ScanRecord, requestID: UUID,
+                validateStorage: @escaping @Sendable () throws -> Void = {},
+                persist: @escaping @Sendable (ScanRecord) throws -> Void = { _ in }) throws {
+        self.persist = persist; self.validateStorage = validateStorage
+        try validateStorage()
+        let root = root.standardizedFileURL.resolvingSymlinksInPath()
+        directory = URL(fileURLWithPath: previous.outputDirectory).standardizedFileURL
+        guard directory.path.hasPrefix(root.path + "/"),
+              directory.resolvingSymlinksInPath().path == directory.path,
+              FileManager.default.fileExists(atPath: directory.path),
+              directory.appendingPathComponent("manifest.json").resolvingSymlinksInPath().path == directory.appendingPathComponent("manifest.json").path else {
+            throw ScannerError("storage", "Existing batch must be inside the storage root without symlinks.")
+        }
+        guard previous.state == .completed, previous.sessionClosed, previous.errors.isEmpty,
+              !previous.images.isEmpty, previous.images.map(\.sequence) == Array(1...previous.images.count),
+              !previous.request.duplex || previous.images.count.isMultiple(of: 2) else {
+            throw ScannerError("conflict", "Only a completed batch with contiguous captures and complete duplex pairs can be continued.")
+        }
+        guard previous.request.dpi == 600,
+              previous.images.count <= ScanLimits.imagesPerBatch - ScanLimits.imagesPerFeed else {
+            throw ScannerError("resourceLimit", "Continuing requires 600 DPI and room for another 100 images within the 1000-image batch limit.")
+        }
+        startingImageCount = previous.images.count
+        incomingDirectory = directory.appendingPathComponent(".incoming-" + requestID.uuidString.lowercased(), isDirectory: true)
+        guard mkdir(incomingDirectory.path, 0o700) == 0 else {
+            throw ScannerError("storage", "Cannot create a unique continuation staging directory; existing files were retained.")
+        }
+        record = previous
+        record.continuations = (previous.continuations ?? []) + [BatchContinuation(requestID: requestID, record: previous)]
+        record.state = .queued; record.completedAt = nil; record.sessionClosed = false
+        initialRecord = record
+        // The coordinator reserves the request in SQLite before publishing or feeding.
+    }
     public func snapshot() -> ScanRecord { record }
     public func markPreparing() throws {
-        record.state = .preparing; record.startedAt = Date()
+        record.state = .preparing
+        if startingImageCount == 0 { record.startedAt = Date() }
+        else if let index = record.continuations?.indices.last { record.continuations?[index].startedAt = Date() }
         try save()
     }
     public func markProcessing() throws {
@@ -74,8 +111,12 @@ public actor ScanStorage {
         record.state = .scanning; record.appliedSettings = settings
         try save()
     }
-    public func preserve(_ url: URL, sequence: Int) throws {
+    public func preserve(_ url: URL, sequence callbackSequence: Int) throws {
         try validateStorage()
+        guard (1...ScanLimits.imagesPerFeed).contains(callbackSequence) else {
+            throw ScannerError("resourceLimit", "A feed is limited to 100 images; excess output is retained in staging.")
+        }
+        let sequence = startingImageCount + callbackSequence
         guard url.isFileURL, url.deletingLastPathComponent().standardizedFileURL == incomingDirectory,
               url.resolvingSymlinksInPath().path == url.standardizedFileURL.path else {
             throw ScannerError("storage", "Driver returned an unexpected output path; file left untouched: \(url.path)")
@@ -114,7 +155,7 @@ public actor ScanStorage {
     }
     public func finish(errors: [ScannerError], cancelled: Bool, sessionClosed: Bool) throws {
         record.errors += errors; record.sessionClosed = sessionClosed
-        if record.images.isEmpty && record.errors.isEmpty && !cancelled {
+        if record.images.count == startingImageCount && record.errors.isEmpty && !cancelled {
             record.errors.append(ScannerError("noImages", "Scanner completed without delivering images."))
         }
         if record.request.duplex && record.images.count % 2 != 0 {
@@ -129,6 +170,12 @@ public actor ScanStorage {
         record.completedAt = Date()
     }
     private func save() throws {
+        if startingImageCount > 0, var feeds = record.continuations, let index = feeds.indices.last {
+            feeds[index].state = record.state
+            feeds[index].completedAt = record.completedAt
+            feeds[index].imagesSaved = record.images.count - startingImageCount
+            record.continuations = feeds
+        }
         try validateStorage()
         try Wire.encoder().encode(record).write(to: directory.appendingPathComponent("manifest.json"), options: .atomic)
         try persist(record)

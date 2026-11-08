@@ -24,7 +24,7 @@ extension Images {
         @Argument var jobID: String
         @Argument var sequence: Int
         func validate() throws {
-            guard UUID(uuidString: jobID) != nil, (1...100).contains(sequence) else { throw ValidationError("Provide a job UUID and sequence 1–100.") }
+            guard UUID(uuidString: jobID) != nil, ScanLimits.imageSequences.contains(sequence) else { throw ValidationError("Provide a job UUID and sequence 1–1000.") }
         }
         func run() throws { _ = try options.perform("images.identification", params: .object(["jobID": .string(jobID), "sequence": .number(Double(sequence))])) }
     }
@@ -39,9 +39,9 @@ extension Images {
         @Option var finish = "unverified"
         @Option var condition = "unassessed"
         func validate() throws {
-            guard UUID(uuidString: jobID) != nil, UUID(uuidString: identificationID) != nil, (1...100).contains(sequence),
+            guard UUID(uuidString: jobID) != nil, UUID(uuidString: identificationID) != nil, ScanLimits.imageSequences.contains(sequence),
                   reject != (cardID != nil), CardFinish(rawValue: finish) != nil, CardCondition(rawValue: condition) != nil else {
-                throw ValidationError("Provide job/identification UUIDs, sequence 1–100 and either --card-id or --reject. See documentation for finish/condition values.")
+                throw ValidationError("Provide job/identification UUIDs, sequence 1–1000 and either --card-id or --reject. See documentation for finish/condition values.")
             }
         }
         func run() throws {

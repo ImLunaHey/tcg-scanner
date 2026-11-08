@@ -6,7 +6,7 @@ import ScannerImageProcessing
 extension ScannerCoordinator {
     public func prepareCard(jobID: UUID, sequence: Int, id: UUID) async throws -> ProcessedImage {
         guard !stopping, preparingCardJobs.isEmpty, !editingJobs.contains(jobID) else { throw ScannerError("busy", "Another image operation is running. Retry shortly.") }
-        guard (1...100).contains(sequence) else { throw ScannerError("invalidParams", "Sequence must be 1–100.") }
+        guard ScanLimits.imageSequences.contains(sequence) else { throw ScannerError("invalidParams", "Sequence must be 1–1000.") }
         preparingCardJobs.insert(jobID); defer { preparingCardJobs.remove(jobID) }
         try validateStorage()
         var record = try await scanStatus(jobID)
@@ -38,7 +38,7 @@ extension ScannerCoordinator {
         defer { automaticallyIdentifyingCards = false }
         for worker in Array(identificationTasks.values) { await worker.value }
         let snapshot = await store.snapshot()
-        let pairs = Dictionary(grouping: snapshot.images, by: { ($0.sequence + 1) / 2 })
+        let pairs = Dictionary(grouping: snapshot.images.filter { $0.sequence > store.startingImageCount }, by: { ($0.sequence + 1) / 2 })
             .sorted { $0.key < $1.key }.map { $0.value.sorted { $0.sequence < $1.sequence } }
         await CardProcessingPool.run(pairs) { images in
             await self.prepareCapturedPair(images, snapshot: snapshot, store: store)

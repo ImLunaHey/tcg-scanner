@@ -67,7 +67,7 @@ extension ScannerGateway {
     }
     func imageParameters(_ value: String) throws -> [String: JSONValue] {
         let identifier = value.split(separator: ":", omittingEmptySubsequences: false)
-        guard identifier.count == 2, let sequence = Int(identifier[1]), (1...100).contains(sequence) else {
+        guard identifier.count == 2, let sequence = Int(identifier[1]), ScanLimits.imageSequences.contains(sequence) else {
             throw GatewayError(400, "invalidParams", "Image ID must be JOB_UUID:SEQUENCE.")
         }
         return ["jobID": .string(try uuid(String(identifier[0]))), "sequence": .number(Double(sequence))]

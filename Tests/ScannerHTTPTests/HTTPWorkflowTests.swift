@@ -213,6 +213,20 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
         #expect(!String(buffer: nextEvents.body).contains("event: scanner"))
         let resetEvents = try await client.execute(uri: "/api/v1/events?after=9007199254740991&seconds=1", method: .get, headers: headers)
         #expect(String(buffer: resetEvents.body).contains("id: \(latest.latestCursor)\nevent: reset"))
+        let continuationPath = "/api/v1/batches/\(requestID)/continue"
+        let continuation = try buffer(.object(["requestID": .string(UUID().uuidString)]))
+        #expect(try await client.execute(uri: continuationPath, method: .post,
+            headers: [HTTPField.Name("Host")!: "127.0.0.1:8170"], body: continuation).status.code == 401)
+        #expect(try await client.execute(uri: continuationPath, method: .post, headers: headers,
+            body: buffer(.object(["requestID": .string(UUID().uuidString), "dpi": .number(300)]))).status.code == 400)
+        for _ in 0..<2 {
+            let response = try await client.execute(uri: continuationPath, method: .post, headers: headers, body: continuation)
+            #expect(response.status.code == 202)
+            #expect(try decode(response, as: ScanRecord.self).id == requestID)
+        }
+        let extended = try await httpPoll(client, id: requestID, headers: headers)
+        #expect(extended.images.count == 4 && extended.processedImages?.contains { $0.id == editID } == true)
+        #expect(await backend.captures == 2)
         await backend.holdCaptures()
         let secondID = UUID(); let thirdID = UUID()
         for id in [secondID, thirdID] {
@@ -225,7 +239,7 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
             #expect(try await client.execute(uri: "/api/v1/jobs/\(id)/cancel", method: .post, headers: headers).status.code == 200)
             #expect(try await httpPoll(client, id: id, headers: headers).state == .cancelled)
         }
-        #expect(await backend.captures == 2)
+        #expect(await backend.captures == 3)
         #expect(try await client.execute(uri: "/api/v1/profiles/\(profileID)", method: .delete, headers: headers).status.code == 200)
         #expect(try await client.execute(uri: "/api/v1/session", method: .delete, headers: headers).status.code == 200)
         #expect(try await client.execute(uri: "/api/v1/jobs", method: .get, headers: headers).status.code == 401)

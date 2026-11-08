@@ -20,7 +20,7 @@ public struct ImageEditRequest: Codable, Sendable, Equatable {
     }
     public func validate() throws {
         guard (deskewDegrees ?? 0).isFinite, abs(deskewDegrees ?? 0) <= 12,
-              (1...100).contains(sequence), (0...3).contains(quarterTurns),
+              ScanLimits.imageSequences.contains(sequence), (0...3).contains(quarterTurns),
               [crop.x, crop.y, crop.width, crop.height].allSatisfy(\.isFinite),
               crop.x >= 0, crop.y >= 0, crop.width > 0, crop.height > 0,
               crop.x + crop.width <= 1.000000001, crop.y + crop.height <= 1.000000001 else {

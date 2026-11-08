@@ -42,7 +42,7 @@ extension DiagnosticRouter {
             try only(params, keys: request.method == "v1.images.thumbnail" ? ["jobID", "sequence", "editID", "format"] : request.method != "v1.images.read" ? ["jobID", "sequence", "editID"] : ["jobID", "sequence", "offset", "length", "editID"])
             let id = try uuid(params, "jobID")
             let editID = try params["editID"].map { _ in try uuid(params, "editID") }
-            let sequence = try integer(params, "sequence", default: 0, range: 1...100)
+            let sequence = try integer(params, "sequence", default: 0, range: ScanLimits.imageSequences)
             guard sequence > 0 else { throw RPCFailure(code: -32602, message: "sequence is required.") }
             if request.method == "v1.images.get" { result = try .wrapping(await coordinator.imageMetadata(jobID: id, sequence: sequence, editID: editID)) }
             else if request.method == "v1.images.thumbnail" {

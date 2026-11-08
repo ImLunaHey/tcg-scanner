@@ -63,7 +63,7 @@ public struct WebAssets: Sendable {
         try path.only(inventoryRoute ? ["search", "missing"] : batchRoute ? ["card"] : [])
         if inventoryRoute { _ = try path.number("missing", default: 0, range: 0...1) }
         if let search = path.query["search"], search.utf8.count > 160 { throw GatewayError(400, "invalidParams", "Search is too long.") }
-        if batchRoute { _ = try path.number("card", default: 1, range: 1...100) }
+        if batchRoute { _ = try path.number("card", default: 1, range: 1...ScanLimits.imagesPerBatch) }
         return Response(status: .ok, headers: [.contentType: asset.type],
                         body: request.method == .head ? .init() : .init(byteBuffer: ByteBuffer(bytes: asset.data)))
     }

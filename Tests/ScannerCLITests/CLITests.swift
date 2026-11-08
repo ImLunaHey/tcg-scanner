@@ -66,3 +66,12 @@ import ScannerAPI
     #expect(try Scanner.parseAsRoot(["device", "--json"]) is DeviceCommand)
     #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["scan", "--profile", "pokemon", "--use-device-settings"]) }
 }
+
+@Test func continuingBatchCLIUsesStableRequestWithoutNewSettings() throws {
+    let id = UUID().uuidString, key = UUID().uuidString
+    let command = try Scanner.parseAsRoot(["batches", "continue", id, "--request-id", key, "--no-wait", "--json"]) as! Batches.Continue
+    #expect(command.id == id && command.requestID == key && command.noWait && command.options.json)
+    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["batches", "continue", id, "--dpi", "300"]) }
+    #expect(throws: (any Error).self) { try Scanner.parseAsRoot(["batches", "continue", "bad"]) }
+    #expect(try Scanner.parseAsRoot(["images", "metadata", id, "102"]) is Images.Metadata)
+}

@@ -115,6 +115,13 @@ extension ScannerGateway {
                 guard case .string(let id) = params["requestID"] else { throw GatewayError(400, "invalidParams", "Provide requestID or Idempotency-Key as a UUID.") }
                 params["requestID"] = .string(try uuid(id))
                 params = ["dpi": .number(600), "duplex": .bool(false), "format": .string("png")].merging(params) { _, v in v }
+            } else if parts.count == 3, parts[0] == "batches", parts[2] == "continue", method == .post {
+                rpc = "batches.continue"; status = 202
+                try only(body, ["requestID"])
+                guard case .string(let requestID) = body["requestID"] else {
+                    throw GatewayError(400, "invalidParams", "Continuing a batch requires a stable requestID UUID.")
+                }
+                params = ["id": .string(try uuid(parts[1])), "requestID": .string(try uuid(requestID))]
             } else if parts == ["profiles"], method == .post {
                 rpc = "profiles.create"; status = 201
                 try only(body, ["id", "name", "dpi", "duplex", "format"])

@@ -48,11 +48,12 @@ extension ScannerCoordinator {
         return record
     }
     private func existingSubmission(_ request: ScanRequest) throws -> ScanRecord? {
+        guard try database.continuationBatch(request.requestID) == nil else { throw ScannerError("conflict", "Request ID belongs to a batch continuation.") }
         guard let original = try database.submission(request.requestID) else { return nil }
         guard original == request else { throw ScannerError("conflict", "Request ID was already used with different settings.") }
         return try database.job(request.requestID)
     }
-    private func acceptingJobs() throws {
+    func acceptingJobs() throws {
         guard buttonMonitorTask == nil else { throw ScannerError("busy", "Button diagnostics are active; stop observation before scanning.") }
         guard !stopping && !paused && !requiresRestart && persistenceError == nil else { throw ScannerError("busy", "Service is stopping, paused or has a persistence error.") }
         guard queue.count < 100 else { throw ScannerError("resourceLimit", "Queue is full (100 waiting jobs).") }

@@ -68,7 +68,7 @@ extension ScannerCoordinator {
     }
 
     public func cardIdentification(jobID: UUID, sequence: Int) async throws -> CardIdentification? {
-        guard (1...100).contains(sequence) else { throw ScannerError("invalidParams", "Sequence must be 1–100.") }
+        guard ScanLimits.imageSequences.contains(sequence) else { throw ScannerError("invalidParams", "Sequence must be 1–1000.") }
         let record = try await scanStatus(jobID)
         guard record.images.contains(where: { $0.sequence == sequence }) else { throw ScannerError("imageNotFound", "Original image not found.") }
         return record.cardIdentifications?.first { $0.request.sequence == sequence }

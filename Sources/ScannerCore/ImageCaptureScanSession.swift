@@ -90,7 +90,7 @@ final class ImageCaptureScanSession: ImageCaptureConnection {
             catch { failure = Self.convert(error); scanner.cancelScan(); throw error }
         })
         log("received image \(number): \(url.lastPathComponent)")
-        if number >= 100 {
+        if number >= ScanLimits.imagesPerFeed {
             failure = ScannerError("resourceLimit", "Basic scan limit of 100 image callbacks reached; cancelling. Files retained.")
             scanner.cancelScan()
         }

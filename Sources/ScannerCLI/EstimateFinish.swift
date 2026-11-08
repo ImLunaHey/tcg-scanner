@@ -10,8 +10,8 @@ extension Images {
         @Argument var sequence: Int
         @Option var identificationID: String
         func validate() throws {
-            guard UUID(uuidString: jobID) != nil, UUID(uuidString: identificationID) != nil, (1...100).contains(sequence) else {
-                throw ValidationError("Provide job/identification UUIDs and sequence 1–100.")
+            guard UUID(uuidString: jobID) != nil, UUID(uuidString: identificationID) != nil, ScanLimits.imageSequences.contains(sequence) else {
+                throw ValidationError("Provide job/identification UUIDs and sequence 1–1000.")
             }
         }
         func run() throws {

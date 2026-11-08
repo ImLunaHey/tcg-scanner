@@ -36,7 +36,7 @@ public struct UnixClient: Sendable {
         }
         try UnixIO.sameUser(fd)
         try UnixIO.writeLine(Wire.encoder().encode(request), to: fd)
-        let data = try UnixIO.readLine(fd, limit: 4 * 1024 * 1024, seconds: 90)
+        let data = try UnixIO.readLine(fd, limit: ScanLimits.responseBytes, seconds: 90)
         let response = try Wire.decoder().decode(RPCResponse.self, from: data)
         guard response.jsonrpc == "2.0", response.id == request.id,
               (response.result == nil) != (response.error == nil) else {
