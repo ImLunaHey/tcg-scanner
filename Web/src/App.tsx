@@ -196,11 +196,11 @@ function Workspace() {
               title={collapsed ? label : undefined}
               aria-current={
                 location === href ||
-                (href === "/library" && location.startsWith("/batches/"))
+                ((href === "/library" && location.startsWith("/batches/")) || (href === "/inventory" && location.startsWith("/inventory/")))
                   ? "page"
                   : undefined
               }
-              className={`nav-link ${location === href || (href === "/library" && location.startsWith("/batches/")) ? "selected" : ""}`}
+              className={`nav-link ${location === href || ((href === "/library" && location.startsWith("/batches/")) || (href === "/inventory" && location.startsWith("/inventory/"))) ? "selected" : ""}`}
             >
               <Icon size={19} />
               <span>{label}</span>
@@ -234,7 +234,9 @@ function Workspace() {
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/library" component={Library} />
-            <Route path="/inventory" component={Inventory} />
+            <Route path="/inventory"><Inventory /></Route>
+            <Route path="/inventory/sets"><Inventory view="sets" /></Route>
+            <Route path="/inventory/sets/:setID">{params => <Inventory setID={params.setID} />}</Route>
             <Route path="/profiles" component={Profiles} />
             <Route path="/scanner" component={Scanner} />
             <Route path="/batches/:id">

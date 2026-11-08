@@ -50,15 +50,19 @@ public struct WebAssets: Sendable {
     }
     func response(for request: Request, path: GatewayPath) throws -> Response? {
         let key = "/" + path.components.joined(separator: "/")
-        let appRoute = ["/inventory", "/library", "/profiles", "/scanner"].contains(key)
-            || (path.components.count == 2 && path.components[0] == "batches"
-                && UUID(uuidString: path.components[1]) != nil)
+        let inventoryRoute = path.components == ["inventory"] || path.components == ["inventory", "sets"]
+            || (path.components.count == 3 && path.components.prefix(2) == ["inventory", "sets"]
+                && path.components[2].range(of: #"^[A-Za-z0-9][A-Za-z0-9.+_-]{0,255}$"#, options: .regularExpression) != nil)
+        let batchRoute = path.components.count == 2 && path.components[0] == "batches" && UUID(uuidString: path.components[1]) != nil
+        let appRoute = inventoryRoute || batchRoute || ["/library", "/profiles", "/scanner"].contains(key)
         guard let asset = files[key] ?? (appRoute ? files["/index.html"] : nil) else { return nil }
         guard request.method == .get || request.method == .head else { throw GatewayError(405, "methodNotAllowed", "Web assets are read-only.") }
         guard request.headers[.transferEncoding] == nil, request.headers[.contentLength] == nil || request.headers[.contentLength] == "0" else {
             throw GatewayError(400, "invalidParams", "Web asset requests cannot contain a body.")
         }
-        try path.only([])
+        try path.only(inventoryRoute ? ["search"] : batchRoute ? ["card"] : [])
+        if let search = path.query["search"], search.utf8.count > 160 { throw GatewayError(400, "invalidParams", "Search is too long.") }
+        if batchRoute { _ = try path.number("card", default: 1, range: 1...100) }
         return Response(status: .ok, headers: [.contentType: asset.type],
                         body: request.method == .head ? .init() : .init(byteBuffer: ByteBuffer(bytes: asset.data)))
     }

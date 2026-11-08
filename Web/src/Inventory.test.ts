@@ -4,7 +4,7 @@ import { Router } from "wouter";
 import { expect, it } from "vitest";
 import { InventoryCard, type InventoryEntry } from "./Inventory";
 const entry: InventoryEntry = {
-  id: "pending", setKey: "pokemon:Delta Reign", game: "pokemon", language: "en", name: "Kyogre", setName: "Delta Reign", number: "026/103",
+  id: "pending", setKey: "pokemon-printed-DLR", game: "pokemon", language: "en", name: "Kyogre", setName: "Delta Reign", number: "026/103",
   status: "awaitingCatalogue", quantity: 2, confirmedQuantity: 0,
   copies: [{ batchID: "batch", batchNumber: 51, cardNumber: 1 }, { batchID: "other", batchNumber: 52, cardNumber: 3 }],
 };
@@ -23,7 +23,7 @@ it("does not label suggested catalogue matches as confirmed", () => {
 it("renders a visual set tile with a cover area and quantity", async () => {
   const { InventorySetTile } = await import("./Inventory");
   const html = renderToStaticMarkup(createElement(InventorySetTile, { set: {
-    id: "pokemon:Delta Reign", name: "Delta Reign", game: "pokemon", quantity: 20, entries: 19, previews: [],
+    id: "pokemon-printed-DLR", name: "Delta Reign", game: "pokemon", quantity: 20, entries: 19, previews: [],
   }, select: () => {} }));
   expect(html).toContain("inventory-set-covers");
   expect(html).toContain("View Delta Reign");

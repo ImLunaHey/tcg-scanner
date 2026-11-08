@@ -33,16 +33,16 @@ struct InventoryBuilder {
             if complete, game != .unknown, matched.count == 1, let (identity, card) = matched.first {
                 let id = key(base + ["catalogue", card.provider ?? "tcgdex", card.id])
                 entry = InventoryEntry(id: id, game: game, language: language, name: card.name, setName: card.setName,
-                    number: card.localID + (card.officialSetCount.map { "/\($0)" } ?? ""), status: "catalogue", copy: copy, confirmed: identity.state == .confirmed)
+                    number: card.localID + (card.officialSetCount.map { "/\($0)" } ?? ""), status: "catalogue", setKey: catalogueSetKey(card, game: game), copy: copy, confirmed: identity.state == .confirmed)
             } else if complete, game != .unknown, matched.isEmpty, waiting.count == 1, let printed = waiting.first?.evidence?.uncataloguedCard {
                 let id = key(base + ["awaitingCatalogue", printed.setCode, printed.collectorNumber, printed.name.lowercased()])
                 entry = InventoryEntry(id: id, game: game, language: language, name: printed.name,
-                    setName: printed.setName ?? printed.setCode, number: printed.collectorNumber, status: "awaitingCatalogue", copy: copy, confirmed: false)
+                    setName: printed.setName ?? printed.setCode, number: printed.collectorNumber, status: "awaitingCatalogue", setKey: game.rawValue + "-printed-" + printed.setCode, copy: copy, confirmed: false)
             } else {
                 let id = key(["unresolved", record.id.uuidString, String(number)])
                 entry = InventoryEntry(id: id, game: game, language: language,
                     name: complete ? "Needs identification" : "Incomplete card pair", setName: nil, number: nil,
-                    status: "unresolved", copy: copy, confirmed: false)
+                    status: "unresolved", setKey: game.rawValue + "-unidentified", copy: copy, confirmed: false)
             }
             let sequence = detection?.frontSequence ?? matched.first?.0.request.sequence
                 ?? waiting.first?.request.sequence ?? images.map(\.sequence).min()
@@ -58,6 +58,14 @@ struct InventoryBuilder {
             }
             entries[entry.id] = entry
         }
+    }
+    private func catalogueSetKey(_ card: CardCandidate, game: CardGame) -> String {
+        // YGOPRODeck stores a full printing code (DUEA-EN001); the prefix
+        // identifies the set shared by its other cards.
+        let setID = card.provider == "ygoprodeck"
+            ? card.setID.split(separator: "-").first.map(String.init) ?? "unidentified"
+            : card.setID
+        return game.rawValue + "-" + (card.provider ?? "tcgdex") + "-" + setID
     }
     private func key(_ parts: [String]) -> String { (try! JSONEncoder().encode(parts)).base64EncodedString() }
     func page(limit: Int, offset: Int, search: String, set: String = "") -> InventoryPage {

@@ -42,3 +42,14 @@ Set covers use prepared images only and prefer portrait cards when available.
 Landscape covers retain their own aspect ratio. If a set has no prepared images,
 its tile shows a neutral placeholder; full overscan canvases are still available
 in the card gallery but are not used as decorative set covers.
+
+The gallery displays every matching card without page controls. It automatically
+fetches all metadata pages (100 entries per request), while thumbnails remain lazy
+and use the existing bounded request queue. The Sets view always shows all sets.
+
+Navigation is URL-driven: `/inventory` shows cards, `/inventory/sets` shows sets,
+and `/inventory/sets/{set-id}` shows cards in a selected set. Search is stored in
+`?search=...`, so direct links, refresh and browser history retain the selection.
+Catalogue set IDs combine game, provider and catalogue set ID; pending sets use
+game and printed set code. Display-name changes do not change catalogue set URLs.
+Batch location links accept `?card=N` on direct navigation too.

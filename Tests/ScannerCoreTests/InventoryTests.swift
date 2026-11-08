@@ -84,6 +84,8 @@ private func inventoryRecordMissingSide() -> ScanRecord {
     #expect(first.sets.count == 2 && first.entries.count == 1)
     let delta = first.sets.first { $0.name == "Delta Reign" }!
     #expect(delta.quantity == 2 && delta.entries == 1)
+    #expect(delta.id == "pokemon-printed-DLR")
+    #expect(first.sets.contains { $0.id == "pokemon-tcgdex-set" })
     #expect(delta.previews.count == 1 && delta.previews[0].image.sequence == 2)
     let selected = builder.page(limit: 50, offset: 0, search: "", set: delta.id)
     #expect(selected.entries.count == 1 && selected.entries[0].quantity == 2)
@@ -122,4 +124,20 @@ private func inventoryRecordMissingSide() -> ScanRecord {
     let page = rawBuilder.page(limit: 50, offset: 0, search: "")
     #expect(page.totalCopies == 1 && page.entries[0].preview != nil)
     #expect(page.sets[0].previews.isEmpty)
+}
+
+@Test func inventorySetIDsIgnoreDisplayNamesAndGroupYugiohPrintingPrefixes() {
+    var builder = InventoryBuilder()
+    for index in 1...2 {
+        var record = inventoryRecord(batch: index)
+        record.processedImages?[0].cardPreparation?.orientationBasis = "yugioh-back-pattern"
+        record.cardIdentifications?[0].evidence?.candidates[0].id = "ygo-\(index)"
+        record.cardIdentifications?[0].evidence?.candidates[0].provider = "ygoprodeck"
+        record.cardIdentifications?[0].evidence?.candidates[0].setID = "DUEA-EN00\(index)"
+        record.cardIdentifications?[0].evidence?.candidates[0].setName = "Name variant \(index)"
+        builder.add(record)
+    }
+    let page = builder.page(limit: 50, offset: 0, search: "")
+    #expect(page.sets.count == 1 && page.sets[0].quantity == 2)
+    #expect(page.sets[0].id == "yugioh-ygoprodeck-DUEA")
 }

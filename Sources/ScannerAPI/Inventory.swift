@@ -40,10 +40,10 @@ public struct InventoryEntry: Codable, Sendable {
     public var preview: InventoryPreview?
     public var setKey: String
     public var copies: [InventoryCopy]
-    public init(id: String, game: CardGame, language: String, name: String, setName: String?, number: String?, status: String, copy: InventoryCopy, confirmed: Bool) {
+    public init(id: String, game: CardGame, language: String, name: String, setName: String?, number: String?, status: String, setKey: String, copy: InventoryCopy, confirmed: Bool) {
         self.id = id; self.game = game; self.language = language; self.name = name
         self.setName = setName; self.number = number; self.status = status
-        self.setKey = game.rawValue + ":" + (setName ?? "")
+        self.setKey = setKey
         self.quantity = 1; self.confirmedQuantity = confirmed ? 1 : 0; self.copies = [copy]
     }
 }

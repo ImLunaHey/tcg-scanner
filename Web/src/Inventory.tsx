@@ -1,11 +1,12 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { Link, useLocation, useSearchParams } from "wouter";
 import { ImageIcon } from "lucide-react";
 import { useAuth } from "./auth";
 import { batchLabel, captureLabel, gameLabel, type CardGameDetection } from "./models";
 import { Empty, ErrorNote, Loading } from "./ui";
 import { InventoryThumbnail, type InventoryPreview } from "./InventoryThumbnail";
+import { inventoryURL } from "./inventoryNavigation";
 import { ImageLightbox } from "./ImageLightbox";
 
 export type InventoryEntry = {
@@ -48,39 +49,46 @@ export function InventorySetTile({ set, select }: { set: InventorySet; select: (
     <strong>{set.name}</strong><span>{gameLabel(set.game)} · {set.quantity.toLocaleString()} copies</span>
   </button>;
 }
-export function Inventory() {
+export function Inventory({ view = "cards", setID = "" }: { view?: "cards" | "sets"; setID?: string }) {
   const { api } = useAuth();
-  const [text, setText] = useState("");
-  const [search, setSearch] = useState("");
-  const [offset, setOffset] = useState(0);
-  const [view, setView] = useState<"cards" | "sets">("cards");
-  const [selectedSet, setSelectedSet] = useState("");
+  const [, navigate] = useLocation();
+  const [params] = useSearchParams();
+  const search = params.get("search") || "";
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [lightbox, setLightbox] = useState<InventoryEntry>();
   useEffect(() => {
-    const timer = setTimeout(() => { setSearch(text.trim()); setOffset(0); }, 250);
+    const timer = setTimeout(() => setDebouncedSearch(search), 250);
     return () => clearTimeout(timer);
-  }, [text]);
-  const inventory = useQuery({
-    queryKey: ["inventory", search, offset, selectedSet],
-    queryFn: ({ signal }) => api.get<InventoryPage>(`inventory?limit=48&offset=${offset}&search=${encodeURIComponent(search)}&set=${encodeURIComponent(selectedSet)}`, signal),
+  }, [search]);
+  const inventory = useInfiniteQuery({
+    queryKey: ["inventory", debouncedSearch, setID],
+    queryFn: ({ signal, pageParam }) => api.get<InventoryPage>(`inventory?limit=100&offset=${pageParam}&search=${encodeURIComponent(debouncedSearch)}&set=${encodeURIComponent(setID)}`, signal),
+    initialPageParam: 0,
+    getNextPageParam: (page) => page.nextOffset,
     placeholderData: keepPreviousData,
     refetchInterval: 30_000,
   });
-  const data = inventory.data;
+  useEffect(() => {
+    if (view === "cards" && inventory.hasNextPage && !inventory.isFetching && !inventory.isPlaceholderData && !inventory.isFetchNextPageError)
+      void inventory.fetchNextPage({ cancelRefetch: false });
+  }, [view, inventory.hasNextPage, inventory.isFetching, inventory.isPlaceholderData, inventory.isFetchNextPageError, inventory.fetchNextPage]);
+  const data = inventory.data?.pages[0];
+  const entries = inventory.data?.pages.flatMap(page => page.entries) || [];
   const sets = data?.sets.filter(set => `${set.name} ${gameLabel(set.game)}`.toLowerCase().includes(search.toLowerCase())) || [];
-  function chooseSet(id: string) { setSelectedSet(id); setOffset(0); setText(""); setSearch(""); setView("cards"); }
+  function chooseSet(id: string) { navigate(inventoryURL({ setID: id })); }
   return <>
     <header className="inventory-heading"><h1>Inventory</h1>{data && <span>{data.totalCopies.toLocaleString()} scanned copies <span title="Rescans count again; all finishes are combined.">ⓘ</span></span>}</header>
     <div className="inventory-gallery-toolbar">
-      <div className="inventory-view-switch" role="group" aria-label="Inventory view"><button aria-pressed={view === "cards"} onClick={() => setView("cards")}>Cards</button><button aria-pressed={view === "sets"} onClick={() => { setView("sets"); setSelectedSet(""); setOffset(0); }}>Sets</button></div>
-      <label className="field inventory-search"><span className="sr-only">Search {view}</span><input type="search" maxLength={100} value={text} onChange={e => setText(e.target.value)} placeholder={view === "sets" ? "Find a set…" : "Find a card…"} /></label>
-      {view === "cards" && <label className="field inventory-set-filter"><span className="sr-only">Set</span><select value={selectedSet} onChange={e => { setSelectedSet(e.target.value); setOffset(0); }}><option value="">All sets</option>{data?.sets.map(set => <option key={set.id} value={set.id}>{set.name} ({set.quantity})</option>)}</select></label>}
+      <div className="inventory-view-switch" role="group" aria-label="Inventory view"><Link href={inventoryURL()} aria-current={view === "cards" ? "page" : undefined}>Cards</Link><Link href={inventoryURL({ view: "sets" })} aria-current={view === "sets" ? "page" : undefined}>Sets</Link></div>
+      <label className="field inventory-search"><span className="sr-only">Search {view}</span><input type="search" maxLength={100} value={search} onChange={e => navigate(inventoryURL({ view, setID, search: e.target.value }), { replace: true })} placeholder={view === "sets" ? "Find a set…" : "Find a card…"} /></label>
+      {view === "cards" && <label className="field inventory-set-filter"><span className="sr-only">Set</span><select value={setID} onChange={e => navigate(inventoryURL({ setID: e.target.value, search }))}><option value="">All sets</option>{data?.sets.map(set => <option key={set.id} value={set.id}>{set.name} ({set.quantity})</option>)}</select></label>}
     </div>
     <ErrorNote error={inventory.error} />
     {inventory.isPending ? <Loading /> : view === "sets" ? sets.length ? <div className="inventory-set-grid">{sets.map(set => <InventorySetTile key={set.id} set={set} select={() => chooseSet(set.id)} />)}</div> : <Empty title="No matching sets">Try another set name.</Empty>
-      : data && !data.entries.length ? <Empty title={search || selectedSet ? "No matching cards" : "No scanned cards yet"}>{search || selectedSet ? "Try another name or set." : "Completed card batches will appear here."}</Empty>
-      : <div className="inventory-card-grid">{data?.entries.map(entry => <InventoryCard key={entry.id} entry={entry} open={() => setLightbox(entry)} />)}</div>}
-    {view === "cards" && data && (offset > 0 || data.nextOffset != null) && <nav className="inventory-pagination" aria-label="Inventory pages"><button className="button secondary" disabled={offset === 0 || inventory.isFetching} onClick={() => setOffset(Math.max(0, offset - 48))}>Previous</button><span className="small">{offset + 1}–{offset + data.entries.length} of {data.matchingEntries}</span><button className="button secondary" disabled={data.nextOffset == null || inventory.isFetching} onClick={() => setOffset(data.nextOffset!)}>Next</button></nav>}
+      : data && !entries.length ? <Empty title={search || setID ? "No matching cards" : "No scanned cards yet"}>{search || setID ? "Try another name or set." : "Completed card batches will appear here."}</Empty>
+      : <div className="inventory-card-grid">{entries.map(entry => <InventoryCard key={entry.id} entry={entry} open={() => setLightbox(entry)} />)}</div>}
+    {view === "cards" && inventory.isFetchingNextPage && <p className="small muted" role="status">Loading remaining cards…</p>}
+    {inventory.isFetchNextPageError && <button className="button secondary" onClick={() => void inventory.fetchNextPage()}>Retry loading cards</button>}
     {lightbox?.preview && <ImageLightbox batchID={lightbox.preview.batchID} images={[{ ...lightbox.preview.image, editID: lightbox.preview.editID, label: lightbox.name }]} initial={0} close={() => setLightbox(undefined)} />}
   </>;
 }
