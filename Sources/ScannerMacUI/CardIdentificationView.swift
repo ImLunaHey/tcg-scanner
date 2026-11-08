@@ -170,7 +170,7 @@ extension CardIdentification {
         let matched = edition.stamp.state == .present && edition.state == .matched &&
             name?.isEmpty == false && candidate != nil && edition.candidateID == candidate?.id
         let label = matched ? name! : edition.stamp.state == .uncertain
-            ? "Possible pumpkin stamp" : "Pumpkin stamp · edition unresolved"
+            ? "Possible stamped edition" : "Stamp detected · edition unresolved"
         let limitation = matched
             ? "The stamp and catalogue support this edition label. The stamp alone does not establish a printing year or finish."
             : "The stamped edition is unresolved; its ordinary-printing finish and price cannot establish this variant."

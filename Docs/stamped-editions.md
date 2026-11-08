@@ -185,3 +185,41 @@ contents are not committed.
 - `674a05b` — `feat(ui): show stamped editions and invalidate mismatched prices`
 - `901b0a3` — `fix(recognition): clarify base catalogue evidence warnings`
 - `64d09d3` — `fix(ui): keep rejected card editions unresolved`
+
+## 30th anniversary Pikachu mark
+
+`AnniversaryStampDetector` checks the separated 3/0 cheek glyphs at the expected
+right-hand stamp location, using red ink for the yellow mark and blue ink for
+the rainbow Energy mark. Glyph masks exclude artwork and card identity. A zero
+must retain an enclosed counter (allowing one-pixel scan breaks), preventing the
+older 25 logo's rounded 5 from being accepted as 0. Evidence must agree at 1260
+and 1050 pixels on the long edge. Shape scores are not probabilities.
+
+The two frozen glyph templates come from saved B-001 C-003 and C-002. Validation
+uses the other cards in B-001, saved ordinary/Trick or Trade controls and public
+TCGdex Celebrations 25th-logo images. Reproduce with an opt-in JSON list of
+`{label,path,present}` records in `SCANNER_ANNIVERSARY_FIXTURES` and the Swift test
+`savedAnniversaryStampsAgreeAtTwoResolutions`. These checks never feed hardware.
+
+A visible mark is not enough to substitute a printing. A single independently
+numbered catalogue identity and a `variants_detailed` entry stamped
+`30th-anniversary` are required for the edition label. This includes `mee` Energy
+cards; their base set stays **Mega Evolution Energy**, with **30th Anniversary**
+shown separately. Unknown identities and inconsistent/missing variants remain
+unresolved and cannot fall back to an ordinary-printing price.
+
+The current TCGdex records for some `30th` Pokémon cards say `normal`, despite
+foil descriptions in the product material. The detector does not turn this into
+a confident non-holo estimate. Explicit consistent holo/reverse metadata can
+support an estimate, not an authenticity or reflectivity measurement.
+
+Sources checked during implementation:
+- [Official 30th Celebration product showcase](https://www.pokemon.com/uk/news/pokemon-tcg-30th-celebration-product-showcase)
+- [TCGdex Mewtwo 063](https://api.tcgdex.net/v2/en/cards/30th-063)
+- [TCGdex MEE Grass Energy 009](https://api.tcgdex.net/v2/en/cards/mee-009)
+
+Validation on the saved fixtures: all 19 B-001 playable fronts were detected,
+with no 30th detections among 148 other images (including backs, inserts, archived
+ordinary/Trick or Trade scans and three 25th-anniversary references). Two of the
+19 provided the glyph templates; this is limited development validation, not a
+population accuracy claim.

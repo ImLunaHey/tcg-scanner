@@ -129,12 +129,13 @@ export function editionPresentation(
       ? "The stamp and catalogue support this edition label. The stamp alone does not establish a printing year or finish."
       : "The stamped edition is unresolved; its ordinary-printing finish and price cannot establish this variant.",
   ].join(" ");
+  const mark = edition.stamp.kind === "pikachu-30th-anniversary" ? "30th anniversary stamp" : "pumpkin stamp";
   return {
     label: matched
       ? edition.name!
       : edition.stamp.state === "uncertain"
-        ? "Possible pumpkin stamp"
-        : "Pumpkin stamp · edition unresolved",
+        ? `Possible ${mark}`
+        : `${mark[0].toUpperCase()}${mark.slice(1)} · edition unresolved`,
     state: matched ? "resolved" : "uncertain",
     detail,
   };
@@ -197,10 +198,12 @@ export function finishPresentation(
         "Both variants share this printed code; available image evidence has not resolved the finish.",
     };
   const editionReasons: Record<string, string> = {
+    conflictingFinishEvidence:
+      "The edition is identified, but its finish evidence is inconsistent. The physical finish needs review.",
     stampUncertain:
-      "A possible pumpkin stamp needs confirmation before the finish can be resolved.",
+      "A possible stamp needs confirmation before the finish can be resolved.",
     editionUnavailable:
-      "A pumpkin stamp was detected, but its catalogue edition is unresolved.",
+      "A stamp was detected, but its catalogue edition is unresolved.",
     multipleEditionFinishes:
       "The possible stamped editions have different finishes. The physical finish needs review.",
   };

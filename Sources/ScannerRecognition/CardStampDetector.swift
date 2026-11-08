@@ -45,7 +45,7 @@ public enum CardStampDetector {
             evidence: [message, "Shape similarity is not a probability, edition year, authenticity check or finish measurement."])
     }
 
-    private static func raster(_ source: CGImageSource, maximumSize: Int) throws -> Raster {
+    static func raster(_ source: CGImageSource, maximumSize: Int) throws -> Raster {
         try Task.checkCancellation()
         guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
             kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true,
@@ -65,7 +65,7 @@ public enum CardStampDetector {
         return Raster(width: image.width, height: image.height, pixels: pixels)
     }
 
-    private struct Mark {
+    struct Mark {
         let region: ImageCrop
         let similarity: Double
         let darkFace: Bool
@@ -79,7 +79,7 @@ public enum CardStampDetector {
         }
     }
 
-    private struct Raster {
+    struct Raster {
         let width: Int, height: Int
         let pixels: [UInt8]
 

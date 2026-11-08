@@ -49,7 +49,7 @@ public struct CardEditionEvidence: Codable, Sendable, Equatable {
                 variants: [CardPrintingVariant] = [], evidence: [String] = []) {
         self.state = state; self.candidateID = candidateID; self.stamp = stamp; self.name = name
         self.variants = variants; self.evidence = evidence
-        pricingKey = (["edition-v1", candidateID ?? "unknown", state.rawValue, stamp.state.rawValue] +
+        pricingKey = (["edition-v1", candidateID ?? "unknown", state.rawValue, stamp.kind, stamp.state.rawValue] +
             variants.map { $0.source + ":" + $0.id + ":" + $0.finish.rawValue + ":" + $0.stamps.sorted().joined(separator: ",") + ":" + $0.years.sorted().map(String.init).joined(separator: ",") }.sorted()).joined(separator: "|")
     }
     public var needsEditionHandling: Bool { stamp.state == .present || stamp.state == .uncertain }

@@ -155,7 +155,7 @@ describe("stamped edition presentation", () => {
   });
   it("explains edition-related finish abstention without overriding physical review", () => {
     for (const [reason, explanation] of [
-      ["stampUncertain", "possible pumpkin stamp"],
+      ["stampUncertain", "possible stamp"],
       ["editionUnavailable", "catalogue edition is unresolved"],
       ["multipleEditionFinishes", "different finishes"],
     ]) {
@@ -239,4 +239,10 @@ describe("edition price isolation", () => {
       ),
     );
   });
+});
+
+it("labels the anniversary mark without calling it a pumpkin", () => {
+  const value = withEdition({ ...edition, state: "uncertain", name: undefined,
+    stamp: { ...edition.stamp, state: "present", kind: "pikachu-30th-anniversary" } });
+  expect(editionPresentation(value)?.label).toBe("30th anniversary stamp · edition unresolved");
 });

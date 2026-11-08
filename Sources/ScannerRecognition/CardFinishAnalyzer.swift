@@ -31,9 +31,18 @@ public actor CardFinishAnalyzer {
         guard preparation?.orientationVerified == true, preparation?.orientationBasis == "text" else {
             return try await ordinary(data, evidence: evidence, preparation: preparation)
         }
-        let stampTask = Task.detached(priority: .utility) { try CardStampDetector.analyze(data, orientation: evidence.orientation) }
+        let stampTask = Task.detached(priority: .utility) {
+            let anniversary = try AnniversaryStampDetector.analyze(data, orientation: evidence.orientation)
+            if anniversary.state == .present || anniversary.state == .uncertain { return anniversary }
+            return try CardStampDetector.analyze(data, orientation: evidence.orientation)
+        }
         let stamp = try await withTaskCancellationHandler { try await stampTask.value } onCancel: { stampTask.cancel() }
         let card = evidence.candidates.count == 1 ? evidence.candidates.first : nil
+        if stamp.kind == "pikachu-30th-anniversary" {
+            var variants = card?.printingVariants ?? []
+            if let card, card.printingVariants == nil { variants = (try? await catalogue.printings(cardID: card.id)) ?? [] }
+            return Self.anniversaryDecision(stamp: stamp, card: card, variants: variants)
+        }
         if stamp.state == .absent || stamp.state == .unsupported {
             var result = try await ordinary(data, evidence: evidence, preparation: preparation)
             result.edition = CardEditionEvidence(state: stamp.state == .absent ? .notDetected : .unavailable,
@@ -74,6 +83,30 @@ public actor CardFinishAnalyzer {
             catch { border = BorderFinishEvidence(state: .failed, threshold: BorderFoilMeasurement.calibratedThreshold) }
         }
         return Self.decision(edition: edition, border: border)
+    }
+
+    static func anniversaryDecision(stamp: CardStampEvidence, card: CardCandidate?, variants: [CardPrintingVariant]) -> FinishEstimate {
+        let matches = variants.filter { $0.source == "tcgdex" && !$0.id.isEmpty && Set($0.stamps) == ["30th-anniversary"] && [.normal, .holo, .reverseHolo].contains($0.finish) }
+        let numbered = card.map { $0.id == $0.setID + "-" + $0.localID && $0.evidence.contains("Collector number " + $0.localID) } ?? false
+        let matched = stamp.kind == "pikachu-30th-anniversary" && stamp.state == .present && numbered && !matches.isEmpty
+        let edition = CardEditionEvidence(state: matched ? .matched : .uncertain, candidateID: card?.id, stamp: stamp,
+            name: matched ? "30th Anniversary" : nil, variants: matched ? matches : [], evidence: [
+                matched ? "The visible 30 mark and independently numbered card match TCGdex's 30th-anniversary variant." : "A visible 30 mark and a matching numbered anniversary catalogue variant are both required."
+            ])
+        var result = FinishEstimate(state: .uncertain, candidateID: card?.id, evidence: edition.evidence,
+            limitations: ["The anniversary mark identifies an edition, not measured foil reflectivity or authenticity."], uncertaintyReason: .editionUnavailable)
+        result.method = "anniversary-stamped-printing-v1"; result.edition = edition
+        // The current catalogue labels several 30th Pokémon cards normal despite
+        // their foil product description. Do not turn that discrepancy into a
+        // confident non-holo result. MEE's explicit holo variant remains useful.
+        let finishes = Set(matches.map(\.finish))
+        if matched && finishes.count == 1 && finishes != [.normal] {
+            result.state = .estimated; result.suggestedFinish = finishes.first; result.uncertaintyReason = nil
+        } else if matched {
+            result.uncertaintyReason = .conflictingFinishEvidence
+            result.evidence.append("Anniversary edition resolved; catalogue finish metadata does not establish a reliable physical finish.")
+        }
+        return result
     }
 
     private static func unsupportedLanguage(evidence: RecognitionEvidence, language: CardLanguage) -> FinishEstimate {
