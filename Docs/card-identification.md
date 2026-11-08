@@ -385,3 +385,9 @@ not alter stored images. B-049 C-023 (Binacle 042/088) is covered by the opt-in
 `SCANNER_BINACLE_FIXTURE` regression, alongside offline tests rejecting
 conflicting totals and collector numbers. This improves OCR recovery, not a
 guarantee that every footer or catalogue printing can be identified.
+
+Sparse LIVE insert logos use agreeing `LIVE` and `TRADING CARD GAME` text
+orientations, or the exact public redemption URL on the reverse. They do not need
+the four text lines required for ordinary card fronts. Private redemption strings
+are never used as orientation evidence. Saved B-001 logo sides C-001, C-007,
+C-009, C-014, C-016 and C-022 all required a half-turn in offline validation.

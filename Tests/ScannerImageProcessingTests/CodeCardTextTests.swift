@@ -47,3 +47,24 @@ import Testing
     #expect(result.orientationBasis == "pokemon-code-url")
     #expect(result.orientationVerified)
 }
+
+@Test func sparseLiveLogoEstablishesDirectionWithoutFourTextLines() {
+    typealias Line = CodeCardOrientation.Line
+    for turns in 0..<4 {
+        let lines = [Line(text: "LIVE", confidence: 1, turns: turns), Line(text: "TRADING CARD GAME", confidence: 1, turns: turns)]
+        #expect(CodeCardOrientation.rotation(lines: lines)?.turns == turns)
+        #expect(CodeCardOrientation.rotation(lines: lines)?.basis == "pokemon-code-text")
+        #expect(CodeCardOrientation.rotation(lines: [lines[0]]) == nil)
+        #expect(CodeCardOrientation.rotation(lines: [lines[0], Line(text: "TRADING CARD GAME", confidence: 1, turns: (turns + 2) % 4)]) == nil)
+        #expect(CodeCardOrientation.rotation(lines: [Line(text: "POKEMON.COM/REDEEM", confidence: 1, turns: turns)])?.turns == turns)
+    }
+}
+@Test func savedLiveLogosAreUprightWithoutReadingRedemptionCodes() throws {
+    guard let path = ProcessInfo.processInfo.environment["SCANNER_LIVE_LOGO_FIXTURES"] else { return }
+    let paths = try JSONDecoder().decode([String].self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+    for path in paths {
+        let result = try CardProcessor.uprightRotation(Data(contentsOf: URL(fileURLWithPath: path)))
+        #expect(result.turns == 2)
+        #expect(result.verified && result.basis == "pokemon-code-text")
+    }
+}

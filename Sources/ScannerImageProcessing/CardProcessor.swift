@@ -160,6 +160,9 @@ public enum CardProcessor {
         // numbers. Recognition's separate OCR keeps language correction disabled.
         request.usesLanguageCorrection = true
         try VNImageRequestHandler(data: data).perform([request])
+        if let code = CodeCardOrientation.rotation(request.results ?? []) {
+            return (code.turns, true, code.basis)
+        }
         let words = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
         let codeCard = CodeCardText.matches(words)
         let confidentWords = (request.results ?? []).compactMap { observation -> String? in
