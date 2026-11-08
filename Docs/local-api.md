@@ -129,7 +129,9 @@ modifying originals or opening hardware.
 
 ## Event subscriptions
 
-`v1.events` provides cursor-based long polling. Use `nextCursor` for the next call;
+`v1.events` provides cursor-based long polling. `latestCursor` is the current
+database position; use it to start watching new changes without replaying history.
+Use `nextCursor` for the next replay page;
 `waitSeconds: 20` waits asynchronously when caught up. A heartbeat is an empty page.
 Up to eight callers may wait, leaving other server slots available for controls.
 Disconnecting a subscriber cannot cancel a scan; its wait expires within 20 seconds.

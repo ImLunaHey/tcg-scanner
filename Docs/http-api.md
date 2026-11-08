@@ -171,15 +171,20 @@ Events use fetch streaming with an Authorization header (native EventSource cann
 set that header). Responses have `text/event-stream`, no-store and buffering disabled.
 The stream emits:
 
+- `event: ready`, `id: CURSOR` on a fresh subscription, marking the current
+  database position without replaying history. Refresh snapshots once to cover
+  changes between loading the page and establishing the stream.
 - `event: scanner`, `id: CURSOR`, JSON data containing ServiceEvent (kind, timestamp,
   payload). Kinds include job.updated and device connected/disconnected events.
 - Heartbeat comment lines while idle.
 - `event: reset` if the cursor expired or the service database changed. Refresh
-  snapshots and reconnect from after=0.
+  snapshots and reconnect from its supplied event ID (`latestCursor`).
 - `event: error` for a later service/authentication failure. Reauthenticate or retry
   according to the error; preserve the last delivered cursor.
 
-Pass `Last-Event-ID` or `?after=CURSOR`, not both. Connections end after about 25
+A connection without a cursor starts at the current database position. Use
+`?after=0` only for deliberate history replay. Pass `Last-Event-ID` or
+`?after=CURSOR` to resume, not both. Connections end after about 25
 seconds (optional `seconds=1…25`); reconnect with the last received event ID.
 Events are replayable, so deduplicate by cursor. Session revocation/expiry is checked
 while streaming. A service interruption does not lose persisted history.
@@ -196,7 +201,9 @@ Malformed HTTP rejected by the framework before routing may have an empty respon
 
 Limits per gateway process: 32 connections, 16 active responses, 4 SSE streams,
 2 image responses, 600 authenticated requests/minute and 30 invalid authentication
-attempts/minute. Rate limits are shared across clients; 429 includes Retry-After.
+attempts/minute. Binary image GETs do not consume the control request quota;
+their concurrent download, size and duration limits still apply. Rate limits
+are shared across clients; 429 includes Retry-After.
 Requests allow 60 KiB bodies with a five-second body deadline, 16 KiB total headers,
 32 headers, 8 KiB header fields/request target, and a 30-second idle connection timeout.
 Image transfers have a five-minute processing deadline checked between chunks. The service independently

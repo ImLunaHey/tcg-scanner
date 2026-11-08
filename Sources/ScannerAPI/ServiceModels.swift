@@ -60,9 +60,11 @@ public struct EventPage: Codable, Sendable {
     public var events: [ServiceEvent]
     public var nextCursor: Int64
     public var oldestCursor: Int64
+    public var latestCursor: Int64
     public var resetRequired: Bool
     public init(events: [ServiceEvent], after: Int64, oldestCursor: Int64, latestCursor: Int64) {
         self.events = events; self.nextCursor = events.last?.cursor ?? after; self.oldestCursor = oldestCursor
+        self.latestCursor = latestCursor
         resetRequired = after > latestCursor || (after > 0 && after < oldestCursor - 1)
     }
 }

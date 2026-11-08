@@ -15,20 +15,31 @@ extension ScannerGateway {
             }
             after = value
         }
-        let first = try await eventPage(after: after, wait: 0)
+        let liveOnly = path.query["after"] == nil && request.headers[HTTPField.Name("Last-Event-ID")!] == nil
+        let snapshot = try await eventPage(after: after, wait: 0)
+        let first: EventPage
+        if liveOnly {
+            // The UI loads current snapshots separately. Do not replay historic
+            // events as if thousands of old jobs had just changed on page load.
+            after = Int(snapshot.latestCursor)
+            first = try await eventPage(after: after, wait: 0)
+        } else { first = snapshot }
         let initialCursor = after
         let body = ResponseBody { writer in
             var cursor = initialCursor
             var page = first
             let deadline = ContinuousClock.now + .seconds(duration)
             try await writer.write(ByteBuffer(string: "retry: 1000\n\n"))
+            if liveOnly {
+                try await writer.write(ByteBuffer(string: "id: \(initialCursor)\nevent: ready\ndata: {}\n\n"))
+            }
             do {
                 while true {
                     try Task.checkCancellation()
                     guard await access.validPrincipal(principal) else { throw GatewayError(401, "unauthorized", "Session expired or revoked.") }
                     if page.resetRequired {
                         let data = String(decoding: try Wire.encoder().encode(page), as: UTF8.self)
-                        try await writer.write(ByteBuffer(string: "event: reset\ndata: \(data)\n\n"))
+                        try await writer.write(ByteBuffer(string: "id: \(page.latestCursor)\nevent: reset\ndata: \(data)\n\n"))
                         break
                     }
                     for event in page.events {

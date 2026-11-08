@@ -111,3 +111,19 @@ import ScannerAPI
     }
     await gateway.access.release("image"); await gateway.access.release("image")
 }
+
+@Test func largeGalleriesCannotExhaustControlRequestQuota() async throws {
+    var configuration = try GatewayConfiguration(); configuration.authorities.insert("localhost")
+    let gateway = try ScannerGateway(socketPath: "/tmp/missing-http-test-\(UUID())", token: httpTestToken, configuration: configuration)
+    let app = Application(responder: gateway)
+    try await app.test(.router) { client async throws in
+        // More images than the control quota, without expensive image I/O.
+        for _ in 0..<650 {
+            #expect(try await client.execute(uri: "/api/v1/images/invalid/thumbnail", method: .get).status.code == 400)
+        }
+        // Reaching the deliberately unavailable service proves admission passed.
+        #expect(try await client.execute(uri: "/api/v1/inventory", method: .get, headers: httpHeaders()).status.code == 503)
+    }
+    for _ in 0..<599 { _ = try await gateway.access.authenticate("Bearer " + httpTestToken) }
+    await #expect(throws: GatewayError.self) { try await gateway.access.authenticate("Bearer " + httpTestToken) }
+}

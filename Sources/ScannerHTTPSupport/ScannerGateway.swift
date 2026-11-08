@@ -42,7 +42,8 @@ public struct ScannerGateway: HTTPResponder {
                 (path.components.count == 6 && path.components.starts(with: ["api", "v1", "inventory", "references"]) && path.components.last == "thumbnail"))
             let principal: String
             if binaryImage {
-                try await access.rateLimit(authenticated: true)
+                // Gallery size must not consume the scanner-control quota.
+                // Binary downloads remain bounded by their concurrent slots.
                 principal = "public-image"
             } else { principal = try await access.authenticate(request.headers[.authorization]) }
             let kind = path.components == ["api", "v1", "events"] ? "events" : (binaryImage ? "image" : "request")
