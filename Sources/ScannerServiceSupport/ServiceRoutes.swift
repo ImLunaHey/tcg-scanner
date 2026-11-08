@@ -4,7 +4,7 @@ import ScannerCore
 
 extension DiagnosticRouter {
     func serviceResponse(_ request: RPCRequest) async throws -> RPCResponse? {
-        let methods: Set<String> = ["v1.diagnostics.buttonMonitor", "v1.diagnostics.stopButtonMonitor", "v1.jobs.list", "v1.batches.list", "v1.batches.get", "v1.batches.valuation", "v1.batches.storeStatus", "v1.batches.sendToStore", "v1.jobs.get", "v1.jobs.cancel",
+        let methods: Set<String> = ["v1.inventory.list", "v1.diagnostics.buttonMonitor", "v1.diagnostics.stopButtonMonitor", "v1.jobs.list", "v1.batches.list", "v1.batches.get", "v1.batches.valuation", "v1.batches.storeStatus", "v1.batches.sendToStore", "v1.jobs.get", "v1.jobs.cancel",
             "v1.events", "v1.service.status", "v1.profiles.list", "v1.profiles.get", "v1.profiles.save", "v1.profiles.delete"]
         guard methods.contains(request.method) else { return nil }
         let params: [String: JSONValue]
@@ -14,6 +14,15 @@ extension DiagnosticRouter {
         } else { params = [:] }
         let result: JSONValue
         switch request.method {
+        case "v1.inventory.list":
+            try only(params, keys: ["limit", "offset", "search"])
+            let search: String
+            if let value = params["search"] {
+                guard case .string(let text) = value else { throw RPCFailure(code: -32602, message: "Expected search text.") }
+                search = text
+            } else { search = "" }
+            result = try .wrapping(await coordinator.inventory(limit: integer(params, "limit", default: 50, range: 1...100),
+                offset: integer(params, "offset", default: 0, range: 0...1_000_000), search: search))
         case "v1.diagnostics.buttonMonitor":
             try only(params, keys: ["seconds"])
             let seconds = try integer(params, "seconds", default: 300, range: 30...300)

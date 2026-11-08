@@ -108,6 +108,16 @@ public final class ScannerDatabase: Sendable {
             try Data.fetchOne(db, sql: "SELECT record FROM jobs WHERE id = ?", arguments: [id.uuidString]).map { try Wire.decoder().decode(ScanRecord.self, from: $0) }
         }
     }
+    /// Stream records from one read snapshot; callers retain only their summary.
+    public func readInventoryRecords(_ visit: (ScanRecord) throws -> Void) throws {
+        try queue.read { db in
+            let cursor = try Data.fetchCursor(db, sql: "SELECT record FROM jobs WHERE state IN ('completed', 'failed', 'cancelled') ORDER BY created DESC, id")
+            while let data = try cursor.next() {
+                try Task.checkCancellation()
+                try visit(Wire.decoder().decode(ScanRecord.self, from: data))
+            }
+        }
+    }
     public func nextCatalogueRetryJob() throws -> ScanRecord? {
         try queue.read { db in
             try Data.fetchOne(db, sql: """

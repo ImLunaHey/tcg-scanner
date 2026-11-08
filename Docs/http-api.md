@@ -259,3 +259,9 @@ values, per-card ranges and a coverage-aware batch subtotal. See
 remote destination are service-only configuration. This stages paired card PNGs
 for review, never approves or publishes inventory. See
 [configuration, identity mapping and validation](store-integration.md).
+
+### Scan inventory
+
+`GET /api/v1/inventory?limit=50&offset=0&search=Kyogre` returns per-printing
+quantities, pending/unresolved entries, overall totals and batch/card locations.
+Authentication is required. See [inventory counting rules](inventory.md).

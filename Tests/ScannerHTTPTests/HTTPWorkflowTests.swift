@@ -77,9 +77,11 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
         let sessionValue = try decode(session, as: JSONValue.self)
         guard case .object(let fields) = sessionValue, case .string(let token) = fields["token"] else { throw ScannerError("test", "Missing session token") }
         let headers = httpHeaders(token)
-        for route in ["devices", "devices/http-mock", "devices/http-mock/settings", "devices/http-mock/capabilities", "diagnostics", "status", "profiles", "jobs", "batches"] {
+        for route in ["devices", "devices/http-mock", "devices/http-mock/settings", "devices/http-mock/capabilities", "diagnostics", "status", "profiles", "jobs", "batches", "inventory"] {
             #expect(try await client.execute(uri: "/api/v1/" + route, method: .get, headers: headers).status.code == 200)
         }
+        #expect(try await client.execute(uri: "/api/v1/inventory?limit=101", method: .get, headers: headers).status.code == 400)
+        #expect(try await client.execute(uri: "/api/v1/inventory", method: .get, headers: [HTTPField.Name("Host")!: "127.0.0.1:8170"]).status.code == 401)
         #expect(await backend.captures == 0)
         let settings = try buffer(.object(["dpi": .number(300), "duplex": .bool(true), "format": .string("png")]))
         #expect(try await client.execute(uri: "/api/v1/devices/http-mock/settings", method: .patch, headers: headers, body: settings).status.code == 200)

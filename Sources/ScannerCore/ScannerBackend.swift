@@ -48,6 +48,7 @@ public actor ScannerCoordinator {
     var requiresRestart = false
     var persistenceError: ScannerError?
     var eventWaiters = 0
+    var inventoryWorkers = 0
     var thumbnailWorkers = 0
     var thumbnailCache = ThumbnailCache()
     var editingJobs: Set<UUID> = []

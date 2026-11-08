@@ -178,3 +178,6 @@ this service boundary; a future HTTP gateway must do the same.
 `v1.batches.valuation`, params `{"id":"job UUID"}`, returns a versioned GBP market
 guide without accessing hardware or mutating images. Poll while `refreshing` is
 true. See [card pricing](card-pricing.md) for fields, coverage and cache rules.
+
+`v1.inventory.list` accepts `limit`, `offset` and optional `search`. It returns the
+same read-only summary as the HTTP inventory endpoint. See [inventory](inventory.md).
