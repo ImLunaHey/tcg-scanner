@@ -63,9 +63,16 @@ export function Inventory({ view = "cards", setID = "" }: { view?: "cards" | "se
     const timer = setTimeout(() => setDebouncedSearch(search), 250);
     return () => clearTimeout(timer);
   }, [search]);
+  // Set-name filtering is local; it does not need a new card-page query.
+  const cardSearch = view === "cards" ? debouncedSearch : "";
   const inventory = useInfiniteQuery({
-    queryKey: ["inventory", "entries", debouncedSearch, setID],
-    queryFn: ({ signal, pageParam }) => api.get<InventoryPage>(`inventory?limit=100&offset=${pageParam}&search=${encodeURIComponent(debouncedSearch)}&set=${encodeURIComponent(setID)}`, signal),
+    queryKey: ["inventory", view, cardSearch, setID],
+    queryFn: ({ signal, pageParam }) => {
+      const query = new URLSearchParams({ limit: "100", offset: String(pageParam) });
+      if (cardSearch) query.set("search", cardSearch);
+      if (setID) query.set("set", setID);
+      return api.get<InventoryPage>(`inventory?${query}`, signal);
+    },
     initialPageParam: 0,
     getNextPageParam: (page) => page.nextOffset,
     placeholderData: keepPreviousData,

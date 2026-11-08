@@ -81,3 +81,16 @@ ties. The API adds `releaseDate` (ISO date) to set facets and
 background with at most three concurrent requests; inventory does not wait for
 network calls. Dates persist locally for a day, with failed requests retried after
 five minutes. Date order uses the represented catalogue language/region.
+
+## Refresh behaviour
+
+A page reload reads saved inventory; an omitted `search` parameter lists all cards.
+Set-name filtering happens in the browser. Card search is sent only when nonempty.
+The live event stream starts at the current database cursor, rather than replaying
+old scans and hardware-button diagnostics on every reload. Only updates to terminal
+batches invalidate inventory. Background invalidation lets an in-flight inventory
+page finish; it cannot cancel pagination and restart it from page one. The regular
+poll remains a fallback when live updates are unavailable.
+
+Binary gallery downloads have separate concurrent admission limits and do not
+consume the control API's per-minute request quota.

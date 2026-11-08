@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useAuth } from "./auth";
+import { ApiError } from "./api";
 
 export type SSEMessage = { event: string; data: string; id?: string };
 export function parseSSE(frame: string): SSEMessage {
@@ -13,6 +14,22 @@ export function parseSSE(frame: string): SSEMessage {
   }
   return result;
 }
+const liveQueryKeys = ["inventory", "status", "jobs", "batch", "devices", "profiles", "store-transfer"];
+export function eventQueryKeys(event: SSEMessage): string[] {
+  if (event.event === "ready" || event.event === "reset") return liveQueryKeys;
+  if (event.event !== "scanner") return [];
+  try {
+    const value = JSON.parse(event.data);
+    // Inventory includes terminal batches only. Button diagnostics and capture
+    // progress do not change stock, so must not restart inventory pagination.
+    const inventoryChanged = value.kind === "job.updated" &&
+      ["completed", "failed", "cancelled"].includes(value.payload?.state);
+    return liveQueryKeys.filter(key => key !== "inventory" || inventoryChanged);
+  } catch { return []; }
+}
+export function refreshEventQueries(query: QueryClient, keys: ReadonlySet<string>) {
+  return query.invalidateQueries({ predicate: q => keys.has(String(q.queryKey[0])) }, { cancelRefetch: false });
+}
 export function useLiveEvents() {
   const { api } = useAuth();
   const query = useQueryClient();
@@ -21,27 +38,23 @@ export function useLiveEvents() {
   >("connecting");
   useEffect(() => {
     const controller = new AbortController();
-    let cursor = "0";
+    let cursor: string | undefined;
     let refresh: ReturnType<typeof setTimeout> | undefined;
-    const invalidate = () => {
-      if (!refresh)
+    const pending = new Set<string>();
+    const invalidate = (event: SSEMessage) => {
+      for (const key of eventQueryKeys(event)) pending.add(key);
+      if (!refresh && pending.size)
         refresh = setTimeout(() => {
           refresh = undefined;
-          void query.invalidateQueries({
-            predicate: (q) =>
-              [
-                "inventory", "status", "jobs", "batch", "devices", "profiles", "store-transfer",
-              ].includes(
-                String(q.queryKey[0]),
-              ),
-          });
+          const keys = new Set(pending); pending.clear();
+          void refreshEventQueries(query, keys);
         }, 300);
     };
     async function run() {
       while (!controller.signal.aborted) {
         try {
           const response = await api.response(
-            `events?after=${cursor}&seconds=25`,
+            `events?seconds=25${cursor === undefined ? "" : `&after=${cursor}`}`,
             { signal: controller.signal },
           );
           if (
@@ -67,11 +80,7 @@ export function useLiveEvents() {
                 const event = parseSSE(buffer.slice(0, end));
                 buffer = buffer.slice(end + 2);
                 if (event.id && /^\d+$/.test(event.id)) cursor = event.id;
-                if (event.event === "reset") {
-                  cursor = "0";
-                  invalidate();
-                }
-                if (event.event === "scanner") invalidate();
+                invalidate(event);
                 if (event.event === "error")
                   throw new Error("Stream interrupted");
               }
@@ -80,7 +89,7 @@ export function useLiveEvents() {
             await reader.cancel().catch(() => {});
             reader.releaseLock();
           }
-        } catch {
+        } catch (error) {
           if (controller.signal.aborted) break;
           setConnection("reconnecting");
           // Polling continues independently while SSE reconnects.
@@ -90,7 +99,7 @@ export function useLiveEvents() {
               controller.signal.removeEventListener("abort", done);
               resolve();
             };
-            const timer = setTimeout(done, 3000);
+            const timer = setTimeout(done, error instanceof ApiError && error.status === 429 ? 60_000 : 3000);
             controller.signal.addEventListener("abort", done, { once: true });
           });
         }
