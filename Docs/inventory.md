@@ -50,6 +50,7 @@ and use the existing bounded request queue. The Sets view always shows all sets.
 Navigation is URL-driven: `/inventory` shows cards, `/inventory/sets` shows sets,
 and `/inventory/sets/{set-id}` shows cards in a selected set. Search is stored in
 `?search=...`, so direct links, refresh and browser history retain the selection.
-Catalogue set IDs combine game, provider and catalogue set ID; pending sets use
-game and printed set code. Display-name changes do not change catalogue set URLs.
+Set IDs in the API and URLs are readable name slugs, such as `ascended-heroes`
+and `delta-reign`. Internal catalogue keys still keep distinct sets separate.
+Colliding slugs receive a game suffix and, if needed, a number.
 Batch location links accept `?card=N` on direct navigation too.

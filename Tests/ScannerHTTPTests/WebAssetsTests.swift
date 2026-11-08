@@ -20,7 +20,7 @@ import ScannerAPI
                       "/batches/5F2213C2-7E6E-41E1-9A9B-C756613A1A15",
                       "/batches/5F2213C2-7E6E-41E1-9A9B-C756613A1A15?card=2",
                       "/inventory?search=Great+Tusk", "/inventory/sets?search=Prismatic",
-                      "/inventory/sets/pokemon-tcgdex-sv08.5?search=Great+Tusk"] {
+                      "/inventory/sets/prismatic-evolutions?search=Great+Tusk"] {
             let response = try await client.execute(uri: route, method: .get)
             #expect(response.status.code == 200)
             #expect(response.headers[HTTPField.Name("Content-Security-Policy")!]?.contains("script-src 'self'") == true)
@@ -29,7 +29,7 @@ import ScannerAPI
             #expect(!policy.contains("unsafe-eval"))
             #expect(response.headers[.cacheControl] == "no-store")
         }
-        for route in ["/inventory?token=secret", "/inventory/sets/pokemon-tcgdex-sv08.5?token=secret",
+        for route in ["/inventory?token=secret", "/inventory/sets/prismatic-evolutions?token=secret",
                       "/inventory?search=" + String(repeating: "a", count: 161),
                       "/batches/5F2213C2-7E6E-41E1-9A9B-C756613A1A15?card=0"] {
             #expect(try await client.execute(uri: route, method: .get).status.code == 400)

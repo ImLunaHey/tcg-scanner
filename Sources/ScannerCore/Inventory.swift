@@ -67,9 +67,43 @@ struct InventoryBuilder {
             : card.setID
         return game.rawValue + "-" + (card.provider ?? "tcgdex") + "-" + setID
     }
+    private func setSlugs() -> [String: String] {
+        let groups = Dictionary(grouping: entries.values, by: \.setKey)
+        let names = groups.mapValues { values in
+            slug(values.sorted { $0.id < $1.id }[0].setName ?? "Unidentified")
+        }
+        let counts = Dictionary(grouping: names.keys, by: { names[$0]! })
+        var result: [String: String] = [:]
+        var used = Set<String>()
+        for key in groups.keys.sorted() {
+            let name = names[key]!
+            let game = groups[key]![0].game.rawValue
+            let base = counts[name]!.count == 1 ? name : name + "-" + slug(game)
+            var value = base
+            var suffix = 2
+            while used.contains(value) { value = base + "-\(suffix)"; suffix += 1 }
+            used.insert(value)
+            result[key] = value
+        }
+        return result
+    }
+    private func slug(_ name: String) -> String {
+        let latin = (name.applyingTransform(.toLatin, reverse: false) ?? name)
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+            .lowercased()
+        let words = latin.components(separatedBy: CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789").inverted)
+            .filter { !$0.isEmpty }
+        let value = words.joined(separator: "-")
+        return value.isEmpty ? "unidentified" : String(value.prefix(200))
+    }
     private func key(_ parts: [String]) -> String { (try! JSONEncoder().encode(parts)).base64EncodedString() }
     func page(limit: Int, offset: Int, search: String, set: String = "") -> InventoryPage {
-        let all = Array(entries.values)
+        let slugs = setSlugs()
+        let all = entries.values.map { original in
+            var entry = original
+            entry.setKey = slugs[original.setKey]!
+            return entry
+        }
         let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
         let filtered = all.filter {
             (set.isEmpty || $0.setKey == set) && (query.isEmpty || [$0.name, $0.setName ?? "", $0.number ?? "", $0.game.rawValue, $0.language]

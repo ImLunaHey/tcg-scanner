@@ -84,8 +84,8 @@ private func inventoryRecordMissingSide() -> ScanRecord {
     #expect(first.sets.count == 2 && first.entries.count == 1)
     let delta = first.sets.first { $0.name == "Delta Reign" }!
     #expect(delta.quantity == 2 && delta.entries == 1)
-    #expect(delta.id == "pokemon-printed-DLR")
-    #expect(first.sets.contains { $0.id == "pokemon-tcgdex-set" })
+    #expect(delta.id == "delta-reign")
+    #expect(first.sets.contains { $0.id == "set" })
     #expect(delta.previews.count == 1 && delta.previews[0].image.sequence == 2)
     let selected = builder.page(limit: 50, offset: 0, search: "", set: delta.id)
     #expect(selected.entries.count == 1 && selected.entries[0].quantity == 2)
@@ -126,7 +126,7 @@ private func inventoryRecordMissingSide() -> ScanRecord {
     #expect(page.sets[0].previews.isEmpty)
 }
 
-@Test func inventorySetIDsIgnoreDisplayNamesAndGroupYugiohPrintingPrefixes() {
+@Test func inventorySetSlugsGroupYugiohPrintingPrefixes() {
     var builder = InventoryBuilder()
     for index in 1...2 {
         var record = inventoryRecord(batch: index)
@@ -139,5 +139,23 @@ private func inventoryRecordMissingSide() -> ScanRecord {
     }
     let page = builder.page(limit: 50, offset: 0, search: "")
     #expect(page.sets.count == 1 && page.sets[0].quantity == 2)
-    #expect(page.sets[0].id == "yugioh-ygoprodeck-DUEA")
+    #expect(page.sets[0].id == "name-variant-1")
+}
+
+@Test func inventoryUsesReadableSetSlugsWithoutMergingNameCollisions() {
+    var builder = InventoryBuilder()
+    for (index, name) in ["Ascended Heroes", "Pokémon: Special Collection!", "Same Name", "Same Name"].enumerated() {
+        var record = inventoryRecord(batch: index + 1)
+        record.cardIdentifications?[0].evidence?.candidates[0].id = "card-\(index)"
+        record.cardIdentifications?[0].evidence?.candidates[0].setID = "set-\(index)"
+        record.cardIdentifications?[0].evidence?.candidates[0].setName = name
+        builder.add(record)
+    }
+    let page = builder.page(limit: 50, offset: 0, search: "")
+    #expect(Set(page.sets.map(\.id)) == ["ascended-heroes", "pokemon-special-collection", "same-name-pokemon", "same-name-pokemon-2"])
+    for set in page.sets {
+        let selected = builder.page(limit: 50, offset: 0, search: "", set: set.id)
+        #expect(selected.entries.count == 1 && selected.entries[0].setKey == set.id)
+    }
+    #expect(builder.page(limit: 50, offset: 0, search: "", set: "pokemon-tcgdex-set-0").entries.isEmpty)
 }
