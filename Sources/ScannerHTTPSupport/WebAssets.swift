@@ -50,7 +50,7 @@ public struct WebAssets: Sendable {
     }
     func response(for request: Request, path: GatewayPath) throws -> Response? {
         let key = "/" + path.components.joined(separator: "/")
-        let appRoute = ["/library", "/profiles", "/scanner"].contains(key)
+        let appRoute = ["/inventory", "/library", "/profiles", "/scanner"].contains(key)
             || (path.components.count == 2 && path.components[0] == "batches"
                 && UUID(uuidString: path.components[1]) != nil)
         guard let asset = files[key] ?? (appRoute ? files["/index.html"] : nil) else { return nil }

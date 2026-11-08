@@ -16,7 +16,7 @@ import ScannerAPI
     let gateway = try ScannerGateway(socketPath: "/tmp/no-scanner-web-test", token: httpTestToken, configuration: config, webAssets: WebAssets(directory: root.path))
     let app = Application(responder: gateway)
     try await app.test(.router) { client in
-        for route in ["/", "/index.html", "/assets/main.js", "/library", "/profiles", "/scanner",
+        for route in ["/", "/index.html", "/assets/main.js", "/inventory", "/library", "/profiles", "/scanner",
                       "/batches/5F2213C2-7E6E-41E1-9A9B-C756613A1A15"] {
             let response = try await client.execute(uri: route, method: .get)
             #expect(response.status.code == 200)
