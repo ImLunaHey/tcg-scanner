@@ -37,3 +37,8 @@ search. Each set has its game, total copies, entry count and up to three cover
 previews. The optional `set` query/RPC parameter filters by the exact set facet ID
 (up to 512 bytes), and combines with search. Set tiles open the corresponding
 card gallery. Quantities and grouping rules remain unchanged.
+
+Set covers use prepared images only and prefer portrait cards when available.
+Landscape covers retain their own aspect ratio. If a set has no prepared images,
+its tile shows a neutral placeholder; full overscan canvases are still available
+in the card gallery but are not used as decorative set covers.

@@ -91,3 +91,35 @@ private func inventoryRecordMissingSide() -> ScanRecord {
     #expect(builder.page(limit: 50, offset: 0, search: "does not exist", set: delta.id).entries.isEmpty)
     #expect(builder.page(limit: 50, offset: 0, search: "", set: "wrong").entries.isEmpty)
 }
+
+@Test func inventorySetCoversPreferPreparedPortraitsOverRawOrLandscapeScans() {
+    var builder = InventoryBuilder()
+    for index in 1...5 {
+        var record = inventoryRecord(batch: index)
+        record.cardIdentifications?[0].evidence?.candidates[0].id = "card-\(index)"
+        if index == 1 { record.processedImages?.removeLast() }
+        if index == 2 {
+            record.processedImages?[1].image.width = 280
+            record.processedImages?[1].image.height = 200
+        }
+        builder.add(record)
+    }
+    let page = builder.page(limit: 50, offset: 0, search: "")
+    #expect(page.totalCopies == 5)
+    #expect(page.sets[0].previews.count == 3)
+    #expect(page.sets[0].previews.allSatisfy { $0.editID != nil && $0.image.width < $0.image.height })
+}
+
+@Test func inventorySetCoversRetainLandscapeOnlyCardsAndOmitUncroppedCanvases() {
+    var landscape = inventoryRecord()
+    landscape.processedImages?[1].image.width = 280
+    landscape.processedImages?[1].image.height = 200
+    var builder = InventoryBuilder(); builder.add(landscape)
+    let cover = builder.page(limit: 50, offset: 0, search: "").sets[0].previews.first
+    #expect(cover?.image.width == 280 && cover?.image.height == 200)
+    var raw = inventoryRecord(); raw.processedImages?.removeLast()
+    var rawBuilder = InventoryBuilder(); rawBuilder.add(raw)
+    let page = rawBuilder.page(limit: 50, offset: 0, search: "")
+    #expect(page.totalCopies == 1 && page.entries[0].preview != nil)
+    #expect(page.sets[0].previews.isEmpty)
+}

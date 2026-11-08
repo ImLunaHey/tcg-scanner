@@ -78,9 +78,19 @@ struct InventoryBuilder {
             nextOffset: offset + limit < filtered.count ? offset + limit : nil)
         page.sets = Dictionary(grouping: all, by: \.setKey).map { id, entries in
             let sorted = entries.sorted { $0.id < $1.id }
+            // Set covers should be actual prepared cards, not entire overscan
+            // canvases. Prefer portrait cards for the fan; landscape-only sets
+            // retain their real aspect ratio in the web layout.
+            let covers = sorted.compactMap(\.preview).filter { $0.editID != nil }.sorted {
+                let leftPortrait = $0.image.width <= $0.image.height
+                let rightPortrait = $1.image.width <= $1.image.height
+                if leftPortrait != rightPortrait { return leftPortrait }
+                if $0.batchID != $1.batchID { return $0.batchID.uuidString < $1.batchID.uuidString }
+                return $0.image.sequence < $1.image.sequence
+            }
             return InventorySet(id: id, name: sorted[0].setName ?? "Unidentified", game: sorted[0].game,
                 quantity: sorted.reduce(0) { $0 + $1.quantity }, entries: sorted.count,
-                previews: Array(sorted.compactMap(\.preview).prefix(3)))
+                previews: Array(covers.prefix(3)))
         }.sorted { $0.name != $1.name ? $0.name.localizedStandardCompare($1.name) == .orderedAscending : $0.id < $1.id }
         return page
     }

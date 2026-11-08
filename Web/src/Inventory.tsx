@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { ImageIcon } from "lucide-react";
@@ -44,7 +44,7 @@ export function InventoryCard({ entry, open }: { entry: InventoryEntry; open?: (
 }
 export function InventorySetTile({ set, select }: { set: InventorySet; select: () => void }) {
   return <button className="inventory-set-tile" onClick={select} aria-label={`View ${set.name}`}>
-    <span className="inventory-set-covers">{set.previews.map((preview, index) => <span key={index}><InventoryThumbnail preview={preview} /></span>)}</span>
+    <span className="inventory-set-covers">{set.previews.length ? set.previews.map((preview, index) => <span key={index} style={{ "--cover-ratio": preview.image.width / preview.image.height } as CSSProperties}><InventoryThumbnail preview={preview} /></span>) : <span className="inventory-set-placeholder" style={{ "--cover-ratio": 63 / 88 } as CSSProperties}><ImageIcon size={38} aria-hidden="true" /></span>}</span>
     <strong>{set.name}</strong><span>{gameLabel(set.game)} · {set.quantity.toLocaleString()} copies</span>
   </button>;
 }
