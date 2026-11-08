@@ -54,7 +54,6 @@ public enum GatewayCredential {
 
 public actor GatewayAccess {
     struct Session { var expiresAt: Date }
-    let imageCacheScope: String
     private let rootDigest: [UInt8]
     private var sessions: [String: Session] = [:]
     private let lifetime: TimeInterval
@@ -67,8 +66,6 @@ public actor GatewayAccess {
     public init(token: String, sessionLifetime: TimeInterval = 3600) throws {
         guard GatewayCredential.valid(token) else { throw ScannerError("configuration", "Invalid gateway token.") }
         rootDigest = Array(GatewayCredential.digest(token).utf8); lifetime = sessionLifetime
-        imageCacheScope = HMAC<SHA256>.authenticationCode(for: Data("scanner-browser-images-v1".utf8), using: SymmetricKey(data: Data(token.utf8)))
-            .map { String(format: "%02x", $0) }.joined()
     }
     func rateLimit(authenticated: Bool) throws {
         if Date().timeIntervalSince(window) >= 60 { window = Date(); requests = 0; attempts = 0 }

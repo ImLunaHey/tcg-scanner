@@ -61,7 +61,7 @@ extension ScannerGateway {
         }
         return ["jobID": .string(try uuid(String(identifier[0]))), "sequence": .number(Double(sequence))]
     }
-    func image(parts: [String], request: Request, principal: String, editID: String? = nil, thumbnailFormat: String? = nil) async throws -> Response {
+    func image(parts: [String], request: Request, editID: String? = nil, thumbnailFormat: String? = nil) async throws -> Response {
         guard (2...3).contains(parts.count) else { throw GatewayError(404, "notFound", "Unknown image route.") }
         var params = try imageParameters(parts[1])
         if let editID { params["editID"] = .string(try uuid(editID)) }
@@ -93,7 +93,7 @@ extension ScannerGateway {
             let deadline = ContinuousClock.now + .seconds(300)
             while true {
                 try Task.checkCancellation()
-                guard ContinuousClock.now < deadline, await access.validPrincipal(principal) else { throw GatewayError(401, "unauthorized", "Download expired or session revoked.") }
+                guard ContinuousClock.now < deadline else { throw GatewayError(408, "timeout", "Image download timed out.") }
                 guard chunk.metadata.jobID == metadata.jobID, chunk.metadata.image.sha256 == metadata.image.sha256,
                       chunk.metadata.image.bytes == metadata.image.bytes, chunk.offset == offset,
                       let data = Data(base64Encoded: chunk.base64), !data.isEmpty,
@@ -122,7 +122,7 @@ extension ScannerGateway {
         return Response(status: .ok, headers: headers, body: .init(byteBuffer: ByteBuffer(bytes: data)))
     }
     private func imageCacheHeaders(type: String, sha256: String) -> HTTPFields {
-        [.contentType: type, .eTag: "\"\(sha256)\"", .cacheControl: "private, max-age=3600, immutable", .vary: "Authorization"]
+        [.contentType: type, .eTag: "\"\(sha256)\"", .cacheControl: "private, max-age=86400, immutable"]
     }
 
     private func imageChunk(_ params: [String: JSONValue], offset: Int) async throws -> ImageChunk {

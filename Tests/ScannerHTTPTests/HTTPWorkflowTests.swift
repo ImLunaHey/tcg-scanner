@@ -76,7 +76,6 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
         #expect(session.status.code == 201)
         let sessionValue = try decode(session, as: JSONValue.self)
         guard case .object(let fields) = sessionValue, case .string(let token) = fields["token"] else { throw ScannerError("test", "Missing session token") }
-        #expect(fields["imageCacheScope"] != nil)
         let headers = httpHeaders(token)
         for route in ["devices", "devices/http-mock", "devices/http-mock/settings", "devices/http-mock/capabilities", "diagnostics", "status", "profiles", "jobs", "batches", "inventory"] {
             #expect(try await client.execute(uri: "/api/v1/" + route, method: .get, headers: headers).status.code == 200)
@@ -85,7 +84,7 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
         #expect(try await client.execute(uri: "/api/v1/inventory", method: .get, headers: [HTTPField.Name("Host")!: "127.0.0.1:8170"]).status.code == 401)
         #expect(try await client.execute(uri: "/api/v1/inventory/missing?set=unavailable", method: .get, headers: headers).status.code == 404)
         #expect(try await client.execute(uri: "/api/v1/inventory/references/not-a-key/thumbnail", method: .get, headers: headers).status.code == 422)
-        for route in ["/api/v1/inventory/missing?set=anything", "/api/v1/inventory/references/anything/thumbnail"] {
+        for route in ["/api/v1/inventory/missing?set=anything", "/api/v1/images/anything/metadata"] {
             #expect(try await client.execute(uri: route, method: .get, headers: [HTTPField.Name("Host")!: "127.0.0.1:8170"]).status.code == 401)
         }
         #expect(await backend.captures == 0)
@@ -140,8 +139,8 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
             let path = "/api/v1/images/\(requestID):\(image.sequence)"
             let original = try await client.execute(uri: path, method: .get, headers: headers)
             #expect(original.status.code == 200 && original.headers[.contentType] == "image/png")
-            #expect(original.headers[.cacheControl] == "private, max-age=3600, immutable")
-            #expect(original.headers[.vary] == "Authorization")
+            #expect(original.headers[.cacheControl] == "private, max-age=86400, immutable")
+            #expect(original.headers[.vary] == nil)
             var conditional = headers; conditional[.ifNoneMatch] = original.headers[.eTag]
             #expect(try await client.execute(uri: path, method: .get, headers: conditional).status.code == 304)
             let bytes = Data(original.body.readableBytesView)
@@ -151,15 +150,20 @@ func httpPoll(_ client: any TestClientProtocol, id: UUID, headers: HTTPFields, t
             #expect(thumbnail.status.code == 200 && thumbnail.headers[.contentType] == "image/png")
             let jpeg = try await client.execute(uri: path + "/thumbnail?format=jpeg", method: .get, headers: headers)
             #expect(jpeg.status.code == 200 && jpeg.headers[.contentType] == "image/jpeg")
-            #expect(jpeg.headers[.cacheControl] == "private, max-age=3600, immutable")
-            #expect(jpeg.headers[.vary] == "Authorization")
+            #expect(jpeg.headers[.cacheControl] == "private, max-age=86400, immutable")
+            #expect(jpeg.headers[.vary] == nil)
             #expect(Data(jpeg.body.readableBytesView).starts(with: [255, 216, 255]))
             conditional[.ifNoneMatch] = jpeg.headers[.eTag]
             #expect(try await client.execute(uri: path + "/thumbnail?format=jpeg", method: .get, headers: conditional).status.code == 304)
             conditional[.authorization] = nil
             let anonymousImage = try await client.execute(uri: path + "/thumbnail?format=jpeg", method: .get, headers: conditional)
-            #expect(anonymousImage.status.code == 401 && anonymousImage.headers[.cacheControl] == "no-store")
-            #expect(anonymousImage.headers[.eTag] == nil)
+            #expect(anonymousImage.status.code == 304 && anonymousImage.headers[.cacheControl] == "private, max-age=86400, immutable")
+            #expect(anonymousImage.headers[.eTag] == jpeg.headers[.eTag])
+            conditional[.ifNoneMatch] = nil
+            #expect(try await client.execute(uri: path, method: .get, headers: conditional).body.readableBytes == bytes.count)
+            #expect(try await client.execute(uri: path + "/thumbnail?format=jpeg", method: .get, headers: conditional).status.code == 200)
+            #expect(try await client.execute(uri: path + "/metadata", method: .get, headers: conditional).status.code == 401)
+            #expect(try await client.execute(uri: path + "/edits", method: .post, headers: conditional, body: buffer(.object([:]))).status.code == 401)
             #expect(try await client.execute(uri: path + "/thumbnail?format=invalid", method: .get, headers: headers).status.code == 400)
             let source = try #require(CGImageSourceCreateWithData(Data(thumbnail.body.readableBytesView) as CFData, nil))
             let preview = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))

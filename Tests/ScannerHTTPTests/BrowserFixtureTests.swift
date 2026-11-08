@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import Hummingbird
+import HTTPTypes
 import ImageIO
 import Testing
 import ScannerAPI
@@ -42,6 +43,23 @@ private actor BrowserMock: ScannerBackend {
     }
 }
 
+private actor BrowserImageRequests {
+    var count = 0
+    func next() -> Int { count += 1; return count }
+}
+private struct BrowserCountingGateway: HTTPResponder {
+    typealias Context = BasicRequestContext
+    let gateway: ScannerGateway
+    let images = BrowserImageRequests()
+    func respond(to request: Request, context: BasicRequestContext) async throws -> Response {
+        var response = try await gateway.respond(to: request, context: context)
+        if request.method == .get, request.head.path?.hasPrefix("/api/v1/images/") == true {
+            response.headers[HTTPField.Name("X-Test-Image-Request")!] = String(await images.next())
+        }
+        return response
+    }
+}
+
 /// Explicit opt-in, isolated browser integration fixture. Never instantiates ImageCaptureCore.
 @Test(.enabled(if: ProcessInfo.processInfo.environment["SCANNER_BROWSER_FIXTURE"] == "1"))
 @MainActor func serveBrowserFixture() async throws {
@@ -56,7 +74,7 @@ private actor BrowserMock: ScannerBackend {
     let config = try GatewayConfiguration(host: host, port: 8171, allowRemote: true)
     let assets = try WebAssets(directory: #require(env["SCANNER_BROWSER_ASSETS"]))
     let gateway = try ScannerGateway(socketPath: socket, token: String(repeating: "e", count: 64), configuration: config, webAssets: assets)
-    let app = Application(responder: gateway, configuration: .init(address: .hostname(host, port: 8171)))
+    let app = Application(responder: BrowserCountingGateway(gateway: gateway), configuration: .init(address: .hostname(host, port: 8171)))
     try await app.runService()
     await coordinator.shutdownScans()
 }

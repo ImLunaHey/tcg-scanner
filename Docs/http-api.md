@@ -40,8 +40,9 @@ arguments. Protect the root credential as scanner-control access.
 
 ## Authentication and sessions
 
-Every API request needs `Authorization: Bearer TOKEN`. Cookies and URL tokens are not
-accepted. The root credential can call APIs directly or create an expiring session:
+Control and metadata API requests need `Authorization: Bearer TOKEN`. Binary image
+GETs (originals, prepared images and thumbnails) do not require a token. Cookies
+and URL tokens are not accepted. The root credential can call APIs directly or create an expiring session:
 
 | Route | Behavior |
 | --- | --- |
@@ -270,5 +271,6 @@ Authentication is required. See [inventory counting rules](inventory.md).
 owned identities, with `cards`, `catalogueCount`, and an optional unavailable
 `note`. Each missing card has `id`, `name`, `number`, `language` and an optional
 `thumbnailKey`. `GET /api/v1/inventory/references/{thumbnailKey}/thumbnail` serves
-a locally cached JPEG with private caching and ETag validation. Both require the
-same authentication as inventory; clients cannot supply image URLs or paths.
+a locally cached JPEG with private caching and ETag validation. The checklist
+requires inventory authentication; the binary thumbnail does not.
+Clients cannot supply image URLs or filesystem paths.

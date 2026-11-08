@@ -1,5 +1,4 @@
 import { ImageRequests } from "./ImageRequests";
-import { persistentImages, persistentImageKey } from "./PersistentImageCache";
 
 export class ApiError extends Error {
   constructor(
@@ -10,14 +9,13 @@ export class ApiError extends Error {
     super(message);
   }
 }
-export type Session = { token: string; expiresAt: string; imageCacheScope: string };
+export type Session = { token: string; expiresAt: string };
 const sessionKey = "scanner.session.v1";
 export function loadSession(): Session | null {
   try {
     const value = JSON.parse(sessionStorage.getItem(sessionKey) || "null");
     return value &&
       /^[a-f0-9]{64}$/.test(value.token) &&
-      /^[a-f0-9]{64}$/.test(value.imageCacheScope) &&
       Date.parse(value.expiresAt) > Date.now()
       ? value
       : null;
@@ -45,15 +43,14 @@ export class Api {
   constructor(
     private token: string,
     private expired: () => void = () => {},
-    readonly imageCacheScope?: string,
   ) {}
-  async response(path: string, options: RequestInit = {}): Promise<Response> {
+  async response(path: string, options: RequestInit = {}, authenticated = true): Promise<Response> {
     const response = await fetch(`/api/v1/${path}`, {
       ...options,
       credentials: "omit",
       cache: options.cache ?? "no-store",
       headers: {
-        Authorization: `Bearer ${this.token}`,
+        ...(authenticated ? { Authorization: `Bearer ${this.token}` } : {}),
         ...(options.body ? { "Content-Type": "application/json" } : {}),
         ...options.headers,
       },
@@ -67,7 +64,7 @@ export class Api {
       );
     });
     if (!response.ok) {
-      if (response.status === 401) this.expired();
+      if (response.status === 401 && authenticated) this.expired();
       throw await responseError(response);
     }
     return response;
@@ -88,7 +85,7 @@ export class Api {
     ).json();
   }
   async blob(path: string, signal?: AbortSignal) {
-    return (await this.response(path, { signal, cache: "default" })).blob();
+    return (await this.response(path, { signal, cache: "default" }, false)).blob();
   }
 }
 export function saveBlob(blob: Blob, name: string) {
@@ -129,17 +126,10 @@ export function imageBlob(
   return loader.load(
     path + ":" + sourceSHA256,
     async () => {
-      const key = persistentImageKey(api.imageCacheScope, path, sourceSHA256);
-      const stored = key ? await persistentImages.get(key) : undefined;
-      signal?.throwIfAborted();
-      if (stored) return stored;
       for (let attempt = 0; ; attempt++) {
         signal?.throwIfAborted();
         try {
-          const blob = await api.blob(path, signal);
-          signal?.throwIfAborted();
-          if (key) await persistentImages.put(key, blob, (sourceSHA256 ? 30 : 1) * 86400_000);
-          return blob;
+          return await api.blob(path, signal);
         } catch (error) {
           if (
             !(error instanceof ApiError) ||

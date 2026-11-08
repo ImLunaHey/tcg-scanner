@@ -111,14 +111,3 @@ import ScannerAPI
     }
     await gateway.access.release("image"); await gateway.access.release("image")
 }
-
-@Test func imageCacheScopeSurvivesGatewayRestartsButIsNotACredential() async throws {
-    let first = try GatewayAccess(token: httpTestToken)
-    let restarted = try GatewayAccess(token: httpTestToken)
-    let rotated = try GatewayAccess(token: String(repeating: "b", count: 64))
-    let scope = await first.imageCacheScope
-    #expect(scope.count == 64 && scope != httpTestToken)
-    #expect(await restarted.imageCacheScope == scope)
-    #expect(await rotated.imageCacheScope != scope)
-    await #expect(throws: GatewayError.self) { try await first.authenticate("Bearer " + scope) }
-}

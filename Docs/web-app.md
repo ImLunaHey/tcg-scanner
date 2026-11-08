@@ -122,19 +122,20 @@ larger batches. Thumbnails are fetched serially per tab to respect gateway limit
 
 ## Security boundaries
 
-Only `/`, `/index.html`, `/favicon.svg` and the installed `assets/` files can be
-served without authentication. Assets are read into a bounded immutable snapshot
+The web shell, installed assets and binary image GETs are served without
+authentication. Assets are read into a bounded immutable snapshot
 at startup; the public file handler cannot browse scan storage, tokens or arbitrary
 filesystem paths. Symlinks, unexpected files, oversized assets and traversal paths
-are rejected. Host/origin checks also apply to public assets. All APIs, original
-images, edits, thumbnails and SSE retain Bearer authentication and resource limits.
+are rejected. Host/origin checks also apply to public assets and images. Metadata,
+image edits, scanner controls and SSE retain Bearer authentication. Image downloads
+retain resource limits and validated storage access.
 
 The web shell has a restrictive CSP: scripts/stylesheets/workers only from the same
 origin, renderer style attributes for WebKit compatibility, blob image previews,
 no external scripts, no framing and no inline script
-execution. API and asset responses use `no-store`; there is no service worker or
-offline image cache. Cookie credentials are not accepted, avoiding cookie-based
-CSRF. CORS is not enabled.
+execution. JSON API and web shell responses use `no-store`; images use the normal
+browser HTTP cache. There is no service worker or app-managed persistent image
+cache. Cookie credentials are not accepted, avoiding cookie-based CSRF. CORS is not enabled.
 
 ## Build and tests
 
@@ -221,14 +222,13 @@ fix page reloads: the gateway's blanket `no-store` policy and the client's fetch
 mode prevented the browser HTTP cache from retaining images. That distinction was
 missed in the initial performance report and was corrected after user feedback.
 
-Image responses now use `Cache-Control: private, max-age=3600, immutable`,
-`Vary: Authorization` and content-derived ETags. JSON, authentication errors and
-control responses remain `no-store`. Authentication runs before conditional
-requests can return 304. The frontend permits cache reuse for immutable image
-URLs; originals use a stable job/sequence and edits have unique IDs. Session
-changes use a different Authorization value and cannot reuse another session's
-cached representation. Browser cache data can remain on the device, as with
-other downloaded images; private cache is not a shared network cache.
+Image responses use `Cache-Control: private, max-age=86400, immutable` and
+content-derived ETags, without `Vary: Authorization`. Binary image GETs need no
+token, including conditional requests returning 304. JSON, authentication errors
+and control responses remain `no-store`. The frontend permits normal HTTP cache
+reuse for immutable image URLs; originals use a stable job/sequence and edits
+have unique IDs. Login changes do not affect image cache entries. Private caching
+means the browser's cache, rather than a shared network cache.
 
 Gallery requests use `/thumbnail?format=jpeg` (512-pixel maximum, quality 0.82).
 The existing thumbnail API still defaults to PNG for other clients. The additive
@@ -242,9 +242,9 @@ in 172–187 ms. Both transferred zero preview bytes on reload. Chromium also re
 the 1.55 MB full image without a request body transfer; WebKit revalidated it with
 approximately 300 bytes of headers and no image body download. JPEG previews total
 about 1.8 MB instead of roughly 8 MB. These are this Mac's measurements, not a
-physical-phone or remote-link benchmark. WebKit does not cache the authenticated
-images on the insecure HTTP fixture, so its cache assertion uses the production
-HTTPS test instead. These checks created no scan jobs.
+physical-phone or remote-link benchmark. Those earlier checks used authenticated
+images over production HTTPS and created no scan jobs. Current token-free cache
+tests use isolated mock jobs and normal persistent Chromium/WebKit profiles.
 
 ### Compact navigation — 2026-11-01
 
@@ -265,31 +265,21 @@ screenshots and results are ignored under `Diagnostics/sidebar-ui/`.
 
 ## Browser image cache
 
-Thumbnails and full images use a 24 MiB memory cache plus a 256 MiB IndexedDB
-cache. Disk entries survive reloads, rebuilt web bundles and renewed logins. The
-session response supplies `imageCacheScope`, an opaque value derived from the
-server root credential with a domain-separated HMAC. It is stable across gateway
-restarts and session renewal, changes when the root credential changes, and grants
-no API access. Bearer tokens are not stored in the image database. Signing out
-removes the in-memory session; cached image bytes can be reused after signing back
-into the same server, just like browser HTTP cache entries.
+Images use the browser's normal HTTP cache. Image GETs send no Bearer token or
+cookies. Original, prepared and catalogue thumbnail URLs return
+`Cache-Control: private, max-age=86400, immutable` plus content-based ETags, with
+no `Vary: Authorization`. Routine deployments and login changes keep the same
+image URLs and do not create separate cache entries. Processed edits have distinct
+IDs in their URLs. Once stale, the browser can revalidate unchanged images with
+304 responses instead of downloading their bytes again.
 
-Keys include that scope, image path, edit ID and source hash. Entries expire after
-30 days for scans with hashes, or one day for catalogue references. Images over
-32 MiB bypass disk caching. Least-recently-used entries are evicted at the byte
-limit. Browser storage eviction, private mode and quota failures fall back to
-ordinary authenticated HTTP requests. ArrayBuffers are stored and reconstructed
-as Blobs on read so the same format works in WebKit and Chromium.
+There is no application-managed persistent image store or disk quota. The small
+in-memory request queue still avoids duplicate loads while a page is open. The
+browser decides disk cache size and eviction. Startup deletes the discarded
+`scanner-images` IndexedDB database. API metadata and scanner controls still
+require authentication; only binary image GETs are token-free, with existing
+request, download and filesystem limits.
 
-The database and renderer-key version do not change for routine deployments. A
-new renderer-key version is only needed if image output changes while its source
-hash and edit URL remain identical. HTTP caching still uses private responses,
-ETags and `Vary: Authorization`; the persistent cache avoids making renewed
-Bearer tokens force duplicate image downloads. See
-[HTTP Vary](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Vary)
-and [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API).
-
-`Scripts/test-browser-image-cache.sh` runs isolated Chromium and WebKit tests
-without a server or scanner. They disable HTTP caching and verify reuse across a
-full reload and token change, invalidation for new hashes/edits/server scopes,
-byte eviction, expiry and storage-unavailable fallback.
+The `normal HTTP image cache` Playwright test runs against the opt-in Swift mock
+fixture. A test-only response counter verifies cache hits after a page reload,
+without intercepting requests or disabling the browser cache. No hardware is used.

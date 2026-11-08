@@ -4,7 +4,7 @@ import { Thumbnail } from "./Library";
 import type { OriginalImage } from "./models";
 
 export type InventoryPreview = { batchID: string; image: OriginalImage; editID?: string };
-/** Mount the shared authenticated, cached thumbnail loader only near the viewport. */
+/** Mount the shared cached thumbnail loader only near the viewport. */
 export function InventoryThumbnail({ preview }: { preview: InventoryPreview }) {
   const node = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);

@@ -34,19 +34,25 @@ public struct ScannerGateway: HTTPResponder {
             if let asset = try webAssets?.response(for: request, path: path) {
                 response = asset; isWebAsset = true
             } else {
-            let principal = try await access.authenticate(request.headers[.authorization])
             // Only binary image responses consume download slots. Metadata and
             // identification controls must remain available while previews load.
             let binaryImage = request.method == .get && (
                 (path.components.starts(with: ["api", "v1", "images"]) &&
                     (path.components.count == 4 || (path.components.count == 5 && path.components.last == "thumbnail"))) ||
                 (path.components.count == 6 && path.components.starts(with: ["api", "v1", "inventory", "references"]) && path.components.last == "thumbnail"))
+            let principal: String
+            if binaryImage {
+                try await access.rateLimit(authenticated: true)
+                principal = "public-image"
+            } else { principal = try await access.authenticate(request.headers[.authorization]) }
             let kind = path.components == ["api", "v1", "events"] ? "events" : (binaryImage ? "image" : "request")
             try await access.acquire(kind)
             let lease = RequestLease(access: access, kind: kind)
             do {
                 let body = try await collect(request)
-                guard await access.validPrincipal(principal) else { throw GatewayError(401, "unauthorized", "Session expired or revoked.") }
+                if !binaryImage {
+                    guard await access.validPrincipal(principal) else { throw GatewayError(401, "unauthorized", "Session expired or revoked.") }
+                }
                 response = try await route(request, path: path, body: body, principal: principal)
                 // Keep limits charged until streaming finishes, including disconnect/write failures.
                 let original = response.body

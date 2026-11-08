@@ -12,7 +12,7 @@ extension ScannerGateway {
             try path.only([]); try only(body, [])
             if method == .post {
                 let (token, expiry) = try await access.issue(for: principal)
-                return try jsonResponse(.object(["schemaVersion": .number(1), "token": .string(token), "imageCacheScope": .string(access.imageCacheScope), "expiresAt": .string(ISO8601DateFormatter().string(from: expiry))]), status: 201)
+                return try jsonResponse(.object(["schemaVersion": .number(1), "token": .string(token), "expiresAt": .string(ISO8601DateFormatter().string(from: expiry))]), status: 201)
             }
             if method == .delete { try await access.revoke(principal); return try jsonResponse(.object(["revoked": .bool(true)])) }
         }
@@ -55,7 +55,7 @@ extension ScannerGateway {
         }
         if parts.first == "images", method == .get {
             try path.only(parts.count == 3 && parts[2] == "thumbnail" ? ["editID", "format"] : ["editID"])
-            return try await image(parts: parts, request: request, principal: principal, editID: path.query["editID"], thumbnailFormat: path.query["format"])
+            return try await image(parts: parts, request: request, editID: path.query["editID"], thumbnailFormat: path.query["format"])
         }
         if parts.count == 3, parts[0] == "images", parts[2] == "edits", method == .post {
             try path.only([]); try only(body, ["id", "crop", "quarterTurns", "deskewDegrees"])

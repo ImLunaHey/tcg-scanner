@@ -29,7 +29,7 @@ Inventory entries include a representative `preview` with batch ID, image metada
 and the prepared edit ID when available. The service chooses the detected front or
 identity-bearing side, preserving the original capture sequence. Unknown pairs
 use their first capture without claiming it is a front. The web gallery loads
-cached authenticated JPEG thumbnails near the viewport; full images load only
+cached JPEG thumbnails near the viewport; full images load only
 when opening the existing lightbox.
 
 The `sets` array covers the complete inventory regardless of entry pagination or
@@ -67,7 +67,7 @@ Sets without catalogue data show an unavailable message rather than a complete
 collection. The checklist uses the set's scanned language, preferring English when
 both supported languages are represented; foil finishes are not separate gaps.
 
-Catalogue images use authenticated `/api/v1/inventory/references/{key}/thumbnail`
+Catalogue images use token-free `/api/v1/inventory/references/{key}/thumbnail`
 requests (`v1.inventory.reference`). ScannerService registers fixed-host catalogue
 URLs, downloads bounded images without redirects and caches 512px JPEGs locally
 (up to 256 MiB, seven days). No scans or OCR are uploaded. Thumbnails load near the

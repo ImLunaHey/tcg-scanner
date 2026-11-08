@@ -7,6 +7,9 @@ import { App, AppBoundary } from "./App";
 import { ApiError } from "./api";
 import "./styles.css";
 
+// Remove the discarded app-managed image cache; image bytes use HTTP caching.
+try { globalThis.indexedDB?.deleteDatabase("scanner-images"); } catch { /* Storage may be disabled. */ }
+
 const queries = new QueryClient({
   defaultOptions: {
     queries: {
