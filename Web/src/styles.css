@@ -1997,21 +1997,45 @@
   gap: 0.5rem;
 }
 
-.inventory-totals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-.inventory-totals > div { padding: 1rem; border: 1px solid var(--line, #333); border-radius: 12px; }
-.inventory-totals dt, .inventory-quantity span { font-size: .8rem; opacity: .65; }
-.inventory-totals dd { font-size: 1.8rem; font-weight: 650; margin: .35rem 0 0; font-variant-numeric: tabular-nums; }
-.inventory-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 1rem; padding-bottom: 1rem; }
-.inventory-toolbar .field { width: min(100%, 28rem); }
-.inventory-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; padding: 1.15rem 0; border-top: 1px solid var(--line, #333); }
-.inventory-identity h2 { font-size: 1.05rem; margin: 0 0 .2rem; }
-.inventory-identity p { margin: 0; font-size: .9rem; opacity: .8; }
-.inventory-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1rem; margin-top: .5rem; font-size: .75rem; }
-.inventory-quantity { display: flex; flex-direction: column; align-items: end; min-width: 3rem; }
-.inventory-quantity strong { font-size: 1.7rem; font-variant-numeric: tabular-nums; }
-.inventory-locations { margin-top: .7rem; font-size: .8rem; }
-.inventory-locations summary { opacity: .7; }
-.inventory-locations > div { display: flex; flex-wrap: wrap; gap: .5rem 1rem; padding: .7rem 0; }
+.inventory-heading { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
+.inventory-heading h1 { margin: 0; }
+.inventory-heading > span { opacity: .65; font-size: .85rem; }
+.inventory-gallery-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem; margin-bottom: 1.5rem; }
+.inventory-view-switch { display: flex; padding: 4px; border: 1px solid var(--line, #333); border-radius: 10px; }
+.inventory-view-switch button { padding: .45rem 1rem; border-radius: 7px; font-size: .85rem; }
+.inventory-view-switch button[aria-pressed="true"] { background: var(--ink, #eee); color: var(--page, #000); }
+.inventory-search { flex: 1; min-width: 150px; }
+.inventory-set-filter { min-width: 180px; max-width: 280px; }
+.inventory-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1.25rem; align-items: start; }
+.inventory-card { min-width: 0; }
+.inventory-card-image { display: flex; width: 100%; position: relative; aspect-ratio: 63 / 88; align-items: center; justify-content: center; overflow: hidden; border-radius: 10px; background: color-mix(in srgb, var(--ink, #fff) 4%, var(--page, #000)); transition: transform .15s ease; }
+.inventory-card-image:hover { transform: translateY(-3px); }
+.inventory-thumbnail { height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; }
+.inventory-thumbnail .thumbnail { width: 100%; height: 100%; padding: 0; aspect-ratio: auto; border: 0; border-radius: 0; background: transparent; }
+.inventory-thumbnail .thumbnail img { width: 100%; height: 100%; object-fit: contain; }
+.inventory-copy-badge { position: absolute; right: 8px; top: 8px; border: 1px solid #ffffff40; background: #080808e8; color: #fff; border-radius: 20px; padding: .3rem .65rem; font-size: .9rem; font-weight: 700; box-shadow: 0 2px 8px #0006; }
+.inventory-card-caption { padding: .65rem .15rem; }
+.inventory-card-caption h2 { font-size: .92rem; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+.inventory-set-name { font-size: .78rem; opacity: .65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: .2rem 0; }
+.inventory-card-foot { display: flex; align-items: center; gap: .4rem; font-size: .72rem; opacity: .8; }
+.inventory-card-foot > span:first-child { flex: 1; }
+.inventory-identity-dot { width: 7px; height: 7px; border-radius: 50%; background: #dba64e; }
+.inventory-identity-dot.matched { background: #7a9c8a; }
+.inventory-language { font-size: .65rem; opacity: .7; }
+.inventory-locations { margin-top: .45rem; font-size: .7rem; }
+.inventory-locations summary { opacity: .6; }
+.inventory-locations > div { display: flex; flex-direction: column; gap: .35rem; padding: .5rem 0; max-height: 180px; overflow-y: auto; }
 .inventory-locations a { text-decoration: underline; text-underline-offset: 3px; }
-.inventory-pagination { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: 1rem 0; }
-@media (max-width: 600px) { .inventory-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; } .inventory-toolbar { align-items: stretch; flex-direction: column; } }
+.inventory-set-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem; }
+.inventory-set-tile { text-align: left; display: flex; flex-direction: column; min-width: 0; padding: 1.1rem; border: 1px solid var(--line, #333); border-radius: 14px; }
+.inventory-set-tile:hover { border-color: var(--ink, #aaa); }
+.inventory-set-tile > strong { margin-top: .9rem; font-size: 1rem; }
+.inventory-set-tile > span:last-child { opacity: .6; font-size: .8rem; margin-top: .25rem; }
+.inventory-set-covers { display: block; width: 100%; height: 210px; position: relative; }
+.inventory-set-covers > span { position: absolute; height: 190px; width: 136px; left: calc(50% - 68px); top: 10px; border-radius: 8px; overflow: hidden; box-shadow: 0 5px 15px #0008; background: var(--page, #000); }
+.inventory-set-covers > span:nth-child(1) { transform: translateX(-38px) rotate(-11deg); }
+.inventory-set-covers > span:nth-child(2) { transform: translateX(38px) rotate(11deg); }
+.inventory-set-covers > span:last-child { transform: none; z-index: 1; }
+.inventory-pagination { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: 1.5rem 0; }
+@media (max-width: 600px) { .inventory-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; } .inventory-set-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; } .inventory-set-tile { padding: .6rem; } .inventory-set-covers { height: 150px; } .inventory-set-covers > span { height: 130px; width: 93px; left: calc(50% - 46px); } .inventory-set-covers > span:nth-child(1) { transform: translateX(-16px) rotate(-9deg); } .inventory-set-covers > span:nth-child(2) { transform: translateX(16px) rotate(9deg); } .inventory-set-filter { max-width: none; width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .inventory-card-image { transition: none; } }
