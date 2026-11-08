@@ -223,6 +223,12 @@ export function BatchDetail({ id }: { id: string }) {
         ? 1500
         : false,
   });
+  const hasBatch = !!batch.data;
+  useEffect(() => {
+    const card = new URLSearchParams(window.location.search).get("card");
+    if (!hasBatch || !card || !/^[1-9][0-9]{0,2}$/.test(card)) return;
+    document.getElementById(`card-${card}`)?.scrollIntoView({ block: "center" });
+  }, [id, hasBatch]);
   // Edition checks can change the correct quote without changing name or finish.
   const valuationRevision = pricingRevision(batch.data);
   const cardBatch =
@@ -588,6 +594,7 @@ export function BatchDetail({ id }: { id: string }) {
             return (
               <section
                 className="card-pair"
+                id={`card-${pair.number}`}
                 key={pair.number}
                 aria-label={`Card ${captureLabel(pair.number)}`}
               >

@@ -1996,3 +1996,22 @@
   align-items: center;
   gap: 0.5rem;
 }
+
+.inventory-totals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.inventory-totals > div { padding: 1rem; border: 1px solid var(--line, #333); border-radius: 12px; }
+.inventory-totals dt, .inventory-quantity span { font-size: .8rem; opacity: .65; }
+.inventory-totals dd { font-size: 1.8rem; font-weight: 650; margin: .35rem 0 0; font-variant-numeric: tabular-nums; }
+.inventory-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 1rem; padding-bottom: 1rem; }
+.inventory-toolbar .field { width: min(100%, 28rem); }
+.inventory-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; padding: 1.15rem 0; border-top: 1px solid var(--line, #333); }
+.inventory-identity h2 { font-size: 1.05rem; margin: 0 0 .2rem; }
+.inventory-identity p { margin: 0; font-size: .9rem; opacity: .8; }
+.inventory-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1rem; margin-top: .5rem; font-size: .75rem; }
+.inventory-quantity { display: flex; flex-direction: column; align-items: end; min-width: 3rem; }
+.inventory-quantity strong { font-size: 1.7rem; font-variant-numeric: tabular-nums; }
+.inventory-locations { margin-top: .7rem; font-size: .8rem; }
+.inventory-locations summary { opacity: .7; }
+.inventory-locations > div { display: flex; flex-wrap: wrap; gap: .5rem 1rem; padding: .7rem 0; }
+.inventory-locations a { text-decoration: underline; text-underline-offset: 3px; }
+.inventory-pagination { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: 1rem 0; }
+@media (max-width: 600px) { .inventory-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; } .inventory-toolbar { align-items: stretch; flex-direction: column; } }

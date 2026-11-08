@@ -3,6 +3,7 @@ import { Link, Route, Switch, useLocation } from "wouter";
 import {
   ArrowRight,
   FolderOpen,
+  Boxes,
   LayoutDashboard,
   LockKeyhole,
   LogOut,
@@ -16,6 +17,7 @@ import { useAuth } from "./auth";
 import { useLiveEvents } from "./events";
 import { Dashboard } from "./Dashboard";
 import { BatchDetail, Library } from "./Library";
+import { Inventory } from "./Inventory";
 import { Profiles } from "./Profiles";
 import { Scanner } from "./Scanner";
 import { Brand, ErrorNote } from "./ui";
@@ -151,6 +153,7 @@ function Workspace() {
   const navigation = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/library", label: "Library", icon: FolderOpen },
+    { href: "/inventory", label: "Inventory", icon: Boxes },
     { href: "/profiles", label: "Profiles", icon: SlidersHorizontal },
     { href: "/scanner", label: "Scanner", icon: ScanLine },
   ];
@@ -231,6 +234,7 @@ function Workspace() {
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/library" component={Library} />
+            <Route path="/inventory" component={Inventory} />
             <Route path="/profiles" component={Profiles} />
             <Route path="/scanner" component={Scanner} />
             <Route path="/batches/:id">

@@ -30,7 +30,7 @@ export function useLiveEvents() {
           void query.invalidateQueries({
             predicate: (q) =>
               [
-                "status", "jobs", "batch", "devices", "profiles", "store-transfer",
+                "inventory", "status", "jobs", "batch", "devices", "profiles", "store-transfer",
               ].includes(
                 String(q.queryKey[0]),
               ),
