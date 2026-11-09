@@ -80,8 +80,15 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   read-only capability inspection with explicit source closure. Portable ABI tests
   check packing, scalar/enumeration decoding, fixed-point byte order, allocation
   lifetime and failed-close quarantine through a native simulated DSM. Windows
-  x64/ARM64 type-checks pass; Windows acquisition and actual Windows execution
-  remain outstanding.
+  x64/ARM64 type-checks pass. Windows acquisition now verifies/persists settings
+  before enabling the ADF, pumps events, preserves bounded RGB memory strips and
+  follows state-specific end/reset/disable/restore/close transitions. Ten native
+  simulation scenarios cover successful duplex capture, adjusted settings,
+  first/later read failures, cancellation, failed end-transfer, incomplete duplex,
+  rejected persistence, cancellation before feeding and unknown-status quarantine. Actual Windows execution
+  remains outstanding. Backing-colour vendor mapping and SANE/TWAIN ICC-profile
+  retrieval/colour validation are also outstanding; these are not cutover-ready
+  hardware claims.
   No Swift or scanner helper executable is invoked.
 
 - `scanner-files`: pinned directory access, symlink/hard-link rejection, original

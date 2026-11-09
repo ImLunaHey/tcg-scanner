@@ -4,12 +4,8 @@ use super::{
     session::{Capture, Session},
 };
 use crate::CaptureEvent;
-use image::ImageFormat;
-use scanner_types::{
-    error::{Result, ScannerError},
-    scan::OriginalFormat,
-};
-use std::{fs::OpenOptions, io::Cursor, time::Duration};
+use scanner_types::error::{Result, ScannerError};
+use std::time::Duration;
 
 pub(super) fn parameters(session: &Session<'_>) -> Result<Frame> {
     let mut parameters = Parameters::default();
@@ -102,36 +98,10 @@ pub(super) fn capture_pages(session: &Session<'_>, capture: &Capture<'_>) -> Res
     ))
 }
 fn write_frame(frame: Frame, capture: &Capture<'_>, sequence: u32) -> Result<String> {
-    let image = frame.finish()?;
-    let mut encoded = Cursor::new(Vec::new());
-    let format = match capture.request.format {
-        OriginalFormat::Png => ImageFormat::Png,
-        OriginalFormat::Tiff => ImageFormat::Tiff,
-    };
-    image.write_to(&mut encoded, format).map_err(ffi::error)?;
-    let filename = format!(
-        "capture-{sequence:04}.{}",
-        capture.request.format.extension()
-    );
-    let mut options = OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
-    }
-    let mut file = options
-        .open(capture.incoming.join(&filename))
-        .map_err(ffi::error)?;
-    use std::io::Write;
-    file.write_all(encoded.get_ref()).map_err(ffi::error)?;
-    file.sync_all().map_err(ffi::error)?;
-    // Keep even an oversized complete original in private staging for recovery.
-    if encoded.get_ref().len() > 32 * 1024 * 1024 {
-        return Err(ScannerError::new(
-            "resourceLimit",
-            "Captured image exceeds the original-file import limit; retained in incoming storage.",
-        ));
-    }
-    Ok(filename)
+    crate::native_output::write_image(
+        frame.finish()?,
+        capture.request.format,
+        capture.incoming,
+        sequence,
+    )
 }

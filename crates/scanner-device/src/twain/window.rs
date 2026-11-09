@@ -37,17 +37,31 @@ impl Window {
         Ok(Self(handle))
     }
     pub fn pump(&self) {
+        let _ = self.pump_with(|_| Ok((false, false)));
+    }
+    pub fn pump_source(&self, manager: &mut super::manager::Manager) -> Result<bool> {
+        self.pump_with(|message| unsafe { manager.process_event(message) })
+    }
+    fn pump_with(
+        &self,
+        mut dispatch: impl FnMut(*mut std::ffi::c_void) -> Result<(bool, bool)>,
+    ) -> Result<bool> {
         let mut message = MSG::default();
+        let mut cancelled = false;
         for _ in 0..128 {
-            // SAFETY: local MSG storage; dispatch only this worker's queue.
             unsafe {
                 if PeekMessageW(&mut message, std::ptr::null_mut(), 0, 0, PM_REMOVE) == 0 {
                     break;
                 }
-                TranslateMessage(&message);
-                DispatchMessageW(&message);
+                let (handled, close) = dispatch((&mut message as *mut MSG).cast())?;
+                cancelled |= close;
+                if !handled {
+                    TranslateMessage(&message);
+                    DispatchMessageW(&message);
+                }
             }
         }
+        Ok(cancelled)
     }
 }
 impl Drop for Window {

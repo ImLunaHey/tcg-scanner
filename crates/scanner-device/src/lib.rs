@@ -9,3 +9,5 @@ pub mod sane;
 
 #[cfg(any(windows, test))]
 pub mod twain;
+
+mod native_output;

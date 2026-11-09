@@ -39,5 +39,9 @@ SCANNER_TWAIN_TEST_LIBRARY=/tmp/scanner-twain-fixture.dylib cargo test -p scanne
 On Linux use `cc -std=c11 -Wall -Wextra -Werror -shared -fPIC` with an output ending
 in `.so`. This fixture checks discovery, current-value/query-support containers,
 fixed-point readings, allocation/lock lifetime and failed-source-close quarantine.
-It does not test Win32 window handling or a physical TWAIN driver. The deliberately
+It also simulates native memory acquisition and verifies pixel/row integrity,
+settings persistence before enabling the source, restoration after adjusted
+settings, failed first/later reads, cancelled reads, failed end-transfer, incomplete
+duplex pairs, rejected persistence and cancellation before feeding. It does not
+test Win32 window handling or a physical TWAIN driver. The deliberately
 quarantined test instance retains one test-library reference until process exit.

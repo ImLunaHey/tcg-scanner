@@ -1,5 +1,5 @@
 use super::{
-    inspection,
+    acquisition, inspection,
     manager::{Manager, error},
     window::Window,
 };
@@ -28,12 +28,21 @@ impl Drop for Lease {
         IN_USE.store(false, Ordering::SeqCst);
     }
 }
+struct CaptureCommand {
+    id: String,
+    request: ScanRequest,
+    incoming: PathBuf,
+    events: mpsc::Sender<CaptureEvent>,
+    cancel: CancellationToken,
+    reply: oneshot::Sender<CaptureOutcome>,
+}
 enum Command {
+    Capture(Box<CaptureCommand>),
     Devices(oneshot::Sender<Result<Vec<Device>>>),
     Inspect(String, oneshot::Sender<Result<Inspection>>),
 }
-/// Windows TWAIN 2 discovery and read-only inspection. Owns a hidden window and
-/// DSM on one worker; no helper executable or driver UI is launched.
+/// Windows TWAIN 2 discovery, inspection and ADF acquisition. Owns a hidden
+/// window and DSM on one worker; no helper executable or driver UI is launched.
 #[derive(Clone)]
 pub struct TwainBackend {
     commands: SyncSender<Command>,
@@ -48,58 +57,14 @@ impl TwainBackend {
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
             .map_err(|_| ScannerError::new("busy", "A TWAIN adapter already owns this process."))?;
         let lease = Lease;
+        let runtime = tokio::runtime::Handle::current();
         let (commands, receiver) = sync::sync_channel(16);
         let (ready, result) = oneshot::channel();
         std::thread::Builder::new()
             .name("scanner-twain".into())
             .spawn(move || {
                 let _lease = lease;
-                let window = match Window::new() {
-                    Ok(window) => window,
-                    Err(error) => {
-                        let _ = ready.send(Err(error));
-                        return;
-                    }
-                };
-                // SAFETY: window lives on this worker and outlives the manager.
-                let mut manager = match unsafe { Manager::load(&library, window.0) } {
-                    Ok(manager) => manager,
-                    Err(error) => {
-                        let _ = ready.send(Err(error));
-                        return;
-                    }
-                };
-                let initialized = manager.initialize();
-                let successful = initialized.is_ok();
-                if ready.send(initialized).is_ok() && successful {
-                    loop {
-                        window.pump();
-                        match receiver.recv_timeout(Duration::from_millis(20)) {
-                            Ok(Command::Devices(reply)) => {
-                                let result = manager.identities().map(|identities| {
-                                    identities
-                                        .into_iter()
-                                        .map(|identity| manager.device(identity))
-                                        .collect()
-                                });
-                                let _ = reply.send(result);
-                            }
-                            Ok(Command::Inspect(id, reply)) => {
-                                let _ = reply.send(inspection::inspect(&mut manager, &id));
-                            }
-                            Err(sync::RecvTimeoutError::Timeout) => {}
-                            Err(sync::RecvTimeoutError::Disconnected) => break,
-                        }
-                    }
-                }
-                if manager.shutdown().is_err() {
-                    // A failed native close cannot be repaired by dropping the DLL,
-                    // window or owner thread. Keep all three until process restart.
-                    loop {
-                        window.pump();
-                        std::thread::park_timeout(Duration::from_secs(1));
-                    }
-                }
+                run_worker(library, runtime, receiver, ready);
             })
             .map_err(error)?;
         result.await.map_err(error)??;
@@ -132,15 +97,90 @@ impl ScannerBackend for TwainBackend {
     }
     async fn capture(
         &self,
-        _id: &str,
-        _request: &ScanRequest,
-        _incoming: PathBuf,
-        _events: mpsc::Sender<CaptureEvent>,
-        _cancel: CancellationToken,
+        id: &str,
+        request: &ScanRequest,
+        incoming: PathBuf,
+        events: mpsc::Sender<CaptureEvent>,
+        cancel: CancellationToken,
     ) -> Result<CaptureOutcome> {
-        Err(ScannerError::new(
-            "unsupported",
-            "TWAIN acquisition is not available yet.",
-        ))
+        let (reply, result) = oneshot::channel();
+        self.send(Command::Capture(Box::new(CaptureCommand {
+            id: id.into(),
+            request: request.clone(),
+            incoming,
+            events,
+            cancel,
+            reply,
+        })))?;
+        result.await.map_err(error)
+    }
+}
+
+fn run_worker(
+    library: PathBuf,
+    runtime: tokio::runtime::Handle,
+    receiver: sync::Receiver<Command>,
+    ready: oneshot::Sender<Result<()>>,
+) {
+    let window = match Window::new() {
+        Ok(window) => window,
+        Err(error) => {
+            let _ = ready.send(Err(error));
+            return;
+        }
+    };
+    // SAFETY: window lives on this worker and outlives the manager.
+    let mut manager = match unsafe { Manager::load(&library, window.0) } {
+        Ok(manager) => manager,
+        Err(error) => {
+            let _ = ready.send(Err(error));
+            return;
+        }
+    };
+    let initialized = manager.initialize();
+    let successful = initialized.is_ok();
+    if ready.send(initialized).is_ok() && successful {
+        loop {
+            window.pump();
+            match receiver.recv_timeout(Duration::from_millis(20)) {
+                Ok(Command::Devices(reply)) => {
+                    let result = manager.identities().map(|identities| {
+                        identities
+                            .into_iter()
+                            .map(|identity| manager.device(identity))
+                            .collect()
+                    });
+                    let _ = reply.send(result);
+                }
+                Ok(Command::Inspect(id, reply)) => {
+                    let _ = reply.send(inspection::inspect(&mut manager, &id));
+                }
+                Ok(Command::Capture(command)) => {
+                    let outcome = acquisition::capture(
+                        &mut manager,
+                        acquisition::Capture {
+                            id: &command.id,
+                            request: &command.request,
+                            incoming: &command.incoming,
+                            events: &command.events,
+                            cancel: &command.cancel,
+                            runtime: &runtime,
+                        },
+                        |manager| window.pump_source(manager),
+                    );
+                    let _ = command.reply.send(outcome);
+                }
+                Err(sync::RecvTimeoutError::Timeout) => {}
+                Err(sync::RecvTimeoutError::Disconnected) => break,
+            }
+        }
+    }
+    if manager.shutdown().is_err() {
+        // A failed native close cannot be repaired by dropping the DLL,
+        // window or owner thread. Keep all three until process restart.
+        loop {
+            window.pump();
+            std::thread::park_timeout(Duration::from_secs(1));
+        }
     }
 }

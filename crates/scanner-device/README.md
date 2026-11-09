@@ -57,8 +57,19 @@ the native session until process restart. No scanner session is opened by discov
 cargo run -p scanner-device --example twain_devices -- C:\trusted\TWAINDSM.dll
 ```
 
-TWAIN acquisition currently returns `unsupported` while its transfer workflow is
-implemented. x64/ARM64 type-checks and portable/native-simulation tests pass;
+TWAIN acquisition now persists verified ADF/RGB8/duplex/DPI settings before
+enabling the source, pumps native messages, assembles bounded full-width strips,
+and preserves originals through the same PNG/TIFF staging path as SANE. Transfer
+cleanup distinguishes failed first reads, cancelled reads and completed transfers;
+it ends/resets/disables in the required order before restoring settings and
+closing. Cancellation is cooperative between synchronous DSM calls: a blocked
+driver call is never abandoned or concurrently closed. Unknown closure retains
+ownership until restart. Explicit backing-colour requests are unsupported until
+a driver-specific mapping is validated; memory tiles and non-RGB8 input are also
+rejected. Native colour-profile retrieval remains unimplemented for TWAIN/SANE;
+these adapters currently preserve the driver-delivered RGB values without an ICC
+tag and must be colour-validated before cutover.
+x64/ARM64 type-checks and portable/native-simulation tests pass;
 actual Windows execution and physical scanning are untested. Interface definitions
 follow the [TWAIN Working Group header](https://github.com/twain/twain-dsm/blob/master/TWAIN_DSM/src/twain.h).
 The crate and `scanner-types`

@@ -24,12 +24,12 @@ pub(super) const INSPECTION_CAPS: &[(u16, &str)] = &[
     (0x1151, "automaticDeskew"),
     (0x1152, "automaticRotate"),
 ];
-struct Container<'a> {
-    memory: &'a Memory,
+struct Container {
+    memory: Memory,
     handle: *mut c_void,
     locked: bool,
 }
-impl Drop for Container<'_> {
+impl Drop for Container {
     fn drop(&mut self) {
         unsafe {
             if self.locked {
@@ -48,7 +48,6 @@ pub(super) fn read(manager: &mut Manager, id: u16, message: u16) -> Result<Scala
     let result = manager.source_call(1, 1, message, (&mut capability as *mut Capability).cast());
     let memory = manager
         .memory
-        .as_ref()
         .ok_or_else(|| error("DSM memory functions unavailable."))?;
     if capability.handle.is_null() {
         return result.and_then(|()| Err(error("Empty TWAIN capability container.")));
@@ -85,4 +84,39 @@ pub(super) fn read(manager: &mut Manager, id: u16, message: u16) -> Result<Scala
             std::slice::from_raw_parts(pointer, length),
         )
     }
+}
+
+pub(super) fn write(manager: &mut Manager, id: u16, value: Scalar) -> Result<()> {
+    let memory = manager
+        .memory
+        .ok_or_else(|| error("DSM memory functions unavailable."))?;
+    // SAFETY: six bytes hold a TW_ONEVALUE for the supported scalar types.
+    let handle = unsafe { (memory.allocate)(6) };
+    if handle.is_null() {
+        return Err(error("Could not allocate TWAIN setting container."));
+    }
+    let mut owned = Container {
+        memory,
+        handle,
+        locked: false,
+    };
+    let pointer = unsafe { (memory.lock)(handle) }.cast::<u8>();
+    if pointer.is_null() {
+        return Err(error("Could not lock TWAIN setting container."));
+    }
+    owned.locked = true;
+    let mut bytes = [0; 6];
+    bytes[..2].copy_from_slice(&value.kind.to_le_bytes());
+    bytes[2..].copy_from_slice(&value.raw.to_le_bytes());
+    unsafe {
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), pointer, 6);
+        (memory.unlock)(handle);
+    }
+    owned.locked = false;
+    let mut capability = Capability {
+        id,
+        container_type: 5,
+        handle,
+    };
+    manager.source_call(1, 1, 6, (&mut capability as *mut Capability).cast())
 }

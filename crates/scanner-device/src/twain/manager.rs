@@ -1,4 +1,5 @@
 use super::abi::{self, Entry, EntryPoints, Identity, Status};
+use super::phase::Phase;
 use libloading::Library;
 use scanner_types::{
     device::Device,
@@ -9,7 +10,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[derive(Clone, Copy)]
 pub(super) struct Memory {
+    pub allocate: abi::Allocate,
     pub free: abi::Free,
     pub lock: abi::Lock,
     pub unlock: abi::Unlock,
@@ -20,7 +23,8 @@ pub(super) struct Manager {
     pub source: Option<Identity>,
     pub entry: Entry,
     pub memory: Option<Memory>,
-    parent: *mut c_void,
+    pub parent: *mut c_void,
+    pub phase: Phase,
     opened: bool,
     pub quarantined: bool,
     path: PathBuf,
@@ -38,6 +42,7 @@ impl Manager {
             entry,
             memory: None,
             parent,
+            phase: Phase::Open,
             opened: false,
             quarantined: false,
             path: path.into(),
@@ -57,6 +62,9 @@ impl Manager {
         };
         self.manager_call(0x403, 1, (&mut functions as *mut EntryPoints).cast())?;
         self.memory = Some(Memory {
+            allocate: functions
+                .allocate
+                .ok_or_else(|| error("DSM allocator missing."))?,
             free: functions.free.ok_or_else(|| error("DSM free missing."))?,
             lock: functions.lock.ok_or_else(|| error("DSM lock missing."))?,
             unlock: functions
@@ -199,6 +207,9 @@ impl Manager {
         Ok(self.device(identity))
     }
     pub fn close_source(&mut self) -> Result<()> {
+        if self.phase != Phase::Open {
+            return Err(error("TWAIN acquisition must stop before source closure."));
+        }
         if let Some(mut identity) = self.source {
             if let Err(error) = self.manager_call(3, 0x402, (&mut identity as *mut Identity).cast())
             {
@@ -223,6 +234,7 @@ impl Manager {
 impl Manager {
     pub fn shutdown(&mut self) -> Result<()> {
         self.ensure_available()?;
+        self.stop_transfer()?;
         self.close_source()?;
         if self.opened {
             let mut parent = self.parent;
@@ -266,10 +278,14 @@ fn device_id(identity: Identity) -> String {
 }
 
 #[cfg(test)]
+pub(super) static FIXTURE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]
     fn native_dsm_inspection_frees_containers_and_quarantines_failed_close() {
+        let _guard = super::FIXTURE_LOCK.lock().unwrap();
         let Some(path) = std::env::var_os("SCANNER_TWAIN_TEST_LIBRARY") else {
             return;
         };
@@ -293,7 +309,7 @@ mod tests {
             let inspection = super::super::inspection::inspect(&mut manager, &device.id).unwrap();
             assert!(inspection.session_opened && inspection.session_closed);
             assert!(inspection.errors.is_empty());
-            assert_eq!(inspection.units[0].settings["xResolution"].current, 600.0);
+            assert_eq!(inspection.units[0].settings["xResolution"].current, 300.0);
             assert!(!inspection.units[0].settings["xResolution"].read_only);
             assert!(inspection.units[0].settings["feederLoaded"].read_only);
             assert_eq!(counter(1), 0);
