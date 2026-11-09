@@ -38,6 +38,8 @@ struct CatalogueDetail: Decodable, Sendable {
 /// Only catalogue GETs to the fixed TCGdex HTTPS host. No scan or OCR text is uploaded.
 actor TCGdexClient {
     private var cache: (Date, [CatalogueCard])?
+    private var details: [String: (Date, CatalogueDetail)] = [:]
+    private var detailTasks: [String: Task<CatalogueDetail, Error>] = [:]
     private var catalogueTask: Task<[CatalogueCard], Error>?
     private let session: URLSession
     private let language: CardLanguage
@@ -93,6 +95,18 @@ actor TCGdexClient {
     }
     func detail(_ id: String) async throws -> CatalogueDetail {
         try validate(id)
+        if let cached = details[id], Date().timeIntervalSince(cached.0) < 15 * 60 { return cached.1 }
+        if let pending = detailTasks[id] { return try await pending.value }
+        let task = Task { try await self.fetchDetail(id) }
+        detailTasks[id] = task
+        defer { detailTasks[id] = nil }
+        let result = try await task.value
+        // Public catalogue metadata only; no camera frames or recognition results.
+        details[id] = (Date(), result)
+        if details.count > 128, let oldest = details.min(by: { $0.value.0 < $1.value.0 })?.key { details[oldest] = nil }
+        return result
+    }
+    private func fetchDetail(_ id: String) async throws -> CatalogueDetail {
         let detail = try JSONDecoder().decode(CatalogueDetail.self, from: await get(path: "cards/" + id, limit: 256 * 1024))
         guard detail.id == id, detail.localId.utf8.count <= 32, detail.name.utf8.count <= 128,
               detail.set.id.utf8.count <= 100, detail.set.name.utf8.count <= 256,

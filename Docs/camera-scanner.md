@@ -50,6 +50,9 @@ remain blocked until storage validation passes; there is no local fallback.
   weaker evidence falls back to all four orientations. Saved ADF recognition keeps
   its existing full-orientation behavior. Recognized Star Wars text routes directly
   to its catalogue rather than trying the Pokémon matcher first.
+- Validated public card metadata is cached in memory for 15 minutes, at most 128
+  entries per catalogue client. Concurrent requests share one fetch. Failed loads
+  are not cached; camera frames and identification results are never cached there.
 - The service worker provides an offline explanation for failed page navigation.
   It creates no caches and does not intercept camera/API requests or image downloads.
   Existing images continue to use normal HTTP caching.
@@ -95,3 +98,11 @@ For a physical check, open the HTTPS camera page on your phone and try a known c
 upright and upside down, then another card, a blank surface, and a card back. Check
 that the result changes, camera use stops on backgrounding, and the library/inventory
 count stays unchanged. No ADF feeding is involved.
+
+The live camera endpoint also returned a holo inference for the cached TCGdex
+Mimikyu `sv02-097` reference: dark printed set-code evidence plus a single regular
+catalogue finish. Spectrier `swsh11-081` and a camera-resolution rendering of
+B-001/C-002 Energy remained unsupported. These checks validate routing and
+inference output, not physical finish accuracy under phone lighting. One initial
+post-deployment request timed out; subsequent live requests completed normally.
+Cold catalogue loads still depend on the external catalogue service.
