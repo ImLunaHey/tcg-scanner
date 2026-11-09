@@ -44,5 +44,13 @@
     "No correctness guarantee outside this dataset",
     "Missing-reference DINOv3 candidates remain unverified",
     "Native macOS run; Linux and Windows not executed"
-  ]
+  ],
+  "orientation": {
+    "inputs": 276,
+    "correctVerified": 236,
+    "uncertain": 40,
+    "wrongVerified": 0,
+    "seconds": 153.318774417,
+    "method": "All 69 upright fixtures at each of four quarter turns; no acceptance by similarity"
+  }
 }

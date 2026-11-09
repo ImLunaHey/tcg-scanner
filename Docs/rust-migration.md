@@ -102,6 +102,19 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   combines all four OCR directions with conservative back-layout, logo, Energy
   and public code-insert cues; ambiguous direction remains unverified. All six
   saved Pokémon back layouts pass under all four input rotations.
+  End-to-end native Tesseract orientation was then checked on all 69 fixtures at
+  all four rotations: 236 correct verified directions, 40 uncertain and zero
+  incorrect verified directions. The 40 uncertain cases include all 24 back
+  rotations because stylized logo OCR did not corroborate the colour layout;
+  colour alone is deliberately insufficient. Four front fixtures account for
+  the other 16 uncertain cases.
+
+- `scanner-catalogue`: fixed-origin HTTPS TCGdex catalogue, card and set reads,
+  bounded responses, validated identities, English/Korean paths, expiring caches
+  and coalesced requests. Seven tests cover cache retry/coalescing, response limits,
+  invalid IDs, digital-card filtering and set/detail validation. A live native
+  read of `sv09-177` returned validated Salamence ex metadata. Other-game catalogue
+  adapters and typed price conversion remain in progress.
 
 ## Validation
 

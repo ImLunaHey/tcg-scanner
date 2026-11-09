@@ -5,17 +5,10 @@ pub use evidence::footer_orientation_score;
 use crate::ocr::RecognizedLine;
 use evidence::{Evidence, SUFFIXES};
 use scanner_types::cards::CardLanguage;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::BTreeSet;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CatalogueCard {
-    pub id: String,
-    pub local_id: String,
-    pub name: String,
-    pub image: Option<String>,
-}
+pub use scanner_types::catalogue::CatalogueCard;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Ranked {
