@@ -8,6 +8,10 @@ extension ScannerGateway {
         guard path.components.starts(with: ["api", "v1"]) else { throw GatewayError(404, "notFound", "Unknown API route.") }
         let parts = Array(path.components.dropFirst(2))
         let method = request.method
+        if parts == ["camera", "identify"], method == .post {
+            try path.only([]); try only(body, ["base64", "language"])
+            return try jsonResponse(await service.call("camera.identify", body))
+        }
         if parts == ["session"] {
             try path.only([]); try only(body, [])
             if method == .post {

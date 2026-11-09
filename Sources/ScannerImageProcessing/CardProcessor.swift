@@ -146,7 +146,7 @@ public enum CardProcessor {
         return (points, card.minX == 0 || card.minY == 0 || card.maxX == width - 1 || card.maxY == height - 1)
     }
 
-    static func uprightRotation(_ data: Data, language: CardLanguage = .english) throws -> (turns: Int, verified: Bool, basis: String) {
+    public static func uprightRotation(_ data: Data, language: CardLanguage = .english) throws -> (turns: Int, verified: Bool, basis: String) {
         if let turns = try StarWarsBackOrientation.rotation(data) { return (turns, true, "starwars-back-pattern") }
         if let turns = try YugiohBackOrientation.rotation(data) { return (turns, true, "yugioh-back-pattern") }
         let request = VNRecognizeTextRequest()

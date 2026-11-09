@@ -50,7 +50,7 @@ public struct ScannerGateway: HTTPResponder {
             try await access.acquire(kind)
             let lease = RequestLease(access: access, kind: kind)
             do {
-                let body = try await collect(request)
+                let body = try await collect(request, limit: path.components == ["api", "v1", "camera", "identify"] ? CameraIdentification.maximumRequestBytes : 60 * 1024)
                 if !binaryImage {
                     guard await access.validPrincipal(principal) else { throw GatewayError(401, "unauthorized", "Session expired or revoked.") }
                 }
@@ -72,18 +72,18 @@ public struct ScannerGateway: HTTPResponder {
         response.headers[HTTPField.Name("Content-Security-Policy")!] = isWebAsset ? WebAssets.contentPolicy : "default-src 'none'; frame-ancestors 'none'"
         return response
     }
-    func collect(_ request: Request) async throws -> [String: JSONValue] {
+    func collect(_ request: Request, limit: Int = 60 * 1024) async throws -> [String: JSONValue] {
         if let encoding = request.headers[.contentEncoding], encoding != "identity" { throw GatewayError(415, "invalidParams", "Compressed request bodies are not accepted.") }
         let bytes: ByteBuffer
         do {
             bytes = try await withThrowingTaskGroup(of: ByteBuffer.self) { group in
-                group.addTask { try await request.body.collect(upTo: 60 * 1024) }
+                group.addTask { try await request.body.collect(upTo: limit) }
                 group.addTask { try await Task.sleep(for: .seconds(5)); throw GatewayError(408, "timeout", "Request body timed out.") }
                 defer { group.cancelAll() }
                 return try await group.next()!
             }
         } catch let error as GatewayError { throw error }
-        catch { throw GatewayError(413, "resourceLimit", "Request body exceeds 60 KiB or cannot be read.") }
+        catch { throw GatewayError(413, "resourceLimit", "Request body exceeds the route limit or cannot be read.") }
         guard bytes.readableBytes > 0 else { return [:] }
         guard request.method == .post || request.method == .patch else { throw GatewayError(400, "invalidParams", "This method does not accept a body.") }
         guard request.headers[.contentType]?.split(separator: ";").first?.trimmingCharacters(in: .whitespaces).lowercased() == "application/json" else {

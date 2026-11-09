@@ -49,6 +49,7 @@ public actor ScannerCoordinator {
     var persistenceError: ScannerError?
     var eventWaiters = 0
     let inventoryCatalogue: any InventoryCatalogueProviding
+    var cameraIdentifications = 0
     var inventoryWorkers = 0
     var thumbnailWorkers = 0
     var thumbnailCache = ThumbnailCache()

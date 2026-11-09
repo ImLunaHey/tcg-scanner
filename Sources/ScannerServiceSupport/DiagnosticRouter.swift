@@ -20,6 +20,15 @@ public struct DiagnosticRouter: Sendable {
             return RPCResponse(id: request.id, error: RPCFailure(code: -32600, message: "Expected JSON-RPC 2.0 and a string or numeric ID."))
         }
         do {
+            if request.method == "v1.camera.identify" {
+                guard case .object(let params) = request.params else { throw RPCFailure(code: -32602, message: "Expected camera image parameters.") }
+                try only(params, keys: ["base64", "language"])
+                guard case .string(let base64) = params["base64"],
+                      let language = CardLanguage(rawValue: try optionalIdentifier(params, "language") ?? "en") else {
+                    throw RPCFailure(code: -32602, message: "Provide base64 JPEG and language en or ko.")
+                }
+                return RPCResponse(id: request.id, result: try .wrapping(await coordinator.identifyCamera(base64: base64, language: language)))
+            }
             if let response = try await identificationResponse(request) { return response }
             if let response = try await controlResponse(request) { return response }
             if let response = try await serviceResponse(request) { return response }

@@ -87,6 +87,7 @@ requests are rejected. All HTTP profile IDs are UUIDs; resolve names through the
 
 | Method and route | Input / response |
 | --- | --- |
+| `POST /api/v1/camera/identify` | Ephemeral authenticated camera lookup; base64 JPEG ≤512 KiB and optional en/ko language. No jobs, files or inventory writes. See [camera scanner](camera-scanner.md). |
 | `GET /api/v1/devices` | DeviceList |
 | `GET /api/v1/devices/{id}` | DeviceStatus, including observed readiness |
 | `GET /api/v1/devices/{id}/capabilities` | Inspection |

@@ -102,7 +102,7 @@ public final class UnixServer {
             let log = self.log
             DispatchQueue.global(qos: .utility).async {
                 do {
-                    let bytes = try UnixIO.readLine(fd, limit: 64 * 1024, seconds: 5)
+                    let bytes = try UnixIO.readLine(fd, limit: CameraIdentification.maximumRequestBytes, seconds: 5)
                     Task {
                         let response = await handler(bytes)
                         DispatchQueue.global(qos: .utility).async {
