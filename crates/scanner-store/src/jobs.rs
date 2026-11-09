@@ -173,7 +173,7 @@ pub(crate) fn write_metadata(tx: &Transaction<'_>, record: &ScanRecord) -> Resul
     append(
         tx,
         "job.updated",
-        &serde_json::json!({"id":record.id,"batchID":record.id,"batchNumber":record.batch_number,"state":record.state,"progress":{"imagesSaved":record.images.len()}}),
+        &serde_json::to_value(scanner_types::service::JobSummary::from(record)).map_err(storage)?,
     )
 }
 
@@ -212,7 +212,11 @@ mod tests {
     #[test]
     fn reopening_keeps_batch_numbers_and_saved_records() {
         let directory = tempfile::tempdir().unwrap();
-        let path = directory.path().join("scanner.sqlite");
+        let path = directory
+            .path()
+            .canonicalize()
+            .unwrap()
+            .join("private-state/scanner.sqlite");
         let request = ScanRequest::default();
         let record = ScanRecord::new(Device::default(), request.clone(), "B-001".into());
         {

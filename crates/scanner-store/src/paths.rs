@@ -80,12 +80,12 @@ mod tests {
     #[test]
     fn refuses_symlinked_database_sidecars() {
         let dir = tempfile::tempdir().unwrap();
-        let db = dir.path().join("ledger.sqlite");
-        std::os::unix::fs::symlink(
-            "/tmp/unused-scanner-db",
-            dir.path().join("ledger.sqlite-wal"),
-        )
-        .unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        let path = dir.path().canonicalize().unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let db = path.join("ledger.sqlite");
+        std::os::unix::fs::symlink("/tmp/unused-scanner-db", path.join("ledger.sqlite-wal"))
+            .unwrap();
         assert!(super::prepare(&db).is_err());
         assert!(!db.exists());
     }

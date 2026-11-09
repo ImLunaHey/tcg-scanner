@@ -5,6 +5,7 @@ pub mod device;
 pub mod error;
 pub mod images;
 pub mod scan;
+pub mod service;
 
 pub type Extensions = std::collections::BTreeMap<String, serde_json::Value>;
 

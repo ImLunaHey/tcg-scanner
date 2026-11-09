@@ -1,0 +1,27 @@
+[package]
+name = "scanner-core"
+description = "Portable single-owner scanner coordination and library operations"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+scanner-types.workspace = true
+scanner-store.workspace = true
+scanner-files.workspace = true
+scanner-images.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+async-trait.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+image.workspace = true
+
+[lints]
+workspace = true

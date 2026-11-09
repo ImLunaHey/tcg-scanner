@@ -47,6 +47,15 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   Disk-manifest reconciliation and Windows ACL policy remain with their owning
   platform/storage work.
 
+- `scanner-core`: driver-independent queue ownership, idempotent submissions,
+  profile/default resolution, ordered acquisition, cooperative cancellation,
+  session-closure quarantine, continuations and shutdown. Accepted submissions
+  and inspections outlive disconnected API callers. Integration tests use a
+  controlled test driver with real isolated SQLite and batch files; they verify
+  retry deduplication, preserved settings, closure ordering, queued cancellation,
+  continuation checksums and inspection ownership. Native scanner adapters and
+  the concrete card-processing pipeline are still being connected.
+
 - `scanner-files`: pinned directory access, symlink/hard-link rejection, original
   checksum verification, bounded chunk reads, exclusive batch/image creation,
   atomic manifest publication, immutable edits and continuation numbering. Tests
