@@ -4,13 +4,13 @@ import ScannerAPI
 extension ScannerDatabase {
     /// Run only after acquiring the process-wide hardware lock, before accepting clients.
     /// Never resumes physical feeding. A manifest may be ahead of SQLite after a crash.
-    @discardableResult public func recoverInterruptedJobs(storageRoot: URL) throws -> Int {
-        let root = storageRoot.standardizedFileURL.resolvingSymlinksInPath().path
+    @discardableResult public func recoverInterruptedJobs(storageRoot: URL, accessStorage: Bool = true) throws -> Int {
+        let root = accessStorage ? storageRoot.standardizedFileURL.resolvingSymlinksInPath().path : storageRoot.standardizedFileURL.path
         let scanning = try unfinished()
         let records = try scanning + interruptedIdentifications().filter { candidate in !scanning.contains(where: { $0.id == candidate.id }) }
         for var record in records {
             let directory = URL(fileURLWithPath: record.outputDirectory).standardizedFileURL
-            let safe = directory.path.hasPrefix(root + "/") && directory.resolvingSymlinksInPath().path == directory.path
+            let safe = accessStorage && directory.path.hasPrefix(root + "/") && directory.resolvingSymlinksInPath().path == directory.path
             let manifest = directory.appendingPathComponent("manifest.json")
             if !record.state.terminal, safe, manifest.resolvingSymlinksInPath().path == manifest.path,
                let attrs = try? FileManager.default.attributesOfItem(atPath: manifest.path),
@@ -44,7 +44,11 @@ extension ScannerDatabase {
             if safe && manifest.resolvingSymlinksInPath().path == manifest.path {
                 do { try Wire.encoder().encode(record).write(to: manifest, options: .atomic) }
                 catch { record.warnings.append("Could not update recovered manifest: \(error.localizedDescription)") }
-            } else { record.warnings.append("Storage root changed or path is unsafe; on-disk manifest left untouched.") }
+            } else {
+                record.warnings.append(accessStorage
+                    ? "Storage root changed or path is unsafe; on-disk manifest left untouched."
+                    : "Scan storage was unavailable during recovery. On-disk files were not read or changed; inspect retained files after reconnecting the share.")
+            }
             try save(record)
         }
         return records.count

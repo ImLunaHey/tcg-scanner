@@ -46,7 +46,7 @@ func cameraFixture(card: Bool = true, width: Int = 1000, height: Int = 1333) thr
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
     defer { try? FileManager.default.removeItem(at: root) }
     let backend = HTTPMock(), database = try ScannerDatabase()
-    let coordinator = try ScannerCoordinator(backend: backend, storageRoot: root.appendingPathComponent("must-not-exist"), database: database, cardRecognizer: HTTPRecognitionMock())
+    let coordinator = try ScannerCoordinator(backend: backend, storageRoot: root.appendingPathComponent("must-not-exist"), database: database, validateStorage: { throw ScannerError("storageUnavailable", "Fixture share offline") }, cardRecognizer: HTTPRecognitionMock())
     let before = try Wire.encoder().encode(database.events(after: 0))
     let socket = root.appendingPathComponent("c.sock").path
     let server = UnixServer(path: socket, handler: DiagnosticRouter(coordinator: coordinator).respond)
@@ -74,6 +74,7 @@ func cameraFixture(card: Bool = true, width: Int = 1000, height: Int = 1333) thr
     #expect(try database.jobs().jobs.isEmpty)
     #expect(try Wire.encoder().encode(database.events(after: 0)) == before)
     #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("must-not-exist").path))
+    await #expect(throws: ScannerError.self) { try await coordinator.startScan(ScanRequest()) }
     #expect(await backend.captures == 0)
     await coordinator.shutdownScans()
 }

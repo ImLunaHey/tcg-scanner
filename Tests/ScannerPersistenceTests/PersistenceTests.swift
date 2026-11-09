@@ -112,3 +112,25 @@ import ScannerAPI
     #expect(try reopened.reserveBatchNumber(for: UUID()) == 3)
     #expect(try reopened.submission(oldest.id) == oldest.request)
 }
+
+
+@Test func offlineRecoveryNeverReadsOrWritesFallbackStorage() throws {
+    let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString)
+    let directory = root.appendingPathComponent("B-001")
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let database = try ScannerDatabase(), request = ScanRequest()
+    var record = ScanRecord(device: Device(id: "test", name: "Test"), request: request, outputDirectory: directory.path)
+    record.state = .scanning
+    try database.insert(record, submission: request)
+    record.state = .completed
+    let original = try Wire.encoder().encode(record)
+    let manifest = directory.appendingPathComponent("manifest.json")
+    try original.write(to: manifest)
+    #expect(try database.recoverInterruptedJobs(storageRoot: root, accessStorage: false) == 1)
+    let recovered = try #require(try database.job(record.id))
+    #expect(recovered.state == .failed) // Never trusts a file on the wrong/unmounted volume.
+    #expect(recovered.warnings.contains { $0.contains("storage was unavailable") })
+    #expect(try Data(contentsOf: manifest) == original)
+    #expect(try database.unfinished().isEmpty)
+}

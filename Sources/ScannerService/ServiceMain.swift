@@ -54,10 +54,15 @@ enum ServiceMain {
                 try LaunchAgent.write(options: options, to: path)
                 return
             }
-            try storage.validate()
+            var storageAvailable = true
+            do { try storage.validate() }
+            catch let error as ScannerError where error.kind == "storageUnavailable" {
+                storageAvailable = false
+                log("Scan storage unavailable; camera lookup and metadata remain available. " + error.message)
+            }
             let owner = try HardwareOwnerLock()
             let database = try ScannerDatabase(path: options.database)
-            let recovered = try database.recoverInterruptedJobs(storageRoot: URL(fileURLWithPath: storage.storageRoot))
+            let recovered = try database.recoverInterruptedJobs(storageRoot: URL(fileURLWithPath: storage.storageRoot), accessStorage: storageAvailable)
             try database.event("service.started", payload: .object(["recoveredJobs": .number(Double(recovered))]))
             log("Recovered \(recovered) interrupted job(s); physical scans are never automatically resumed.")
             let verbose = options.verbose

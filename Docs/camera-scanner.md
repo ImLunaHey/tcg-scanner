@@ -11,7 +11,10 @@ On iPhone/iPad, open the address in Safari, choose **Share → Add to Home Scree
 and open the installed Scanner app. On Android, use **Install app** or the browser's
 installation menu. The manifest starts the installed app directly at `/camera`.
 The Mac and Tailscale connection must stay online; this is not offline recognition.
-The physical scanner and scan storage share do not need to be connected.
+The physical scanner and scan storage share do not need to be connected. When
+storage is offline at service startup, interrupted work is marked failed in the
+local database without reading or writing the unavailable volume. Physical scans
+remain blocked until storage validation passes; there is no local fallback.
 
 ## Behavior and privacy
 
@@ -65,6 +68,12 @@ no database events/jobs/files or hardware capture, and concurrent/cancelled look
 Web unit tests cover the stability gate and viewport geometry. Browser tests use a
 simulated video source on desktop Chromium, mobile Chromium and iPad WebKit;
 these do not establish real phone focus, camera orientation or installation behavior.
+
+On 2026-11-09, the deployed HTTPS endpoint identified the locally cached TCGdex
+Spectrier `swsh11-081` reference placed on a contrasting canvas, upright and rotated
+180°, in 1.48 and 0.91 seconds respectively. Scan/job/batch database rows were
+identical before and after. This is a reference-image check, not a phone-camera
+accuracy or latency benchmark. All 12 simulated camera browser tests passed.
 
 For a physical check, open the HTTPS camera page on your phone and try a known card
 upright and upside down, then another card, a blank surface, and a card back. Check
