@@ -58,6 +58,15 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   Run `cargo run --release -p scanner-images --example compare_geometry -- MANIFEST`
   to repeat against a saved batch.
 
+- `scanner-recognition`: in-process Tesseract C API and ONNX Runtime, pinned
+  DINOv3 graph/weight checksums, RGB normalization and normalized CLS retrieval.
+  The Rust benchmark ran all 69 existing fixtures against 121 references: all 48
+  fronts with an available reference ranked correctly first, matching the earlier
+  experiment. Fifteen fronts lack references and six fixtures are backs; similarity
+  is not an acceptance rule. Whole-image native Tesseract ran on all 69 inputs;
+  this run does not establish text-matching accuracy. Catalogue evidence, regional
+  OCR and packaging the native libraries remain in progress.
+
 ## Validation
 
 The Rune library slice opens saved batches, searches cards and shows their latest

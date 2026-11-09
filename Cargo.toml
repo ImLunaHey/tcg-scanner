@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/scanner-types", "crates/scanner-store", "crates/scanner-ui", "crates/scanner-images"]
+members = ["crates/scanner-types", "crates/scanner-store", "crates/scanner-ui", "crates/scanner-images", "crates/scanner-recognition"]
 
 [workspace.package]
 version = "0.1.0"
@@ -22,6 +22,8 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 imageproc = { version = "0.27", default-features = false }
 moxcms = "0.8"
 sha2 = "0.10"
+libloading = "0.9"
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "load-dynamic"] }
 scanner-images = { path = "crates/scanner-images", version = "0.1.0" }
 rune = { git = "https://github.com/anomalyco/rune", rev = "e970367bd7d2a51e2e7d58e2978ea32eac7780cb", default-features = false, features = ["accessibility", "dbus", "embedded-fonts", "metal-backend", "native-file-dialog"] }
 scanner-store = { path = "crates/scanner-store", version = "0.1.0" }
