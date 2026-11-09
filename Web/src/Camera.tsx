@@ -4,12 +4,16 @@ import {
   ScanLine,
   Square,
   RotateCcw,
+  X,
+  ChevronRight,
 } from "lucide-react";
-import { useAuth } from "./auth";
-import { ApiError } from "./api";
+import { Link } from "wouter";
+import { CameraDetails } from "./CameraDetails";
+import { Api, ApiError } from "./api";
 import { InstallCamera } from "./InstallCamera";
 import {
   cameraJPEG,
+  cameraSnapshot,
   cameraViewport,
   sampleCard,
   SteadyCard,
@@ -21,6 +25,9 @@ type Candidate = {
   setName: string;
   localID: string;
   officialSetCount?: number;
+  category?: string;
+  types?: string[];
+  rarities?: string[];
 };
 export type CameraResult = {
   state:
@@ -30,6 +37,7 @@ export type CameraResult = {
   uncataloguedCard?: { name: string; setCode: string; collectorNumber: string };
   energySymbol?: { type: string };
 };
+const cameraAPI = new Api("");
 const gameNames = {
   pokemon: "Pokémon",
   yugioh: "Yu-Gi-Oh!",
@@ -50,7 +58,29 @@ export function cameraMessage(error: unknown) {
     : "The camera could not be started.";
 }
 export function Camera() {
-  const { api } = useAuth();
+  const frame = useRef<HTMLDivElement>(null);
+  const view = useRef<HTMLDivElement>(null);
+  const previewURL = useRef<string | undefined>(undefined);
+  const [preview, setPreview] = useState<string>();
+  const [details, setDetails] = useState(false);
+  const detailsOpen = useRef(false);
+  function showDetails(open: boolean) {
+    detailsOpen.current = open;
+    setDetails(open);
+  }
+  function clearMatch() {
+    setResult(undefined);
+    setPreview(undefined);
+    showDetails(false);
+    if (previewURL.current) URL.revokeObjectURL(previewURL.current);
+    previewURL.current = undefined;
+  }
+  useEffect(
+    () => () => {
+      if (previewURL.current) URL.revokeObjectURL(previewURL.current);
+    },
+    [],
+  );
   const video = useRef<HTMLVideoElement>(null);
   const [active, setActive] = useState(false);
   const [language, setLanguage] = useState("en");
@@ -70,7 +100,7 @@ export function Camera() {
       gate.submitted = undefined;
       gate.matched = false;
       gate.lastAttempt = -Infinity;
-      setResult(undefined);
+      clearMatch();
     };
     const canvas = document.createElement("canvas");
     canvas.width = 1000;
@@ -85,8 +115,23 @@ export function Camera() {
       if (!alive) return;
       try {
         const v = video.current;
-        if (v && v.readyState >= 2 && v.videoWidth && !document.hidden) {
-          const area = cameraViewport(v.videoWidth, v.videoHeight);
+        if (
+          v &&
+          v.readyState >= 2 &&
+          v.videoWidth &&
+          !document.hidden &&
+          !detailsOpen.current &&
+          view.current &&
+          frame.current
+        ) {
+          const viewport = view.current.getBoundingClientRect();
+          const region = frame.current.getBoundingClientRect();
+          const area = cameraViewport(v.videoWidth, v.videoHeight, viewport, {
+            x: region.x - viewport.x,
+            y: region.y - viewport.y,
+            width: region.width,
+            height: region.height,
+          });
           context.drawImage(
             v,
             area.x,
@@ -103,25 +148,37 @@ export function Camera() {
             gate.accept(sample, Date.now());
             setBusy(true);
             setError(undefined);
-            setResult(undefined);
             setStatus("Identifying… hold steady");
             const base64 = await cameraJPEG(canvas);
+            const snapshot = await cameraSnapshot(canvas);
             if (!alive) return;
-            const response = await api.response(
+            const response = await cameraAPI.response(
               "camera/identify",
               {
                 method: "POST",
                 signal: controller.signal,
                 body: JSON.stringify({ base64, language }),
               },
-              true,
+              false,
               75_000,
             );
             const value: CameraResult = await response.json();
-            if (!alive) return;
+            if (!alive || detailsOpen.current) return;
             gate.matched =
               value.state === "matched" || value.state === "codeCard";
-            setResult(value);
+            if (
+              value.candidates.length ||
+              value.uncataloguedCard ||
+              value.energySymbol ||
+              value.state === "codeCard"
+            ) {
+              if (previewURL.current) URL.revokeObjectURL(previewURL.current);
+              previewURL.current = snapshot
+                ? URL.createObjectURL(snapshot)
+                : undefined;
+              setPreview(previewURL.current);
+              setResult(value);
+            }
             setStatus(
               value.state === "matched"
                 ? "Card found · move to the next card"
@@ -198,19 +255,30 @@ export function Camera() {
       reset.current = () => {};
       setBusy(false);
     };
-  }, [active, api, language]);
+  }, [active, language]);
+
+  const title = result?.candidates.length
+    ? result.candidates.length === 1
+      ? result.candidates[0].name
+      : `${result.candidates.length} possible matches`
+    : result?.uncataloguedCard?.name ||
+      (result?.energySymbol
+        ? `${result.energySymbol.type} Energy`
+        : "Pokémon LIVE insert");
+  const subtitle =
+    result?.candidates.length === 1
+      ? result.candidates[0].setName
+      : result?.game
+        ? gameNames[result.game]
+        : "View details";
   return (
-    <section className="camera-page">
-      <header className="camera-heading">
-        <div>
-          <p className="eyebrow">LOOK UP A CARD</p>
-          <h1>Camera</h1>
-          <p>Point, hold steady, identify. Nothing added to your collection.</p>
-        </div>
-        <InstallCamera />
-      </header>
-      <div className="camera-layout">
-        <div className="camera-view" data-active={active}>
+    <main className="camera-page" aria-label="Card camera">
+      <div
+        className="camera-surface"
+        inert={details}
+        aria-hidden={details || undefined}
+      >
+        <div ref={view} className="camera-view" data-active={active}>
           <video
             ref={video}
             autoPlay
@@ -218,161 +286,119 @@ export function Camera() {
             muted
             aria-label="Live camera preview"
           />
-          <div
-            className={`camera-guide${busy ? " recognizing" : ""}`}
-            aria-hidden="true"
-          >
-            <span />
-            <span />
-            <span />
-            <span />
+          <div ref={frame} className="camera-capture-area" aria-hidden="true">
+            <div className={`camera-guide${busy ? " recognizing" : ""}`}>
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
           </div>
           {!active && (
             <div className="camera-placeholder">
-              <CameraIcon size={48} />
-              <h2>Find out what you’re holding</h2>
-              <p>Show the whole card, with a little space around its edges.</p>
+              <CameraIcon size={40} />
+              <h1>Card camera</h1>
+              <p>Hold a card inside the guide to identify it.</p>
               <button
                 className="button primary"
                 onClick={() => {
-                  setResult(undefined);
+                  clearMatch();
                   setActive(true);
                 }}
               >
                 Start camera
               </button>
-            </div>
-          )}
-          {active && (
-            <div className="camera-status" role="status">
-              <ScanLine size={18} />
-              {status}
+              <span>Nothing added to your collection</span>
             </div>
           )}
         </div>
-        <div className="camera-details">
-          <div className="camera-controls">
-            <label className="field">
-              <span>Card language</span>
-              <select
-                value={language}
-                disabled={busy}
-                onChange={(e) => {
-                  setResult(undefined);
-                  setLanguage(e.target.value);
-                }}
-              >
-                <option value="en">English</option>
-                <option value="ko">Korean</option>
-              </select>
-            </label>
-            {active && (
-              <button
-                className="button"
-                onClick={() => {
-                  setActive(false);
-                  setResult(undefined);
-                }}
-              >
-                <Square size={16} />
-                Stop camera
-              </button>
-            )}
-          </div>
-          {error && (
+        <div className="camera-toolbar">
+          <Link
+            href="/"
+            className="camera-icon-button"
+            aria-label="Close camera"
+          >
+            <X size={22} />
+          </Link>
+          <label className="camera-language">
+            <span className="sr-only">Card language</span>
+            <select
+              aria-label="Card language"
+              value={language}
+              disabled={busy}
+              onChange={(e) => {
+                clearMatch();
+                setLanguage(e.target.value);
+              }}
+            >
+              <option value="en">English</option>
+              <option value="ko">Korean</option>
+            </select>
+          </label>
+          {active ? (
+            <button
+              className="camera-icon-button"
+              aria-label="Stop camera"
+              onClick={() => setActive(false)}
+            >
+              <Square size={19} />
+            </button>
+          ) : (
+            <InstallCamera />
+          )}
+        </div>
+        <div className="camera-feedback">
+          {error ? (
             <p role="alert" className="camera-error">
               {error}
             </p>
+          ) : (
+            active && (
+              <p className="camera-status" role="status">
+                <ScanLine size={17} />
+                {status}
+              </p>
+            )
           )}
-          <div className="camera-result" aria-live="polite" aria-busy={busy}>
-            {busy ? (
-              <>
-                <span className="eyebrow">IDENTIFYING</span>
-                <h2>Reading your card…</h2>
-                <p>Keep the number and card name visible.</p>
-              </>
-            ) : result ? (
-              <>
-                <span className="eyebrow">
-                  {result.game ? gameNames[result.game] : "CAMERA RESULT"}
-                </span>
-                {result.candidates.length > 0 ? (
-                  <>
-                    <h2>
-                      {result.candidates.length === 1
-                        ? result.candidates[0].name
-                        : "Possible matches"}
-                    </h2>
-                    {result.candidates.map((card) => (
-                      <div className="camera-match" key={card.id}>
-                        {result.candidates.length > 1 && (
-                          <strong>{card.name}</strong>
-                        )}
-                        <span>{card.setName}</span>
-                        <span className="muted">
-                          {card.localID}
-                          {card.officialSetCount
-                            ? `/${card.officialSetCount}`
-                            : ""}
-                        </span>
-                      </div>
-                    ))}
-                    <p className="small muted">
-                      Check the printed set and number. Finish and condition
-                      aren’t assessed here.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h2>
-                      {result.state === "codeCard"
-                        ? "Pokémon LIVE insert"
-                        : result.state === "cardBack"
-                          ? "Show the card front"
-                          : result.uncataloguedCard?.name ||
-                            (result.energySymbol
-                              ? `${result.energySymbol.type} Energy`
-                              : result.state === "noCard"
-                                ? "Looking for a card"
-                                : "No match yet")}
-                    </h2>
-                    <p>
-                      {result.uncataloguedCard
-                        ? `${result.uncataloguedCard.setCode} · ${result.uncataloguedCard.collectorNumber} · not in the catalogue yet`
-                        : result.state === "codeCard"
-                          ? "This is a redemption insert, not a playable card."
-                          : "Keep every edge inside the guide. Avoid glare and use a plain, contrasting background."}
-                    </p>
-                  </>
-                )}
-                {active && (
-                  <button
-                    className="button quiet"
-                    onClick={() => reset.current()}
-                  >
-                    <RotateCcw size={16} />
-                    Check again
-                  </button>
-                )}
-              </>
-            ) : (
-              <>
-                <span className="eyebrow">JUST IDENTIFICATION</span>
-                <h2>No batch. No inventory changes.</h2>
-                <p>
-                  Once the card is steady, its image is sent to your Mac for
-                  recognition and discarded after the lookup.
-                </p>
-                <p className="small muted">
-                  Your Mac and Tailscale connection need to stay online. Camera
-                  access stops when you leave this page or put the app in the
-                  background.
-                </p>
-              </>
-            )}
-          </div>
         </div>
+        {result && (
+          <button
+            className="camera-match-tile"
+            onClick={(event) => {
+              event.currentTarget.focus();
+              showDetails(true);
+            }}
+            aria-label={`View ${title} details`}
+          >
+            {preview && <img src={preview} alt="Last identified card" />}
+            <span>
+              <small>LAST CARD</small>
+              <strong>{title}</strong>
+              <span>{subtitle}</span>
+            </span>
+            <ChevronRight size={16} />
+          </button>
+        )}
+        {result && active && (
+          <button
+            className="camera-icon-button camera-retry"
+            aria-label="Check again"
+            onClick={() => reset.current()}
+          >
+            <RotateCcw size={20} />
+          </button>
+        )}
       </div>
-    </section>
+      {details && result && (
+        <CameraDetails
+          result={result}
+          preview={preview}
+          title={title}
+          game={result.game ? gameNames[result.game] : "IDENTIFIED CARD"}
+          language={language}
+          close={() => showDetails(false)}
+        />
+      )}
+    </main>
   );
 }

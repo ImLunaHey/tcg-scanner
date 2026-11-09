@@ -1,11 +1,14 @@
 # Mobile camera identification
 
-Open `/camera` on the scanner's HTTPS address. Sign in with the existing scanner
-access key, tap **Start camera**, and allow camera access. Hold one card front
+Open `/camera` on the scanner's HTTPS address. No login is required. Tap
+**Start camera**, and allow camera access. Hold one card front
 inside the guide, with all four corners visible against a contrasting background.
-After roughly a second of steady video, the page automatically sends a JPEG to
-ScannerService on the Mac and displays its catalogue suggestions. Move to the
-next card or tap **Check again** to repeat a lookup.
+The camera fills the viewport. After roughly a second of steady video, the page
+automatically sends a JPEG to ScannerService on the Mac. The last identified card
+appears in a compact bottom-left tile. Tap it for a full-screen image and catalogue
+details; lookups pause until the details close. The preview uses the captured
+camera image, held in browser memory, rather than saving it to scan storage. Move
+to the next card or tap **Check again** to repeat a lookup.
 
 On iPhone/iPad, open the address in Safari, choose **Share → Add to Home Screen**,
 and open the installed Scanner app. On Android, use **Install app** or the browser's
@@ -19,13 +22,13 @@ remain blocked until storage validation passes; there is no local fallback.
 ## Behavior and privacy
 
 - No camera frame is written to scan storage, SQLite, a batch, inventory, browser
-  storage or an application-managed cache. Only the current result stays in page
-  memory. Closing the page clears it.
+  storage or an application-managed cache. Only the current result and one preview
+  stay in page memory. Blob URLs are revoked when replaced or when the page closes.
 - Apple Vision finds the outer card rectangle; Core Image corrects perspective
   before local OCR and the existing catalogue matchers run. Images stay between
   the browser and your Mac. Catalogue requests send text/identifiers, not images.
 - The page uses the rear camera where available. It stops camera tracks on Stop,
-  navigation, logout, loss of connectivity or backgrounding. Returning to the page
+  navigation, loss of connectivity or backgrounding. Returning to the page
   requires tapping Start again. Late responses from a stopped camera are ignored.
 - A steady matched card is not repeatedly submitted. Unclear frames retry at most
   once per 4.5 seconds, with only one request in flight per page and one camera
@@ -43,7 +46,7 @@ remain blocked until storage validation passes; there is no local fallback.
 
 ## API
 
-Authenticated `POST /api/v1/camera/identify` maps to local JSON-RPC
+Public `POST /api/v1/camera/identify` maps to local JSON-RPC
 `v1.camera.identify`. Body: `{"base64":"<JPEG bytes in base64>","language":"en"}`.
 Language is `en` or `ko` (default `en`). No paths, URLs or extra fields are accepted.
 
@@ -58,13 +61,15 @@ The no-store response includes `schemaVersion: 1`, `state`, `candidates`, and op
 `game`, `uncataloguedCard`, or `energySymbol`. State is `noCard`, `cardBack`, `codeCard`,
 `matched`, `ambiguous`, or `noMatch`. No scan/image IDs are allocated. Malformed
 parameters return 400, invalid image data 422, oversized bodies 413, busy 409,
-and unauthenticated requests 401, following the gateway's existing error schema.
+and rate/concurrency limits 429, following the gateway's existing error schema.
 
 ## Validation
 
 Swift tests cover rectangle extraction, invalid/dimension/size rejection, the HTTP
 and Unix path with a body larger than the ordinary route budget, authentication,
 no database events/jobs/files or hardware capture, and concurrent/cancelled lookups.
+The public camera budget is separate from authentication/control quotas; scanner,
+profile, session and inventory operations still reject unauthenticated requests.
 Web unit tests cover the stability gate and viewport geometry. Browser tests use a
 simulated video source on desktop Chromium, mobile Chromium and iPad WebKit;
 these do not establish real phone focus, camera orientation or installation behavior.
@@ -73,7 +78,8 @@ On 2026-11-09, the deployed HTTPS endpoint identified the locally cached TCGdex
 Spectrier `swsh11-081` reference placed on a contrasting canvas, upright and rotated
 180°, in 1.48 and 0.91 seconds respectively. Scan/job/batch database rows were
 identical before and after. This is a reference-image check, not a phone-camera
-accuracy or latency benchmark. All 12 simulated camera browser tests passed.
+accuracy or latency benchmark. The full-screen public camera workflow passes 15 simulated browser checks,
+including modal focus, lookup suspension and preview cleanup.
 
 For a physical check, open the HTTPS camera page on your phone and try a known card
 upright and upside down, then another card, a blank surface, and a card back. Check

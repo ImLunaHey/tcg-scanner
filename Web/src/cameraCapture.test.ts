@@ -34,18 +34,29 @@ describe("camera capture", () => {
         ),
       ).toBe(false);
   });
-  it("crops landscape and portrait video exactly like the 3:4 viewport", () => {
-    expect(cameraViewport(1920, 1080)).toEqual({
-      x: 555,
-      y: 0,
-      width: 810,
-      height: 1080,
-    });
-    expect(cameraViewport(900, 1600)).toEqual({
-      x: 0,
-      y: 200,
-      width: 900,
-      height: 1200,
-    });
+  it("maps a centered region through landscape video cover scaling", () => {
+    const area = cameraViewport(
+      1920,
+      1080,
+      { width: 390, height: 844 },
+      { x: 30, y: 202, width: 330, height: 440 },
+    );
+    expect(area.x).toBeCloseTo(748.8626, 3);
+    expect(area.y).toBeCloseTo(258.4834, 3);
+    expect(area.width).toBeCloseTo(422.2749, 3);
+    expect(area.height).toBeCloseTo(563.0332, 3);
+    expect(area.width / area.height).toBeCloseTo(0.75);
+  });
+  it("maps a landscape screen to portrait video without shifting the guide", () => {
+    const area = cameraViewport(
+      900,
+      1600,
+      { width: 1200, height: 800 },
+      { x: 450, y: 200, width: 300, height: 400 },
+    );
+    expect(area.x).toBeCloseTo(337.5);
+    expect(area.y).toBeCloseTo(650);
+    expect(area.width).toBeCloseTo(225);
+    expect(area.height).toBeCloseTo(300);
   });
 });

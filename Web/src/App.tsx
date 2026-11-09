@@ -236,7 +236,6 @@ function Workspace() {
         <main id="main-content" tabIndex={-1} className="main-content">
           <Switch>
             <Route path="/" component={Dashboard} />
-            <Route path="/camera" component={Camera} />
             <Route path="/library" component={Library} />
             <Route path="/inventory"><Inventory /></Route>
             <Route path="/inventory/sets"><Inventory view="sets" /></Route>
@@ -262,6 +261,8 @@ function Workspace() {
 }
 export function App() {
   const { session } = useAuth();
+  const [location] = useLocation();
+  if (location === "/camera") return <Camera />;
   return session ? <Workspace /> : <Login />;
 }
 export class AppBoundary extends Component<

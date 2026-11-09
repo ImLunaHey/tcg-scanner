@@ -1,8 +1,31 @@
-// Coordinates match the 3:4, object-fit:cover camera viewport.
-export function cameraViewport(width: number, height: number) {
-  const w = Math.min(width, height * 0.75),
-    h = w / 0.75;
-  return { x: (width - w) / 2, y: (height - h) / 2, width: w, height: h };
+// Map the visible guide area back into object-fit:cover video pixels.
+export function cameraViewport(
+  width: number,
+  height: number,
+  viewport: { width: number; height: number },
+  region: { x: number; y: number; width: number; height: number },
+) {
+  const scale = Math.max(viewport.width / width, viewport.height / height);
+  const offsetX = (width * scale - viewport.width) / 2;
+  const offsetY = (height * scale - viewport.height) / 2;
+  return {
+    x: (region.x + offsetX) / scale,
+    y: (region.y + offsetY) / scale,
+    width: region.width / scale,
+    height: region.height / scale,
+  };
+}
+export async function cameraSnapshot(
+  canvas: HTMLCanvasElement,
+): Promise<Blob | null> {
+  const snapshot = document.createElement("canvas");
+  snapshot.width = 840;
+  snapshot.height = 1173;
+  // A little extra space outside the guide keeps edges in the review preview.
+  snapshot
+    .getContext("2d")!
+    .drawImage(canvas, 80, 80, 840, 1173, 0, 0, 840, 1173);
+  return new Promise((resolve) => snapshot.toBlob(resolve, "image/jpeg", 0.85));
 }
 export function difference(a: Uint8Array, b: Uint8Array): number {
   if (a.length !== b.length || !a.length) return Infinity;

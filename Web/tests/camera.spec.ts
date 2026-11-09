@@ -2,15 +2,25 @@ import { expect, test, type Page } from "@playwright/test";
 async function setup(page: Page, deny = false) {
   await page.addInitScript(
     ({ deny }) => {
-      sessionStorage.setItem(
-        "scanner.session.v1",
-        JSON.stringify({
-          token: "e".repeat(64),
-          expiresAt: "2099-01-01T00:00:00Z",
-        }),
-      );
       Object.defineProperty(window, "isSecureContext", { value: true });
-      const state = window as unknown as { cameraStops: number };
+      const state = window as unknown as {
+        cameraStops: number;
+        cameraVariant: number;
+        cameraURLs: Set<string>;
+      };
+      state.cameraVariant = 0;
+      state.cameraURLs = new Set();
+      const create = URL.createObjectURL.bind(URL),
+        revoke = URL.revokeObjectURL.bind(URL);
+      URL.createObjectURL = (blob) => {
+        const url = create(blob);
+        state.cameraURLs.add(url);
+        return url;
+      };
+      URL.revokeObjectURL = (url) => {
+        state.cameraURLs.delete(url);
+        revoke(url);
+      };
       state.cameraStops = 0;
       Object.defineProperty(navigator, "mediaDevices", {
         value: {
@@ -44,9 +54,9 @@ async function setup(page: Page, deny = false) {
         if (args[0] instanceof HTMLVideoElement) {
           this.fillStyle = "#111";
           this.fillRect(0, 0, 1000, 1333);
-          this.fillStyle = "#eee";
+          this.fillStyle = state.cameraVariant ? "#444" : "#eee";
           this.fillRect(120, 130, 760, 1060);
-          this.fillStyle = "#598abc";
+          this.fillStyle = state.cameraVariant ? "#fff" : "#598abc";
           this.fillRect(160, 650, 680, 470);
         } else {
           Reflect.apply(original, this, args);
@@ -75,6 +85,7 @@ test("camera identifies automatically without saving and stops on exit", async (
   await page.route("**/api/v1/camera/identify", async (route) => {
     requests++;
     const data = route.request().postDataJSON();
+    expect(route.request().headers().authorization).toBeUndefined();
     expect(data.language).toBe("en");
     expect(Buffer.from(data.base64, "base64").length).toBeLessThanOrEqual(
       512 * 1024,
@@ -98,7 +109,7 @@ test("camera identifies automatically without saving and stops on exit", async (
   });
   await page.goto("/camera");
   await expect(
-    page.getByRole("heading", { name: "Camera", exact: true }),
+    page.getByRole("heading", { name: "Card camera", exact: true }),
   ).toBeVisible();
   expect(
     await page.evaluate(
@@ -106,11 +117,41 @@ test("camera identifies automatically without saving and stops on exit", async (
     ),
   ).toBe(true);
   const view = await page.locator(".camera-view").boundingBox();
-  expect(view!.width / view!.height).toBeCloseTo(0.75, 2);
+  const screen = page.viewportSize()!;
+  expect(view!.x).toBe(0);
+  expect(view!.y).toBe(0);
+  expect(view!.width).toBe(screen.width);
+  expect(view!.height).toBe(screen.height);
+  await expect(page.locator(".sidebar")).toHaveCount(0);
+  await expect(page.getByLabel("Access key", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Start camera" }).click();
+  const tile = page.getByRole("button", { name: "View Furret details" });
+  await expect(tile).toBeVisible();
+  await expect(tile.locator("img")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { cameraURLs: Set<string> }).cameraURLs.size,
+    ),
+  ).toBe(1);
+  const bounds = (await tile.boundingBox())!;
+  expect(bounds.x).toBeLessThan(25);
+  expect(screen.height - bounds.y - bounds.height).toBeLessThan(25);
+  expect(bounds.width).toBeLessThanOrEqual(280);
+  await tile.click();
+  const dialog = page.getByRole("dialog");
   await expect(
-    page.getByRole("heading", { name: "Furret", exact: true }),
+    dialog.getByRole("heading", { name: "Furret", exact: true }),
   ).toBeVisible();
+  await expect(
+    dialog.getByText("Darkness Ablaze", { exact: true }),
+  ).toBeVisible();
+  await expect(dialog.getByText("136/189", { exact: true })).toBeVisible();
+  const full = (await dialog.boundingBox())!;
+  expect(full.width).toBe(screen.width);
+  expect(full.height).toBe(screen.height);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(tile).toBeFocused();
   await page.waitForTimeout(5000);
   expect(requests).toBe(1);
   expect(mutations).toEqual(["/api/v1/camera/identify"]);
@@ -125,12 +166,18 @@ test("camera identifies automatically without saving and stops on exit", async (
   ).toBe(1);
   await page.getByRole("button", { name: "Start camera" }).click();
   await expect.poll(() => requests).toBe(2);
-  await page.getByRole("link", { name: "Inventory", exact: true }).click();
+  await page.getByRole("link", { name: "Close camera", exact: true }).click();
   expect(
     await page.evaluate(
       () => (window as unknown as { cameraStops: number }).cameraStops,
     ),
   ).toBe(2);
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { cameraURLs: Set<string> }).cameraURLs.size,
+    ),
+  ).toBe(0);
+  await expect(page.getByLabel("Access key", { exact: true })).toBeVisible();
 });
 test("denied camera access gives actionable help", async ({ page }) => {
   await setup(page, true);
@@ -155,25 +202,96 @@ test("install manifest starts directly on camera", async ({ request }) => {
   expect(worker).not.toContain("indexedDB");
 });
 
-
-test("backgrounding stops the stream and discards a late lookup", async ({ page }) => {
+test("backgrounding stops the stream and discards a late lookup", async ({
+  page,
+}) => {
   await setup(page);
   let entered = false;
   let finish!: () => void;
-  const release = new Promise<void>(resolve => { finish = resolve; });
-  await page.route("**/api/v1/camera/identify", async route => {
-    entered = true; await release;
-    await route.fulfill({ json: { state: "matched", game: "pokemon", candidates: [{ id: "late", name: "Late result", setName: "Test", localID: "1" }] } }).catch(() => {});
+  const release = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  await page.route("**/api/v1/camera/identify", async (route) => {
+    entered = true;
+    await release;
+    await route
+      .fulfill({
+        json: {
+          state: "matched",
+          game: "pokemon",
+          candidates: [
+            { id: "late", name: "Late result", setName: "Test", localID: "1" },
+          ],
+        },
+      })
+      .catch(() => {});
   });
   await page.goto("/camera");
   await page.getByRole("button", { name: "Start camera" }).click();
   await expect.poll(() => entered).toBe(true);
   await page.evaluate(() => {
-    Object.defineProperty(document, "hidden", { configurable: true, value: true });
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      value: true,
+    });
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  await expect(page.getByRole("button", { name: "Start camera" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Start camera" }),
+  ).toBeVisible();
   finish();
-  expect(await page.evaluate(() => (window as unknown as { cameraStops: number }).cameraStops)).toBe(1);
-  await expect(page.getByRole("heading", { name: "Late result" })).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { cameraStops: number }).cameraStops,
+    ),
+  ).toBe(1);
+  await expect(page.getByRole("heading", { name: "Late result" })).toHaveCount(
+    0,
+  );
+});
+
+test("details keep their card stable while the camera sees another card", async ({
+  page,
+}) => {
+  await setup(page);
+  let calls = 0;
+  await page.route("**/api/v1/camera/identify", (route) => {
+    calls++;
+    return route.fulfill({
+      json: {
+        state: "matched",
+        game: "pokemon",
+        candidates: [
+          {
+            id: String(calls),
+            name: `Card ${calls}`,
+            localID: String(calls),
+            setName: "Test",
+          },
+        ],
+      },
+    });
+  });
+  await page.goto("/camera");
+  await page.getByRole("button", { name: "Start camera" }).click();
+  await page.getByRole("button", { name: "View Card 1 details" }).click();
+  await page.evaluate(() => {
+    (window as unknown as { cameraVariant: number }).cameraVariant = 1;
+  });
+  await page.waitForTimeout(5000);
+  expect(calls).toBe(1);
+  await expect(
+    page
+      .getByRole("dialog")
+      .getByRole("heading", { name: "Card 1", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close card details" }).click();
+  await expect(
+    page.getByRole("button", { name: "View Card 2 details" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { cameraURLs: Set<string> }).cameraURLs.size,
+    ),
+  ).toBe(1);
 });
