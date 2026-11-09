@@ -52,7 +52,7 @@ A generic client configuration, replacing the username with the actual account:
 
 ## Tools
 
-The server advertises 29 tools. Read-only mode exposes 18 read tools and rejects
+The server advertises 30 tools. Read-only mode exposes 19 read tools and rejects
 direct calls to state-changing tools; annotations alone are not enforcement.
 Each tool publishes an input schema, output schema and read/write annotations.
 
@@ -78,6 +78,7 @@ Each tool publishes an input schema, output schema and read/write annotations.
 | `scanner_get_job` | Read | Job state, images and errors |
 | `scanner_list_jobs` | Read | Paginated job history |
 | `scanner_cancel_job` | Write | Cancel queued/active work |
+| `scanner_list_inventory` | Read | Card quantities, sets and copy locations; paginated search and set filters |
 | `scanner_list_batches` | Read | Paginated batch history |
 | `scanner_get_batch` | Read | Complete batch record |
 | `scanner_get_scan_metadata` | Read | Complete job record |
@@ -90,6 +91,23 @@ Each tool publishes an input schema, output schema and read/write annotations.
 
 Inspection may return busy while hardware is in use. History, events and service
 status remain available. Discovery and diagnostics never initiate a scan.
+
+## Reading the whole inventory
+
+Call `scanner_list_inventory` with `{"limit":100,"offset":0}`. Append each
+response's `entries`, then use its `nextOffset` with the same filters until
+`nextOffset` is absent. The response uses the same `InventoryPage` contract as the
+web UI. `copies` preserves each copy's batch UUID, batch number and card number.
+`quantity` counts scanned copies, including deliberate rescans; `confirmedQuantity`
+counts reviewed copies. `status` distinguishes catalogue matches, pending catalogue
+entries and unresolved cards.
+
+Optional `search` (up to 160 UTF-8 bytes) and `set` (an exact slug from `sets[].id`)
+filter entries. Omit unused filters. `matchingEntries` describes the filtered
+result; `totalCopies`, classification totals, `excludedCodeCards` and `sets` describe
+the complete inventory, so do not sum these repeated totals across pages. LIVE
+inserts are excluded. Pagination is over current service state; avoid changing the
+inventory mid-read if you need a consistent full listing.
 
 ## Agent workflow
 
