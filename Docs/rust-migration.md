@@ -54,6 +54,18 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
 
 ## Validation
 
+The Rune library slice opens saved batches, searches cards and shows their latest
+edits and identification evidence. Reads and verified thumbnails run off the UI
+thread. It currently reads the ledger without writing; service-backed scan and
+review controls are still being ported. Rune is pinned to `e970367bd7d2a51e2e7d58e2978ea32eac7780cb`.
+
+```sh
+cargo run -p scanner-ui
+SCANNER_UI_MANIFEST=/path/to/manifest.json cargo run -p scanner-ui -- --snap /tmp/library.png --scene saved
+```
+
+`SCANNER_DATABASE` overrides the platform application-data ledger path.
+
 ```sh
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
