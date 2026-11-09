@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/scanner-types"]
+members = ["crates/scanner-types", "crates/scanner-store"]
 
 [workspace.package]
 version = "0.1.0"
@@ -14,6 +14,10 @@ serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["serde", "v4"] }
 thiserror = "2"
+rusqlite = { version = "0.41.1", features = ["bundled"] }
+tempfile = "3"
+libc = "0.2"
+scanner-store = { path = "crates/scanner-store", version = "0.1.0" }
 scanner-types = { path = "crates/scanner-types", version = "0.1.0" }
 
 [workspace.lints.rust]

@@ -1,0 +1,182 @@
+use crate::{Database, decode, encode, events::append, key, storage};
+use rusqlite::{OptionalExtension, params};
+use scanner_types::{
+    device::Device,
+    error::{Result, ScannerError},
+};
+use serde_json::Value;
+use uuid::Uuid;
+
+impl Database {
+    pub fn profiles(&self) -> Result<Vec<Value>> {
+        self.read(|db| {
+            let mut q = db
+                .prepare("SELECT record FROM profiles ORDER BY id")
+                .map_err(storage)?;
+            q.query_map([], |r| r.get::<_, Vec<u8>>(0))
+                .map_err(storage)?
+                .map(|r| decode(r.map_err(storage)?))
+                .collect()
+        })
+    }
+    pub fn profile(&self, id: Uuid) -> Result<Option<Value>> {
+        self.read(|db| {
+            db.query_row("SELECT record FROM profiles WHERE id=?", [key(id)], |r| {
+                r.get::<_, Vec<u8>>(0)
+            })
+            .optional()
+            .map_err(storage)?
+            .map(decode)
+            .transpose()
+        })
+    }
+    pub fn save_profile(&self, id: Uuid, value: &Value) -> Result<()> {
+        validate_settings(value)?;
+        if value["name"]
+            .as_str()
+            .is_none_or(|s| s.trim().is_empty() || s.len() > 128)
+        {
+            return Err(ScannerError::new(
+                "invalidSettings",
+                "Profile name must contain 1–128 bytes.",
+            ));
+        }
+        self.write(|tx| {
+            let exists: bool = tx
+                .query_row(
+                    "SELECT EXISTS(SELECT 1 FROM profiles WHERE id=?)",
+                    [key(id)],
+                    |r| r.get(0),
+                )
+                .map_err(storage)?;
+            let count: i64 = tx
+                .query_row("SELECT COUNT(*) FROM profiles", [], |r| r.get(0))
+                .map_err(storage)?;
+            if !exists && count >= 256 {
+                return Err(ScannerError::new(
+                    "resourceLimit",
+                    "At most 256 profiles may be saved.",
+                ));
+            }
+            let mut value = value.clone();
+            value["id"] = Value::String(key(id));
+            tx.execute(
+                "INSERT OR REPLACE INTO profiles VALUES (?,?)",
+                params![key(id), encode(&value)?],
+            )
+            .map_err(storage)?;
+            append(tx, "profile.updated", &value)
+        })
+    }
+    pub fn delete_profile(&self, id: Uuid) -> Result<()> {
+        self.write(|tx| {
+            if tx
+                .execute("DELETE FROM profiles WHERE id=?", [key(id)])
+                .map_err(storage)?
+                != 1
+            {
+                return Err(ScannerError::new("profileNotFound", "Unknown profile ID."));
+            }
+            append(tx, "profile.deleted", &Value::String(key(id)))
+        })
+    }
+    pub fn device_settings(&self, id: &str) -> Result<Option<Value>> {
+        self.read(|db| {
+            db.query_row(
+                "SELECT record FROM deviceSettings WHERE deviceID=?",
+                [id],
+                |r| r.get::<_, Vec<u8>>(0),
+            )
+            .optional()
+            .map_err(storage)?
+            .map(decode)
+            .transpose()
+        })
+    }
+    pub fn save_device_settings(&self, id: &str, value: &Value) -> Result<()> {
+        validate_settings(value)?;
+        self.write(|tx| {
+            tx.execute(
+                "INSERT OR REPLACE INTO deviceSettings VALUES (?,?)",
+                params![id, encode(value)?],
+            )
+            .map_err(storage)?;
+            append(
+                tx,
+                "settings.updated",
+                &serde_json::json!({"deviceID":id,"configuredSettings":value}),
+            )
+        })
+    }
+    pub fn save_inspection(&self, id: &str, value: &Value) -> Result<()> {
+        self.write(|tx| {
+            tx.execute(
+                "INSERT OR REPLACE INTO capabilities VALUES (?,?)",
+                params![id, encode(value)?],
+            )
+            .map_err(storage)?;
+            Ok(())
+        })
+    }
+    pub fn inspection(&self, id: &str) -> Result<Option<Value>> {
+        self.read(|db| {
+            db.query_row(
+                "SELECT record FROM capabilities WHERE deviceID=?",
+                [id],
+                |r| r.get::<_, Vec<u8>>(0),
+            )
+            .optional()
+            .map_err(storage)?
+            .map(decode)
+            .transpose()
+        })
+    }
+    pub fn observe_devices(&self, devices: &[Device]) -> Result<()> {
+        self.write(|tx| {
+            let mut query = tx
+                .prepare("SELECT id FROM devices WHERE connected=1")
+                .map_err(storage)?;
+            let old = query
+                .query_map([], |r| r.get::<_, String>(0))
+                .map_err(storage)?
+                .collect::<std::result::Result<std::collections::HashSet<_>, _>>()
+                .map_err(storage)?;
+            tx.execute("UPDATE devices SET connected=0", [])
+                .map_err(storage)?;
+            for device in devices {
+                tx.execute(
+                    "INSERT OR REPLACE INTO devices VALUES (?,?,1)",
+                    params![device.id, encode(device)?],
+                )
+                .map_err(storage)?;
+                if !old.contains(&device.id) {
+                    append(
+                        tx,
+                        "device.connected",
+                        &serde_json::to_value(device).map_err(storage)?,
+                    )?;
+                }
+            }
+            for id in old {
+                if !devices.iter().any(|d| d.id == id) {
+                    append(tx, "device.disconnected", &Value::String(id))?;
+                }
+            }
+            Ok(())
+        })
+    }
+}
+fn validate_settings(value: &Value) -> Result<()> {
+    if value["dpi"]
+        .as_u64()
+        .is_none_or(|n| !(150..=600).contains(&n))
+        || !value["duplex"].is_boolean()
+        || !matches!(value["format"].as_str(), Some("png" | "tiff"))
+    {
+        return Err(ScannerError::new(
+            "invalidSettings",
+            "Expected supported DPI, duplex and PNG/TIFF format.",
+        ));
+    }
+    Ok(())
+}

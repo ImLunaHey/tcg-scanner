@@ -40,6 +40,13 @@ Rust packages are currently internal workspace crates (`publish = false`); no
 license or publication rights are inferred from the migration. Portable libraries
 must not depend on the UI or service. Rune will be pinned to a Git revision.
 
+- `scanner-store`: compatible SQLite tables, atomic job/image/event updates,
+  stable reservations, profiles/settings, caches, continuation transactions and
+  interrupted-work transitions. Existing live ledger read in read-only mode.
+  Tests cover restart, rollback, event resets and Unix sidecar symlink rejection.
+  Disk-manifest reconciliation and Windows ACL policy remain with their owning
+  platform/storage work.
+
 ## Validation
 
 ```sh
