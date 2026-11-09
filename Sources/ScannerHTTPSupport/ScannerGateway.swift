@@ -40,18 +40,22 @@ public struct ScannerGateway: HTTPResponder {
                 (path.components.starts(with: ["api", "v1", "images"]) &&
                     (path.components.count == 4 || (path.components.count == 5 && path.components.last == "thumbnail"))) ||
                 (path.components.count == 6 && path.components.starts(with: ["api", "v1", "inventory", "references"]) && path.components.last == "thumbnail"))
+            let publicCamera = request.method == .post && path.components == ["api", "v1", "camera", "identify"]
             let principal: String
-            if binaryImage {
+            if publicCamera {
+                try await access.rateLimitCamera()
+                principal = "public-camera"
+            } else if binaryImage {
                 // Gallery size must not consume the scanner-control quota.
                 // Binary downloads remain bounded by their concurrent slots.
                 principal = "public-image"
             } else { principal = try await access.authenticate(request.headers[.authorization]) }
-            let kind = path.components == ["api", "v1", "events"] ? "events" : (binaryImage ? "image" : "request")
+            let kind = publicCamera ? "camera" : path.components == ["api", "v1", "events"] ? "events" : (binaryImage ? "image" : "request")
             try await access.acquire(kind)
             let lease = RequestLease(access: access, kind: kind)
             do {
                 let body = try await collect(request, limit: path.components == ["api", "v1", "camera", "identify"] ? CameraIdentification.maximumRequestBytes : 60 * 1024)
-                if !binaryImage {
+                if !binaryImage && !publicCamera {
                     guard await access.validPrincipal(principal) else { throw GatewayError(401, "unauthorized", "Session expired or revoked.") }
                 }
                 response = try await route(request, path: path, body: body, principal: principal)

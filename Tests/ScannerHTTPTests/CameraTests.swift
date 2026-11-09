@@ -41,7 +41,7 @@ func cameraFixture(card: Bool = true, width: Int = 1000, height: Int = 1333) thr
     #expect((1040...1080).contains(image.height))
 }
 
-@Test @MainActor func cameraHTTPIsAuthenticatedEphemeralAndBounded() async throws {
+@Test @MainActor func cameraHTTPIsPublicEphemeralAndBounded() async throws {
     let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent("cam-" + String(UUID().uuidString.prefix(10)))
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
     defer { try? FileManager.default.removeItem(at: root) }
@@ -58,7 +58,17 @@ func cameraFixture(card: Bool = true, width: Int = 1000, height: Int = 1333) thr
     try await app.test(.ahc()) { client in
         let path = "/api/v1/camera/identify"
         #expect(try await client.execute(uri: path, method: .post, headers: httpHeaders(), body: buffer(.object(["base64": .string("invalid")]))).status.code == 422)
-        #expect(try await client.execute(uri: path, method: .post, headers: [HTTPField.Name("Host")!: "127.0.0.1:8170"], body: body).status.code == 401)
+        let anonymous: HTTPFields = [.contentType: "application/json", HTTPField.Name("Host")!: "127.0.0.1:8170"]
+        let lookup = try await client.execute(uri: path, method: .post, headers: anonymous, body: body)
+        #expect(lookup.status.code == 200)
+        #expect(try decode(lookup, as: CameraIdentification.self).state == .matched)
+        for protected in ["/api/v1/jobs", "/api/v1/inventory", "/api/v1/profiles", "/api/v1/session", "/api/v1/camera/other"] {
+            #expect(try await client.execute(uri: protected, method: .post, headers: anonymous, body: buffer(.object([:]))).status.code == 401)
+        }
+        #expect(try await client.execute(uri: path, method: .get, headers: anonymous).status.code == 401)
+        #expect(try await client.execute(uri: path + "?path=/tmp/a", method: .post, headers: anonymous, body: body).status.code == 400)
+        var crossOrigin = anonymous; crossOrigin[.origin] = "https://evil.example"
+        #expect(try await client.execute(uri: path, method: .post, headers: crossOrigin, body: body).status.code == 403)
         let response = try await client.execute(uri: path, method: .post, headers: httpHeaders(), body: body)
         #expect(response.status.code == 200)
         #expect(response.headers[.cacheControl] == "no-store")
@@ -106,4 +116,18 @@ private actor CameraWaitingRecognizer: CardRecognizing {
     await recognizer.release()
     #expect(try await coordinator.identifyCamera(base64: base64, language: .english).state == .matched)
     await coordinator.shutdownScans()
+}
+
+
+@Test func publicCameraLimitsDoNotConsumeControlOrAuthenticationQuota() async throws {
+    let access = try GatewayAccess(token: httpTestToken)
+    for _ in 0..<60 { try await access.rateLimitCamera() }
+    do { try await access.rateLimitCamera(); Issue.record("Expected camera rate limit") }
+    catch let error as GatewayError { #expect(error.status == 429) }
+    #expect(try await access.authenticate("Bearer " + httpTestToken) == "root")
+    try await access.acquire("camera")
+    await #expect(throws: GatewayError.self) { try await access.acquire("camera") }
+    try await access.acquire("request")
+    await access.release("request"); await access.release("camera")
+    try await access.acquire("camera"); await access.release("camera")
 }

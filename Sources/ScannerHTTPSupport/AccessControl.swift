@@ -63,6 +63,9 @@ public actor GatewayAccess {
     private var active = 0
     private var streams = 0
     private var downloads = 0
+    private var cameras = 0
+    private var cameraWindow = Date()
+    private var cameraRequests = 0
     public init(token: String, sessionLifetime: TimeInterval = 3600) throws {
         guard GatewayCredential.valid(token) else { throw ScannerError("configuration", "Invalid gateway token.") }
         rootDigest = Array(GatewayCredential.digest(token).utf8); lifetime = sessionLifetime
@@ -76,6 +79,12 @@ public actor GatewayAccess {
             guard attempts < 30 else { throw GatewayError(429, "rateLimit", "Authentication attempt limit reached; retry later.") }
             attempts += 1
         }
+    }
+    // Public lookups have their own budget and cannot exhaust login/control quotas.
+    func rateLimitCamera() throws {
+        if Date().timeIntervalSince(cameraWindow) >= 60 { cameraWindow = Date(); cameraRequests = 0 }
+        guard cameraRequests < 60 else { throw GatewayError(429, "rateLimit", "Camera lookup limit reached; retry shortly.") }
+        cameraRequests += 1
     }
     func authenticate(_ header: String?) throws -> String {
         guard let header, header.hasPrefix("Bearer ") else {
@@ -107,16 +116,18 @@ public actor GatewayAccess {
     }
     func validPrincipal(_ principal: String) -> Bool { principal == "root" || (sessions[principal]?.expiresAt ?? .distantPast) > Date() }
     func acquire(_ kind: String) throws {
-        guard active < 16, kind != "events" || streams < 4, kind != "image" || downloads < 2 else {
+        guard active < 16, kind != "events" || streams < 4, kind != "image" || downloads < 2, kind != "camera" || cameras < 1 else {
             throw GatewayError(429, "resourceLimit", "Concurrent request limit reached.")
         }
         active += 1
         if kind == "events" { streams += 1 }
         if kind == "image" { downloads += 1 }
+        if kind == "camera" { cameras += 1 }
     }
     func release(_ kind: String) {
         active -= 1
         if kind == "events" { streams -= 1 }
         if kind == "image" { downloads -= 1 }
+        if kind == "camera" { cameras -= 1 }
     }
 }
