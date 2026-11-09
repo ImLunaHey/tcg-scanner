@@ -47,6 +47,11 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   Disk-manifest reconciliation and Windows ACL policy remain with their owning
   platform/storage work.
 
+- `scanner-images`: portable bounded PNG/JPEG/TIFF/WebP decoding, EXIF orientation,
+  crop/rotate/deskew, thumbnails and conservative foreground geometry. Six tests
+  cover corner mapping, both tilt directions, backing transitions and multiple
+  objects. Orientation recognition and camera extraction remain in progress.
+
 ## Validation
 
 ```sh
@@ -56,7 +61,6 @@ cargo test --workspace
 SCANNER_COMPAT_MANIFEST=/Volumes/scans/B-001/manifest.json cargo test -p scanner-types
 ```
 
-The local internal disk is space-constrained. This migration uses
-`CARGO_TARGET_DIR=/Volumes/XEX-VM/ScannerDevelopment/target/scanner` for local build
-artifacts; this machine-specific path is not a build requirement or committed
-Cargo configuration.
+Build artifacts use the standard workspace `target/` directory on the main drive.
+The read-only Rune reference checkout is in the local development cache; the
+application dependency is pinned in Cargo and does not require that checkout.

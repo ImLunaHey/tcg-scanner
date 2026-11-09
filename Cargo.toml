@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/scanner-types", "crates/scanner-store"]
+members = ["crates/scanner-types", "crates/scanner-store", "crates/scanner-images"]
 
 [workspace.package]
 version = "0.1.0"
@@ -17,6 +17,10 @@ thiserror = "2"
 rusqlite = { version = "0.41.1", features = ["bundled"] }
 tempfile = "3"
 libc = "0.2"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tiff", "webp"] }
+imageproc = { version = "0.27", default-features = false }
+sha2 = "0.10"
+scanner-images = { path = "crates/scanner-images", version = "0.1.0" }
 scanner-store = { path = "crates/scanner-store", version = "0.1.0" }
 scanner-types = { path = "crates/scanner-types", version = "0.1.0" }
 
