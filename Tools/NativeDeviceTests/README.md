@@ -27,3 +27,17 @@ before the first feed, padded/chunked RGB output, ordered duplex frames, restore
 settings after success and inexact writes, no feed after persistence failure,
 read/close ordering under cancellation, and cleanup after a caller disconnects.
 These simulations do not establish hardware compatibility.
+
+`twain.c` simulates the Windows TWAIN 2 ABI without opening a real DSM or window.
+On macOS, build and run the portable native boundary test with:
+
+```sh
+clang -std=c11 -Wall -Wextra -Werror -dynamiclib Tools/NativeDeviceTests/twain.c -o /tmp/scanner-twain-fixture.dylib
+SCANNER_TWAIN_TEST_LIBRARY=/tmp/scanner-twain-fixture.dylib cargo test -p scanner-device --lib twain
+```
+
+On Linux use `cc -std=c11 -Wall -Wextra -Werror -shared -fPIC` with an output ending
+in `.so`. This fixture checks discovery, current-value/query-support containers,
+fixed-point readings, allocation/lock lifetime and failed-source-close quarantine.
+It does not test Win32 window handling or a physical TWAIN driver. The deliberately
+quarantined test instance retains one test-library reference until process exit.

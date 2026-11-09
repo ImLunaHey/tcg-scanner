@@ -47,5 +47,19 @@ Native ABI simulations pass on macOS and all targets type-check for Linux x86_64
 See [the native fixture instructions](../../Tools/NativeDeviceTests/README.md).
 Physical SANE discovery/inspection/acquisition remains untested. The API contract
 is documented in the [SANE standard](https://sane-project.gitlab.io/standard/1.06/api.html).
-Windows is still being implemented. The crate and `scanner-types`
+Windows TWAIN 2 discovery and read-only inspection use an invisible native window
+and DSM on one dedicated thread. The DSM and installed source must match the
+application architecture. Capability containers are locked/copied/freed through
+the DSM's own memory functions. Failed closure quarantines the worker and retains
+the native session until process restart. No scanner session is opened by discovery:
+
+```powershell
+cargo run -p scanner-device --example twain_devices -- C:\trusted\TWAINDSM.dll
+```
+
+TWAIN acquisition currently returns `unsupported` while its transfer workflow is
+implemented. x64/ARM64 type-checks and portable/native-simulation tests pass;
+actual Windows execution and physical scanning are untested. Interface definitions
+follow the [TWAIN Working Group header](https://github.com/twain/twain-dsm/blob/master/TWAIN_DSM/src/twain.h).
+The crate and `scanner-types`
 path dependency remain internal (`publish = false`); no license is inferred.

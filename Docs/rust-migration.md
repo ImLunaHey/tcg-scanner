@@ -75,7 +75,13 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   followed by read completion and closure. A test-only native SANE library verifies
   these boundaries, including inexact writes, rejected persistence and disconnected
   callers. Linux x86_64 cross-compilation passes; real Linux hardware remains
-  untested and SANE button monitoring is unsupported. Windows remains outstanding.
+  untested and SANE button monitoring is unsupported. Windows TWAIN 2 now has
+  one-thread DSM/window ownership, stable source IDs, native discovery and
+  read-only capability inspection with explicit source closure. Portable ABI tests
+  check packing, scalar/enumeration decoding, fixed-point byte order, allocation
+  lifetime and failed-close quarantine through a native simulated DSM. Windows
+  x64/ARM64 type-checks pass; Windows acquisition and actual Windows execution
+  remain outstanding.
   No Swift or scanner helper executable is invoked.
 
 - `scanner-files`: pinned directory access, symlink/hard-link rejection, original

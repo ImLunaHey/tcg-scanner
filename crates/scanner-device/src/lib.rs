@@ -6,3 +6,6 @@ pub mod macos;
 
 #[cfg(unix)]
 pub mod sane;
+
+#[cfg(any(windows, test))]
+pub mod twain;

@@ -1,0 +1,88 @@
+use super::{
+    abi::Capability,
+    container::{self, Scalar},
+    manager::{Manager, Memory, error},
+};
+use scanner_types::error::Result;
+use std::ffi::c_void;
+
+pub(super) const INSPECTION_CAPS: &[(u16, &str)] = &[
+    (0x1002, "feederEnabled"),
+    (0x1003, "feederLoaded"),
+    (0x1012, "duplex"),
+    (0x1013, "duplexEnabled"),
+    (0x0101, "pixelType"),
+    (0x0102, "units"),
+    (0x0103, "transferMechanism"),
+    (0x112b, "bitDepth"),
+    (0x1118, "xResolution"),
+    (0x1119, "yResolution"),
+    (0x1122, "paperSize"),
+    (0x1134, "blankPageDiscard"),
+    (0x1149, "overscan"),
+    (0x1150, "automaticBorderDetection"),
+    (0x1151, "automaticDeskew"),
+    (0x1152, "automaticRotate"),
+];
+struct Container<'a> {
+    memory: &'a Memory,
+    handle: *mut c_void,
+    locked: bool,
+}
+impl Drop for Container<'_> {
+    fn drop(&mut self) {
+        unsafe {
+            if self.locked {
+                (self.memory.unlock)(self.handle);
+            }
+            (self.memory.free)(self.handle);
+        }
+    }
+}
+pub(super) fn read(manager: &mut Manager, id: u16, message: u16) -> Result<Scalar> {
+    let mut capability = Capability {
+        id,
+        container_type: 0,
+        handle: std::ptr::null_mut(),
+    };
+    let result = manager.source_call(1, 1, message, (&mut capability as *mut Capability).cast());
+    let memory = manager
+        .memory
+        .as_ref()
+        .ok_or_else(|| error("DSM memory functions unavailable."))?;
+    if capability.handle.is_null() {
+        return result.and_then(|()| Err(error("Empty TWAIN capability container.")));
+    }
+    let mut owned = Container {
+        memory,
+        handle: capability.handle,
+        locked: false,
+    };
+    result?;
+    // SAFETY: the trusted native DSM returned this owned capability handle. Its
+    // tagged allocation follows twain.h. Copy bounded scalar data while locked.
+    let pointer = unsafe { (memory.lock)(owned.handle) }.cast::<u8>();
+    if pointer.is_null() {
+        return Err(error("Could not lock TWAIN capability."));
+    }
+    owned.locked = true;
+    unsafe {
+        let length = match capability.container_type {
+            5 => 6,
+            6 => 22,
+            4 => {
+                let header = std::slice::from_raw_parts(pointer, 14);
+                let count = container::dword(header, 2)? as usize;
+                if count > 4096 {
+                    return Err(error("Oversized TWAIN capability."));
+                }
+                14 + count * container::item_size(container::word(header, 0)?)?
+            }
+            _ => return Err(error("Unsupported TWAIN capability container.")),
+        };
+        container::current(
+            capability.container_type,
+            std::slice::from_raw_parts(pointer, length),
+        )
+    }
+}
