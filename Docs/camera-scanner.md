@@ -10,6 +10,15 @@ details; lookups pause until the details close. The preview uses the captured
 camera image, held in browser memory, rather than saving it to scan storage. Move
 to the next card or tap **Check again** to repeat a lookup.
 
+A persistent badge above the guide shows **Looking for a card**, **Hold steady**,
+**Identifying card**, **Card detected**, or guidance for another view. Identification
+has a spinning indicator; detection turns the badge and guide corners green.
+The toolbar's **Flash** button toggles the active camera's continuous light and
+shows On/Off. It shows N/A when that camera/browser does not expose torch control.
+The displayed state is checked against the camera settings, and failed changes
+show a message. Stopping or leaving the camera releases its track and light.
+Flash behavior still needs checking on a physical phone; avoid glare on foil cards.
+
 On iPhone/iPad, open the address in Safari, choose **Share → Add to Home Screen**,
 and open the installed Scanner app. On Android, use **Install app** or the browser's
 installation menu. The manifest starts the installed app directly at `/camera`.
@@ -91,7 +100,7 @@ On 2026-11-09, the deployed HTTPS endpoint identified the locally cached TCGdex
 Spectrier `swsh11-081` reference placed on a contrasting canvas, upright and rotated
 180°, in 1.48 and 0.91 seconds respectively. Scan/job/batch database rows were
 identical before and after. This is a reference-image check, not a phone-camera
-accuracy or latency benchmark. The full-screen public camera workflow passes 15 simulated browser checks,
+accuracy or latency benchmark. The full-screen public camera workflow passes 30 simulated browser checks,
 including modal focus, lookup suspension and preview cleanup.
 
 For a physical check, open the HTTPS camera page on your phone and try a known card

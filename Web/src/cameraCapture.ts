@@ -39,6 +39,8 @@ export class SteadyCard {
   stable = 0;
   lastAttempt = -Infinity;
   matched = false;
+  observation: "searching" | "moving" | "waiting" | "unchanged" | "ready" =
+    "searching";
   ready(frame: Uint8Array, now: number): boolean {
     const mean = frame.reduce((a, b) => a + b, 0) / frame.length;
     const variance =
@@ -50,14 +52,19 @@ export class SteadyCard {
     this.previous = frame;
     // New matched cards can advance quickly; unclear frames retry more gently.
     const interval = this.matched ? 1200 : 2500;
-    if (variance < 180 || this.stable < 2 || now - this.lastAttempt < interval)
-      return false;
-    if (
-      this.matched &&
-      this.submitted &&
-      difference(frame, this.submitted) < 12
-    )
-      return false;
+    this.observation =
+      variance < 180
+        ? "searching"
+        : this.matched &&
+            this.submitted &&
+            difference(frame, this.submitted) < 12
+          ? "unchanged"
+          : this.stable < 2
+            ? "moving"
+            : now - this.lastAttempt < interval
+              ? "waiting"
+              : "ready";
+    if (this.observation !== "ready") return false;
     return true;
   }
   accept(frame: Uint8Array, now: number) {

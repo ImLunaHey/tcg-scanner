@@ -1,14 +1,22 @@
 import { expect, test, type Page } from "@playwright/test";
-async function setup(page: Page, deny = false) {
+async function setup(
+  page: Page,
+  deny = false,
+  torch: "supported" | "unsupported" | "reject" | "ignored" = "unsupported",
+) {
   await page.addInitScript(
-    ({ deny }) => {
+    ({ deny, torch }) => {
       Object.defineProperty(window, "isSecureContext", { value: true });
       const state = window as unknown as {
         cameraStops: number;
         cameraVariant: number;
         cameraURLs: Set<string>;
+        torchOn: boolean;
+        torchChanges: boolean[];
       };
       state.cameraVariant = 0;
+      state.torchOn = false;
+      state.torchChanges = [];
       state.cameraURLs = new Set();
       const create = URL.createObjectURL.bind(URL),
         revoke = URL.revokeObjectURL.bind(URL);
@@ -26,7 +34,28 @@ async function setup(page: Page, deny = false) {
         value: {
           getUserMedia: async () => {
             if (deny) throw new DOMException("Denied", "NotAllowedError");
-            return { getTracks: () => [{ stop: () => state.cameraStops++ }] };
+            const track = {
+              id: `camera-${state.cameraStops}`,
+              readyState: "live",
+              stop() {
+                state.cameraStops++;
+                state.torchOn = false;
+                this.readyState = "ended";
+              },
+              getCapabilities: () => ({ torch: torch !== "unsupported" }),
+              getSettings: () => ({ torch: state.torchOn }),
+              getConstraints: () => ({ facingMode: { ideal: "environment" } }),
+              async applyConstraints(constraints: {
+                advanced: { torch: boolean }[];
+              }) {
+                state.torchChanges.push(constraints.advanced[0].torch);
+                if (torch === "reject")
+                  throw new DOMException("Unavailable", "OverconstrainedError");
+                if (torch !== "ignored")
+                  state.torchOn = constraints.advanced[0].torch;
+              },
+            };
+            return { getTracks: () => [track], getVideoTracks: () => [track] };
           },
         },
       });
@@ -54,6 +83,7 @@ async function setup(page: Page, deny = false) {
         if (args[0] instanceof HTMLVideoElement) {
           this.fillStyle = "#111";
           this.fillRect(0, 0, 1000, 1333);
+          if (state.cameraVariant === 2) return;
           this.fillStyle = state.cameraVariant ? "#444" : "#eee";
           this.fillRect(120, 130, 760, 1060);
           this.fillStyle = state.cameraVariant ? "#fff" : "#598abc";
@@ -63,7 +93,7 @@ async function setup(page: Page, deny = false) {
         }
       } as typeof original;
     },
-    { deny },
+    { deny, torch },
   );
   await page.route("**/api/v1/events?**", (route) =>
     route.fulfill({
@@ -95,7 +125,13 @@ test("camera identifies automatically without saving and stops on exit", async (
         schemaVersion: 1,
         state: "matched",
         game: "pokemon",
-        finishEstimate: { state: "estimated", suggestedFinish: "holo", method: "fixture", evidence: ["Numbered catalogue printing and marker agree."], limitations: ["Check the physical card under light."] },
+        finishEstimate: {
+          state: "estimated",
+          suggestedFinish: "holo",
+          method: "fixture",
+          evidence: ["Numbered catalogue printing and marker agree."],
+          limitations: ["Check the physical card under light."],
+        },
         candidates: [
           {
             id: "swsh3-136",
@@ -128,6 +164,7 @@ test("camera identifies automatically without saving and stops on exit", async (
   await page.getByRole("button", { name: "Start camera" }).click();
   const tile = page.getByRole("button", { name: "View Furret details" });
   await expect(tile).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("Card detected");
   await expect(tile.locator("img")).toBeVisible();
   await expect(tile.getByText("Holo", { exact: true })).toBeVisible();
   expect(
@@ -149,7 +186,9 @@ test("camera identifies automatically without saving and stops on exit", async (
   ).toBeVisible();
   await expect(dialog.getByText("136/189", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Holo", { exact: true })).toBeVisible();
-  await expect(dialog.getByText(/Camera estimate from printed markers/)).toBeVisible();
+  await expect(
+    dialog.getByText(/Camera estimate from printed markers/),
+  ).toBeVisible();
   const full = (await dialog.boundingBox())!;
   expect(full.width).toBe(screen.width);
   expect(full.height).toBe(screen.height);
@@ -299,3 +338,100 @@ test("details keep their card stable while the camera sees another card", async 
     ),
   ).toBe(1);
 });
+
+test("camera shows searching, identifying and retry feedback over the preview", async ({
+  page,
+}) => {
+  await setup(page);
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/camera/identify", async (route) => {
+    await pending;
+    await route.fulfill({ json: { state: "noMatch", candidates: [] } });
+  });
+  await page.goto("/camera");
+  await page.evaluate(() => {
+    (window as unknown as { cameraVariant: number }).cameraVariant = 2;
+  });
+  await page.getByRole("button", { name: "Start camera" }).click();
+  const status = page.getByRole("status");
+  await expect(status).toContainText("Looking for a card");
+  await expect(status).toBeInViewport();
+  await page.evaluate(() => {
+    (window as unknown as { cameraVariant: number }).cameraVariant = 0;
+  });
+  await expect(status).toContainText("Identifying card");
+  await expect(status).toHaveAttribute("data-phase", "identifying");
+  release();
+  await expect(status).toContainText("No match yet");
+  await expect(status).toHaveAttribute("data-phase", "retry");
+  await page.getByRole("button", { name: "Stop camera" }).click();
+  await expect(status).toHaveCount(0);
+});
+
+test("flash switches the active camera light and resets when stopped", async ({
+  page,
+}) => {
+  await setup(page, false, "supported");
+  await page.route("**/api/v1/camera/identify", (route) =>
+    route.fulfill({ json: { state: "noMatch", candidates: [] } }),
+  );
+  await page.goto("/camera");
+  await page.getByRole("button", { name: "Start camera" }).click();
+  const flash = page.getByRole("button", { name: "Flash", exact: true });
+  await expect(flash).toHaveAttribute("aria-pressed", "false");
+  await flash.click();
+  await expect(flash).toHaveAttribute("aria-pressed", "true");
+  await flash.click();
+  await expect(flash).toHaveAttribute("aria-pressed", "false");
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { torchChanges: boolean[] }).torchChanges,
+    ),
+  ).toEqual([true, false]);
+  await flash.click();
+  await expect(flash).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Stop camera" }).click();
+  await expect(flash).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { torchOn: boolean }).torchOn,
+    ),
+  ).toBe(false);
+  await page.getByRole("button", { name: "Start camera" }).click();
+  await expect(flash).toHaveAttribute("aria-pressed", "false");
+});
+
+test("unsupported flash is clearly disabled", async ({ page }) => {
+  await setup(page);
+  await page.route("**/api/v1/camera/identify", (route) =>
+    route.fulfill({ json: { state: "noMatch", candidates: [] } }),
+  );
+  await page.goto("/camera");
+  await page.getByRole("button", { name: "Start camera" }).click();
+  await expect(
+    page.getByRole("button", { name: "Flash unavailable on this camera" }),
+  ).toBeDisabled();
+});
+
+for (const behavior of ["reject", "ignored"] as const) {
+  test(`flash does not claim to be on when the camera ${behavior}s the request`, async ({
+    page,
+  }) => {
+    await setup(page, false, behavior);
+    await page.route("**/api/v1/camera/identify", (route) =>
+      route.fulfill({ json: { state: "noMatch", candidates: [] } }),
+    );
+    await page.goto("/camera");
+    await page.getByRole("button", { name: "Start camera" }).click();
+    const flash = page.getByRole("button", { name: "Flash", exact: true });
+    await flash.click();
+    await expect(page.getByRole("alert")).toContainText(
+      "Couldn’t change the flash",
+    );
+    await expect(flash).toHaveAttribute("aria-pressed", "false");
+    await expect(flash).toBeEnabled();
+  });
+}

@@ -2,12 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import {
   Camera as CameraIcon,
   ScanLine,
+  CircleCheck,
+  LoaderCircle,
+  CircleHelp,
   Square,
   RotateCcw,
   X,
   ChevronRight,
 } from "lucide-react";
 import { Link } from "wouter";
+import { CameraTorch } from "./CameraTorch";
 import { CameraFinish } from "./CameraFinish";
 import { CameraDetails } from "./CameraDetails";
 import { Api, ApiError } from "./api";
@@ -87,6 +91,10 @@ export function Camera() {
   const [active, setActive] = useState(false);
   const [language, setLanguage] = useState("en");
   const [status, setStatus] = useState("Point the camera at a card front");
+  const [phase, setPhase] = useState<
+    "opening" | "searching" | "steady" | "identifying" | "detected" | "retry"
+  >("searching");
+  const [track, setTrack] = useState<MediaStreamTrack>();
   const [error, setError] = useState<string>();
   const [result, setResult] = useState<CameraResult>();
   const [busy, setBusy] = useState(false);
@@ -103,6 +111,8 @@ export function Camera() {
       gate.matched = false;
       gate.lastAttempt = -Infinity;
       clearMatch();
+      setPhase("searching");
+      setStatus("Place one card inside the guide");
     };
     const canvas = document.createElement("canvas");
     canvas.width = 1000;
@@ -150,7 +160,8 @@ export function Camera() {
             gate.accept(sample, Date.now());
             setBusy(true);
             setError(undefined);
-            setStatus("Identifying… hold steady");
+            setPhase("identifying");
+            setStatus("Checking identity and finish on your Mac");
             const base64 = await cameraJPEG(canvas);
             const snapshot = await cameraSnapshot(canvas);
             if (!alive) return;
@@ -181,17 +192,29 @@ export function Camera() {
               setPreview(previewURL.current);
               setResult(value);
             }
+            setPhase(gate.matched ? "detected" : "retry");
             setStatus(
               value.state === "matched"
-                ? "Card found · move to the next card"
+                ? `${value.candidates[0]?.name || "Card found"} · ready for the next card`
                 : value.state === "noCard"
                   ? "Keep all four corners inside the guide"
                   : value.state === "cardBack"
                     ? "Turn the card over to show its front"
                     : value.state === "codeCard"
                       ? "Pokémon LIVE code card"
-                      : "Try closer, with less glare",
+                      : value.state === "ambiguous"
+                        ? "Several possible matches · try closer, with less glare"
+                        : "No match yet · try closer, with less glare",
             );
+          } else if (gate.observation === "searching") {
+            setPhase("searching");
+            setStatus("Place one card inside the guide");
+          } else if (gate.observation === "moving") {
+            setPhase("steady");
+            setStatus("Keep the card still with all four corners visible");
+          } else if (gate.observation === "unchanged") {
+            setPhase("detected");
+            setStatus("Card already checked · move to the next card");
           }
         }
       } catch (e) {
@@ -202,6 +225,7 @@ export function Camera() {
             : cameraMessage(e),
         );
         gate.lastAttempt = Date.now();
+        setPhase("retry");
         setStatus("Hold steady to retry");
       } finally {
         if (alive) {
@@ -219,7 +243,8 @@ export function Camera() {
         if (!navigator.onLine)
           throw new Error("Connect to the Mac before starting the camera.");
         setError(undefined);
-        setStatus("Opening camera…");
+        setPhase("opening");
+        setStatus("Allow camera access if prompted");
         stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: {
@@ -232,11 +257,13 @@ export function Camera() {
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
+        setTrack(stream.getVideoTracks()[0]);
         const v = video.current!;
         v.srcObject = stream;
         await v.play();
         if (!alive) return;
-        setStatus("Fill the guide with one card and hold steady");
+        setPhase("searching");
+        setStatus("Place one card inside the guide");
         void tick();
       } catch (e) {
         if (alive) {
@@ -251,6 +278,7 @@ export function Camera() {
       controller.abort();
       clearTimeout(timer);
       stream?.getTracks().forEach((track) => track.stop());
+      setTrack(undefined);
       if (video.current) video.current.srcObject = null;
       document.removeEventListener("visibilitychange", stopWhenHidden);
       window.removeEventListener("offline", stopWhenHidden);
@@ -289,7 +317,7 @@ export function Camera() {
             aria-label="Live camera preview"
           />
           <div ref={frame} className="camera-capture-area" aria-hidden="true">
-            <div className={`camera-guide${busy ? " recognizing" : ""}`}>
+            <div className="camera-guide" data-phase={phase}>
               <span />
               <span />
               <span />
@@ -337,6 +365,7 @@ export function Camera() {
               <option value="ko">Korean</option>
             </select>
           </label>
+          {active && track && <CameraTorch key={track.id} track={track} />}
           {active ? (
             <button
               className="camera-icon-button"
@@ -356,10 +385,38 @@ export function Camera() {
             </p>
           ) : (
             active && (
-              <p className="camera-status" role="status">
-                <ScanLine size={17} />
-                {status}
-              </p>
+              <div
+                className="camera-status"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                data-phase={phase}
+              >
+                {phase === "identifying" || phase === "opening" ? (
+                  <LoaderCircle className="camera-spinner" size={23} />
+                ) : phase === "detected" ? (
+                  <CircleCheck size={23} />
+                ) : phase === "retry" ? (
+                  <CircleHelp size={23} />
+                ) : (
+                  <ScanLine size={23} />
+                )}
+                <span>
+                  <strong>
+                    {
+                      {
+                        opening: "Opening camera",
+                        searching: "Looking for a card",
+                        steady: "Hold steady",
+                        identifying: "Identifying card…",
+                        detected: "Card detected",
+                        retry: "Try another view",
+                      }[phase]
+                    }
+                  </strong>
+                  <small>{status}</small>
+                </span>
+              </div>
             )
           )}
         </div>

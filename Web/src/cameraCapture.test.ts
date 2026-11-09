@@ -5,10 +5,13 @@ describe("camera capture", () => {
   it("waits for steady textured frames and throttles retries", () => {
     const gate = new SteadyCard();
     expect(gate.ready(card, 0)).toBe(false);
+    expect(gate.observation).toBe("moving");
     expect(gate.ready(card, 500)).toBe(false);
     expect(gate.ready(card, 1000)).toBe(true);
+    expect(gate.observation).toBe("ready");
     gate.accept(card, 1000);
     expect(gate.ready(card, 3400)).toBe(false);
+    expect(gate.observation).toBe("waiting");
     expect(gate.ready(card, 3500)).toBe(true);
   });
   it("does not keep submitting a matched card, but detects a replacement", () => {
@@ -17,6 +20,7 @@ describe("camera capture", () => {
     gate.matched = true;
     for (let i = 0; i < 10; i++)
       expect(gate.ready(card, 10000 + i * 500)).toBe(false);
+    expect(gate.observation).toBe("unchanged");
     const next = card.map((x) => 255 - x);
     expect(gate.ready(next, 20000)).toBe(false);
     expect(gate.ready(next, 20500)).toBe(false);
@@ -35,6 +39,7 @@ describe("camera capture", () => {
     const gate = new SteadyCard();
     for (let i = 0; i < 8; i++)
       expect(gate.ready(new Uint8Array(64).fill(100), i * 5000)).toBe(false);
+    expect(gate.observation).toBe("searching");
     for (let i = 0; i < 8; i++)
       expect(
         gate.ready(
