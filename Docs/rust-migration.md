@@ -53,14 +53,23 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   and inspections outlive disconnected API callers. Integration tests use a
   controlled test driver with real isolated SQLite and batch files; they verify
   retry deduplication, preserved settings, closure ordering, queued cancellation,
-  continuation checksums and inspection ownership. Native scanner adapters and
-  the concrete card-processing pipeline are still being connected.
+  continuation checksums and inspection ownership.
   `NativeCardProcessor` now supplies the bounded in-process preparation path:
   verified source read, colour-managed crop/deskew, Tesseract orientation and an
   immutable PNG copy. A real B-001 original was copied into an isolated local
   batch, prepared successfully, and its source checksum reverified unchanged.
   Its public code-insert cue and quarter-turn agree with the saved Swift result.
   Automatic identity/finish/condition processing still needs integration.
+
+- `scanner-device`: portable driver contracts extracted from the coordinator and
+  a Rust ImageCaptureCore adapter. It includes main-thread discovery/inspection,
+  explicit ADF settings with readback, ordered file callbacks, persisted-settings
+  acknowledgement before feeding, cancellation deadlines, settings restoration,
+  exact-device disconnect recovery and pre-enabled button monitoring. Callback
+  and coordinator tests cover acknowledgement, ordering, reused URLs, limits and
+  cleanup quarantine. Read-only native discovery completed with zero devices;
+  inspection/capture/button/restoration are hardware-unverified. Linux and Windows
+  adapters are still outstanding. No Swift helper is invoked.
 
 - `scanner-files`: pinned directory access, symlink/hard-link rejection, original
   checksum verification, bounded chunk reads, exclusive batch/image creation,

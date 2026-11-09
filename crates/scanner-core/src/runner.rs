@@ -127,11 +127,12 @@ impl Engine {
                 "Scanner session closure was not confirmed.",
             ));
         }
-        if outcome
-            .errors
-            .iter()
-            .any(|error| matches!(error.kind.as_str(), "disconnected" | "deviceNotFound"))
-        {
+        if outcome.errors.iter().any(|error| {
+            matches!(
+                error.kind.as_str(),
+                "disconnected" | "deviceNotFound" | "cleanup" | "closeSession"
+            )
+        }) {
             self.state.lock().await.quarantined = true;
         }
         let result = async {
@@ -240,10 +241,17 @@ impl Engine {
             return;
         }
         let result = match event {
-            CaptureEvent::Settings(settings) => self.transition(work, |record| {
-                record.state = ScanState::Scanning;
-                record.applied_settings = settings;
-            }),
+            CaptureEvent::Settings {
+                settings,
+                acknowledged,
+            } => {
+                let result = self.transition(work, |record| {
+                    record.state = ScanState::Scanning;
+                    record.applied_settings = settings;
+                });
+                let _ = acknowledged.send(result.clone());
+                result
+            }
             CaptureEvent::Image { filename, sequence } => {
                 if sequence != *next {
                     Err(ScannerError::new(

@@ -9,6 +9,7 @@ publish = false
 
 [dependencies]
 scanner-types.workspace = true
+scanner-device.workspace = true
 scanner-store.workspace = true
 scanner-files.workspace = true
 scanner-images.workspace = true

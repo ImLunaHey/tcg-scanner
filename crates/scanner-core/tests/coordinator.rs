@@ -182,3 +182,21 @@ async fn disconnected_submitter_does_not_strand_the_accepted_batch() {
     assert_eq!(h.terminal(id).await.state, ScanState::Completed);
     h.engine.shutdown().await;
 }
+
+#[tokio::test]
+async fn unacknowledged_transfer_cancellation_blocks_next_job_even_after_session_close() {
+    let mut h = Harness::new();
+    let mut request = ScanRequest::default();
+    request
+        .extensions
+        .insert("simulateCleanupFailure".into(), serde_json::json!(true));
+    let first = h.engine.start_scan(request).await.unwrap();
+    let call = h.next().await;
+    let second = h.engine.start_scan(ScanRequest::default()).await.unwrap();
+    call.finish.send(true).unwrap();
+    assert_eq!(h.terminal(first.id).await.state, ScanState::Failed);
+    assert_eq!(h.terminal(second.id).await.state, ScanState::Failed);
+    assert!(h.engine.status().await.requires_restart);
+    assert!(h.calls.try_recv().is_err());
+    h.engine.shutdown().await;
+}

@@ -1,0 +1,5 @@
+//! Scanner I/O only: no database, UI, image recognition or helper processes.
+mod backend;
+pub use backend::{CaptureEvent, CaptureOutcome, ScannerBackend, persist_settings};
+#[cfg(target_os = "macos")]
+pub mod macos;

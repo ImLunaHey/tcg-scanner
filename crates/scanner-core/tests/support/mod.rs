@@ -50,7 +50,7 @@ impl ScannerBackend for Driver {
     async fn capture(
         &self,
         _: &str,
-        _: &ScanRequest,
+        request: &ScanRequest,
         incoming: PathBuf,
         events: mpsc::Sender<CaptureEvent>,
         cancel: CancellationToken,
@@ -60,10 +60,15 @@ impl ScannerBackend for Driver {
             9,
             image::Rgba([40, 90, 160, 255]),
         ))?;
+        let (acknowledged, persisted) = oneshot::channel();
         events
-            .send(CaptureEvent::Settings(Default::default()))
+            .send(CaptureEvent::Settings {
+                settings: Default::default(),
+                acknowledged,
+            })
             .await
             .unwrap();
+        persisted.await.unwrap()?;
         for sequence in 1..=2 {
             let filename = format!("driver-{sequence}.png");
             std::fs::write(incoming.join(&filename), &png.bytes).unwrap();
@@ -83,7 +88,16 @@ impl ScannerBackend for Driver {
         Ok(CaptureOutcome {
             session_closed,
             cancelled: cancel.is_cancelled(),
-            errors: vec![],
+            errors: if request.extensions.get("simulateCleanupFailure")
+                == Some(&serde_json::json!(true))
+            {
+                vec![ScannerError::new(
+                    "cleanup",
+                    "Cancellation was not acknowledged.",
+                )]
+            } else {
+                vec![]
+            },
         })
     }
 }
