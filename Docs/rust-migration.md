@@ -60,6 +60,13 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   batch, prepared successfully, and its source checksum reverified unchanged.
   Its public code-insert cue and quarter-turn agree with the saved Swift result.
   Automatic identity/finish/condition processing still needs integration.
+  Profile create/save/update/remove/name lookup, job summary pagination and bounded
+  event long-polling are now exposed through the Rust coordinator. Accepted profile
+  writes outlive caller disconnects and hold the submission reservation through
+  their database commit so shutdown waits for them. Profile name uniqueness and
+  partial updates are enforced transactionally, preserving additive metadata;
+  tests cover concurrent writers, idempotent creates, Unicode case folding,
+  invalid-update rollback and event subscriber limits/disconnection.
 
 - `scanner-device`: portable driver contracts extracted from the coordinator and
   a Rust ImageCaptureCore adapter. It includes main-thread discovery/inspection,

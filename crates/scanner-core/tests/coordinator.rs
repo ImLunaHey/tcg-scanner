@@ -1,3 +1,4 @@
+mod library;
 mod support;
 use scanner_types::scan::{ScanRequest, ScanState};
 use std::time::Duration;

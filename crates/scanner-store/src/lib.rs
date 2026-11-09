@@ -4,6 +4,7 @@ mod catalog;
 mod events;
 mod jobs;
 mod paths;
+mod profiles;
 mod recovery;
 mod schema;
 

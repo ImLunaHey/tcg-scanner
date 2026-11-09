@@ -1,7 +1,9 @@
 pub mod backend;
 mod engine;
+mod history;
 mod inspection;
 mod preparation;
+mod profiles;
 pub use preparation::NativeCardProcessor;
 mod runner;
 mod submission;

@@ -11,7 +11,7 @@ use scanner_types::{
     service::ServiceStatus,
 };
 use std::{collections::VecDeque, sync::Arc};
-use tokio::sync::{Mutex, Notify, watch};
+use tokio::sync::{Mutex, Notify, Semaphore, watch};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
@@ -23,6 +23,7 @@ pub struct Engine {
     pub(crate) state: Mutex<State>,
     pub(crate) submissions: Mutex<()>,
     pub(crate) wake: Notify,
+    pub(crate) event_waiters: Semaphore,
     pub(crate) done: watch::Sender<bool>,
 }
 
@@ -71,6 +72,7 @@ impl Engine {
             state: Mutex::new(State::default()),
             submissions: Mutex::new(()),
             wake: Notify::new(),
+            event_waiters: Semaphore::new(8),
             done,
         });
         tokio::spawn(engine.clone().run());

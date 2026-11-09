@@ -29,7 +29,7 @@ impl ScanSettings {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ScanProfile {
     pub id: Uuid,
     pub name: String,
@@ -117,4 +117,48 @@ pub struct ServiceStatus {
     pub persistence_error: Option<ScannerError>,
     pub storage_root: String,
     pub requires_restart: bool,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProfilePatch {
+    pub name: Option<String>,
+    pub dpi: Option<u32>,
+    pub duplex: Option<bool>,
+    pub format: Option<OriginalFormat>,
+}
+impl ProfilePatch {
+    pub fn apply(&self, profile: &mut ScanProfile) -> Result<()> {
+        if self.name.is_none()
+            && self.dpi.is_none()
+            && self.duplex.is_none()
+            && self.format.is_none()
+        {
+            return Err(ScannerError::new(
+                "invalidSettings",
+                "Provide at least one profile field to update.",
+            ));
+        }
+        if let Some(name) = &self.name {
+            profile.name = name.clone();
+        }
+        if let Some(dpi) = self.dpi {
+            profile.settings.dpi = dpi;
+        }
+        if let Some(duplex) = self.duplex {
+            profile.settings.duplex = duplex;
+        }
+        if let Some(format) = self.format {
+            profile.settings.format = format;
+        }
+        profile.validate()
+    }
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JobPage {
+    pub schema_version: u32,
+    pub jobs: Vec<JobSummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_offset: Option<usize>,
 }
