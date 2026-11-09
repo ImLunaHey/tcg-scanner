@@ -6,6 +6,13 @@ import Vision
 
 public protocol CardRecognizing: Sendable {
     func recognize(_ data: Data, language: CardLanguage) async throws -> RecognitionEvidence
+    func recognize(_ data: Data, language: CardLanguage, preferredOrientation: Int?) async throws -> RecognitionEvidence
+}
+
+extension CardRecognizing {
+    public func recognize(_ data: Data, language: CardLanguage, preferredOrientation: Int?) async throws -> RecognitionEvidence {
+        try await recognize(data, language: language)
+    }
 }
 
 public actor CardRecognizer: CardRecognizing {
@@ -14,7 +21,22 @@ public actor CardRecognizer: CardRecognizing {
     ]
     public init() {}
     public func recognize(_ data: Data, language: CardLanguage = .english) async throws -> RecognitionEvidence {
-        let ocr = Task.detached(priority: .utility) { try CardOCR.read(data, language: language) }
+        try await recognize(data, language: language, rotations: [0, 1, 2, 3])
+    }
+    public func recognize(_ data: Data, language: CardLanguage, preferredOrientation: Int?) async throws -> RecognitionEvidence {
+        if let orientation = preferredOrientation, (0...3).contains(orientation) {
+            let result = try await recognize(data, language: language, rotations: [orientation])
+            if Self.acceptCameraOrientation(result) { return result }
+        }
+        return try await recognize(data, language: language)
+    }
+    static func acceptCameraOrientation(_ result: RecognitionEvidence) -> Bool {
+        guard result.candidates.count == 1, let card = result.candidates.first, let total = card.officialSetCount else { return false }
+        return card.evidence.contains("Name in title area") && card.evidence.contains("Collector number " + card.localID)
+            && card.evidence.contains("Printed set total " + String(total))
+    }
+    private func recognize(_ data: Data, language: CardLanguage, rotations: [Int]) async throws -> RecognitionEvidence {
+        let ocr = Task.detached(priority: .utility) { try CardOCR.read(data, language: language, rotations: rotations) }
         let orientations = try await withTaskCancellationHandler { try await ocr.value } onCancel: { ocr.cancel() }
         try Task.checkCancellation()
         // Avoid a network lookup for blank pages, card backs or other images with no readable text.
@@ -180,9 +202,12 @@ enum CardOCR {
         }
         return image
     }
-    static func read(_ data: Data, language: CardLanguage = .english) throws -> [Reading] {
+    static func read(_ data: Data, language: CardLanguage = .english, rotations: [Int] = [0, 1, 2, 3]) throws -> [Reading] {
         let image = try image(data)
-        return try [CGImagePropertyOrientation.up, .right, .down, .left].enumerated().map { rotation, orientation in
+        let orientations: [CGImagePropertyOrientation] = [.up, .right, .down, .left]
+        return try rotations.map { rotation in
+            guard orientations.indices.contains(rotation) else { throw ScannerError("invalidParams", "Invalid OCR orientation.") }
+            let orientation = orientations[rotation]
             try Task.checkCancellation()
             let request = try Self.request(language: language)
             try VNImageRequestHandler(cgImage: image, orientation: orientation).perform([request])

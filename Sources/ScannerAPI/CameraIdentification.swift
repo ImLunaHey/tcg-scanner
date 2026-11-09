@@ -9,6 +9,7 @@ public struct CameraIdentification: Codable, Sendable {
     public var candidates: [CardCandidate]
     public var uncataloguedCard: UncataloguedCard?
     public var energySymbol: EnergySymbolEvidence?
+    public var finishEstimate: FinishEstimate?
     public init(state: State, game: CardGame? = nil, evidence: RecognitionEvidence? = nil) {
         self.state = state; self.game = game; candidates = evidence?.candidates ?? []
         uncataloguedCard = evidence?.uncataloguedCard; energySymbol = evidence?.energySymbol

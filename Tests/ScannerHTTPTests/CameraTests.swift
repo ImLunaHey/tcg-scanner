@@ -75,6 +75,10 @@ func cameraFixture(card: Bool = true, width: Int = 1000, height: Int = 1333) thr
         let result = try decode(response, as: CameraIdentification.self)
         #expect(result.state == .matched && result.candidates.first?.name == "Furret")
         #expect(result.game == .pokemon)
+        #expect(result.finishEstimate?.state == .uncertain)
+        #expect(result.finishEstimate?.uncertaintyReason == .ambiguousIdentity)
+        #expect(result.finishEstimate?.borderEvidence == nil)
+        #expect(result.finishEstimate?.limitations.contains { $0.hasPrefix("Camera estimate:") } == true)
         #expect(!String(buffer: response.body).contains("jobID"))
         for invalid: JSONValue in [.object(["base64": .string(""), "language": .string("xx")]), .object(["base64": .string(""), "path": .string("/tmp/foo")])] {
             #expect(try await client.execute(uri: path, method: .post, headers: httpHeaders(), body: buffer(invalid)).status.code == 400)

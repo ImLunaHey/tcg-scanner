@@ -13,22 +13,32 @@ extension ScannerCoordinator {
             throw ScannerError("invalidParams", "Camera image must be base64 JPEG up to 512 KiB.")
         }
         cameraIdentifications += 1; defer { cameraIdentifications -= 1 }
-        let pokemon = cardRecognizer, yugioh = yugiohRecognizer, starwars = starWarsRecognizer
+        let pokemon = cardRecognizer, yugioh = yugiohRecognizer, starwars = starWarsRecognizer, finish = finishAnalyzer
         return try await withThrowingTaskGroup(of: CameraIdentification.self) { group in
             group.addTask {
-                let preparation = Task.detached(priority: .utility) { () throws -> (Data, String?)? in
+                let preparation = Task.detached(priority: .utility) { () throws -> (Data, Int?, String)? in
                     guard let card = try CameraCard.extract(data) else { return nil }
                     let rotation = try CardProcessor.uprightRotation(card, language: language)
-                    return (card, rotation.basis)
+                    return (card, rotation.verified ? rotation.turns : nil, rotation.basis)
                 }
-                guard let (card, basis) = try await withTaskCancellationHandler(operation: { try await preparation.value }, onCancel: { preparation.cancel() }) else {
+                guard let (card, orientation, basis) = try await withTaskCancellationHandler(operation: { try await preparation.value }, onCancel: { preparation.cancel() }) else {
                     return CameraIdentification(state: .noCard)
                 }
-                if basis?.hasSuffix("-back-pattern") == true { return CameraIdentification(state: .cardBack) }
+                if basis.hasSuffix("-back-pattern") { return CameraIdentification(state: .cardBack) }
                 if basis == "pokemon-code-text" || basis == "pokemon-code-url" { return CameraIdentification(state: .codeCard) }
-                let evidence = try await pokemon.recognize(card, language: language)
+                if language == .english, basis.hasPrefix("starwars-") {
+                    return Self.cameraResult(try await starwars.recognize(card, language: language), game: .starwarsUnlimited)
+                }
+                let evidence = try await pokemon.recognize(card, language: language, preferredOrientation: orientation)
                 if !evidence.candidates.isEmpty || evidence.energySymbol != nil || evidence.uncataloguedCard != nil {
-                    return Self.cameraResult(evidence, game: .pokemon)
+                    var result = Self.cameraResult(evidence, game: .pokemon)
+                    let preparation = CardPreparation(crop: ImageCrop(), quarterTurns: 0, orientationVerified: orientation != nil,
+                        warnings: [], orientationBasis: basis)
+                    var estimate = await finish.estimate(card, evidence: evidence, preparation: preparation, language: language, camera: true)
+                    try Task.checkCancellation()
+                    estimate.limitations.append("Camera estimate: lighting, glare and exposure can alter printed markers. Scanner foil-texture thresholds are not used. Check the physical card under light.")
+                    result.finishEstimate = estimate
+                    return result
                 }
                 if language == .english {
                     let other = try await yugioh.recognize(card, language: language)

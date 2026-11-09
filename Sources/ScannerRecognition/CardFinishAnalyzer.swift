@@ -11,9 +11,9 @@ public actor CardFinishAnalyzer {
         self.catalogue = catalogue; self.references = references
     }
 
-    public func estimate(_ data: Data, evidence: RecognitionEvidence, preparation: CardPreparation?, language: CardLanguage = .english) async -> FinishEstimate {
+    public func estimate(_ data: Data, evidence: RecognitionEvidence, preparation: CardPreparation?, language: CardLanguage = .english, camera: Bool = false) async -> FinishEstimate {
         guard language == .english else { return Self.unsupportedLanguage(evidence: evidence, language: language) }
-        do { return try await analyze(data, evidence: evidence, preparation: preparation, language: language) }
+        do { return try await analyze(data, evidence: evidence, preparation: preparation, language: language, camera: camera) }
         catch {
             let id = evidence.candidates.count == 1 ? evidence.candidates.first?.id : nil
             var result = FinishEstimate(state: .uncertain, candidateID: id,
@@ -24,12 +24,12 @@ public actor CardFinishAnalyzer {
         }
     }
 
-    public func analyze(_ data: Data, evidence: RecognitionEvidence, preparation: CardPreparation?, language: CardLanguage = .english) async throws -> FinishEstimate {
+    public func analyze(_ data: Data, evidence: RecognitionEvidence, preparation: CardPreparation?, language: CardLanguage = .english, camera: Bool = false) async throws -> FinishEstimate {
         try Task.checkCancellation()
         guard language == .english else { return Self.unsupportedLanguage(evidence: evidence, language: language) }
         // Scanner frames, bad crops and backs cannot establish the expected mark location.
         guard preparation?.orientationVerified == true, preparation?.orientationBasis == "text" else {
-            return try await ordinary(data, evidence: evidence, preparation: preparation)
+            return try await ordinary(data, evidence: evidence, preparation: camera ? nil : preparation)
         }
         let stampTask = Task.detached(priority: .utility) {
             let anniversary = try AnniversaryStampDetector.analyze(data, orientation: evidence.orientation)
@@ -44,7 +44,7 @@ public actor CardFinishAnalyzer {
             return Self.anniversaryDecision(stamp: stamp, card: card, variants: variants)
         }
         if stamp.state == .absent || stamp.state == .unsupported {
-            var result = try await ordinary(data, evidence: evidence, preparation: preparation)
+            var result = try await ordinary(data, evidence: evidence, preparation: camera ? nil : preparation)
             result.edition = CardEditionEvidence(state: stamp.state == .absent ? .notDetected : .unavailable,
                 candidateID: card?.id, stamp: stamp)
             return result
@@ -69,10 +69,10 @@ public actor CardFinishAnalyzer {
         edition.evidence += warnings
         // Reference artwork is not finish-labelled. Compare only the presence of
         // the same mark; it must never become a normal/holo/reverse training label.
-        edition.reference = try await compareReference(card.id)
+        if !camera { edition.reference = try await compareReference(card.id) }
         var border: BorderFinishEvidence?
         let finishes = Set(edition.variants.map(\.finish))
-        if finishes == [.normal, .holo],
+        if !camera, finishes == [.normal, .holo],
            card.setID.range(of: #"^(sv|me)[0-9]{2}(\.[0-9][a-z]?)?$"#, options: .regularExpression) != nil {
             let task = Task.detached(priority: .utility) { try BorderFoilAnalyzer.analyze(data, orientation: evidence.orientation) }
             do {
