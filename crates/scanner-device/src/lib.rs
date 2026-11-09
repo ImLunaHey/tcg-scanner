@@ -3,3 +3,6 @@ mod backend;
 pub use backend::{CaptureEvent, CaptureOutcome, ScannerBackend, persist_settings};
 #[cfg(target_os = "macos")]
 pub mod macos;
+
+#[cfg(unix)]
+pub mod sane;

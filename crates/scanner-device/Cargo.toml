@@ -13,6 +13,8 @@ tokio.workspace = true
 tokio-util.workspace = true
 async-trait.workspace = true
 serde_json.workspace = true
+libloading.workspace = true
+image.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6.5"
@@ -22,3 +24,6 @@ futures = "0.3"
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

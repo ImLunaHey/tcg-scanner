@@ -68,8 +68,15 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   exact-device disconnect recovery and pre-enabled button monitoring. Callback
   and coordinator tests cover acknowledgement, ordering, reused URLs, limits and
   cleanup quarantine. Read-only native discovery completed with zero devices;
-  inspection/capture/button/restoration are hardware-unverified. Linux and Windows
-  adapters are still outstanding. No Swift helper is invoked.
+  inspection/capture/button/restoration are hardware-unverified. The Linux SANE
+  adapter now implements serialized native discovery/inspection and ADF captures,
+  copied option descriptors, settings readback/restoration, durable settings
+  acknowledgement, bounded RGB frame assembly, and asynchronous cancellation
+  followed by read completion and closure. A test-only native SANE library verifies
+  these boundaries, including inexact writes, rejected persistence and disconnected
+  callers. Linux x86_64 cross-compilation passes; real Linux hardware remains
+  untested and SANE button monitoring is unsupported. Windows remains outstanding.
+  No Swift or scanner helper executable is invoked.
 
 - `scanner-files`: pinned directory access, symlink/hard-link rejection, original
   checksum verification, bounded chunk reads, exclusive batch/image creation,
