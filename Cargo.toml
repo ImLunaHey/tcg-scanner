@@ -25,6 +25,7 @@ tiff = "0.11"
 moxcms = "0.8"
 regex = "1"
 unicode-normalization = "0.1"
+url = "2"
 cap-std = "4"
 cap-fs-ext = "4"
 scanner-files = { path = "crates/scanner-files", version = "0.1.0" }

@@ -1,5 +1,6 @@
 mod access;
 mod batch;
+pub mod configuration;
 mod derived;
 mod metadata;
 mod paths;
@@ -17,13 +18,27 @@ use std::path::{Path, PathBuf};
 pub struct StorageRoot {
     dir: Dir,
     path: PathBuf,
+    policy: Option<configuration::StorageConfiguration>,
 }
 
 impl StorageRoot {
     pub fn open(path: &Path) -> Result<Self> {
         let path = path.canonicalize().map_err(storage)?;
         let dir = Dir::open_ambient_dir(&path, cap_std::ambient_authority()).map_err(storage)?;
-        Ok(Self { dir, path })
+        Ok(Self {
+            dir,
+            path,
+            policy: None,
+        })
+    }
+    pub fn open_configured(policy: configuration::StorageConfiguration) -> Result<Self> {
+        policy.validate()?;
+        let mut root = Self::open(Path::new(&policy.storage_root))?;
+        root.policy = Some(policy);
+        Ok(root)
+    }
+    fn validate(&self) -> Result<()> {
+        self.policy.as_ref().map(|p| p.validate()).unwrap_or(Ok(()))
     }
     pub fn path(&self) -> &Path {
         &self.path
@@ -35,6 +50,7 @@ impl StorageRoot {
         paths::descend(&self.dir, relative)
     }
     pub fn save_manifest(&self, record: &ScanRecord) -> Result<()> {
+        self.validate()?;
         let directory = self.batch_dir(record)?;
         batch::write_manifest(&directory, record)
     }

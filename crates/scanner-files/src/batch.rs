@@ -25,6 +25,7 @@ pub struct BatchStore {
     incoming_path: PathBuf,
     record: ScanRecord,
     starting_count: u32,
+    policy: Option<crate::configuration::StorageConfiguration>,
 }
 
 impl BatchStore {
@@ -35,6 +36,7 @@ impl BatchStore {
         number: u64,
     ) -> Result<Self> {
         request.validate()?;
+        root.validate()?;
         if number == 0 {
             return Err(storage("Batch number must be positive."));
         }
@@ -55,6 +57,7 @@ impl BatchStore {
             incoming_path: directory.join(".incoming"),
             record,
             starting_count: 0,
+            policy: root.policy.clone(),
         })
     }
     pub fn incoming_path(&self) -> &Path {
@@ -64,6 +67,7 @@ impl BatchStore {
         &self.record
     }
     pub fn update(&mut self, change: impl FnOnce(&mut ScanRecord)) -> Result<()> {
+        self.validate()?;
         let mut next = self.record.clone();
         change(&mut next);
         self.update_continuation(&mut next);
@@ -72,6 +76,7 @@ impl BatchStore {
         Ok(())
     }
     pub fn preserve(&mut self, filename: &str, callback_sequence: u32) -> Result<OriginalImage> {
+        self.validate()?;
         let sequence = self
             .starting_count
             .checked_add(callback_sequence)

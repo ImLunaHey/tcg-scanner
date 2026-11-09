@@ -12,6 +12,7 @@ use uuid::Uuid;
 impl BatchStore {
     /// Reserve the continuation in SQLite before calling publish on this prepared state.
     pub fn continuing(root: &StorageRoot, previous: &ScanRecord, request_id: Uuid) -> Result<Self> {
+        root.validate()?;
         if previous.state != ScanState::Completed
             || !previous.session_closed
             || !previous.errors.is_empty()
@@ -56,10 +57,15 @@ impl BatchStore {
             incoming_path,
             record,
             starting_count: previous.images.len() as u32,
+            policy: root.policy.clone(),
         })
     }
     pub fn publish(&self) -> Result<()> {
+        self.validate()?;
         super::write_manifest(&self.dir, &self.record)
+    }
+    pub(super) fn validate(&self) -> Result<()> {
+        self.policy.as_ref().map(|p| p.validate()).unwrap_or(Ok(()))
     }
 
     pub(super) fn update_continuation(&self, record: &mut ScanRecord) {

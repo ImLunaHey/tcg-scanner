@@ -11,6 +11,7 @@ impl StorageRoot {
         edit: &ProcessedImage,
         bytes: &[u8],
     ) -> Result<()> {
+        self.validate()?;
         edit.request.validate()?;
         let expected = format!("edit-{}.png", edit.request.id);
         if edit.request.job_id != record.id

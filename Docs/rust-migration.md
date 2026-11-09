@@ -52,7 +52,10 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   atomic manifest publication, immutable edits and continuation numbering. Tests
   include same-size tampering, traversal, retained staging, duplicate captures,
   multipage TIFF metadata and read-only access to existing originals/edits.
-  Mount-policy enforcement and Windows ACL policy remain with platform work.
+  Mount policy is checked before writes: macOS `statfs` is verified against the
+  live share, Linux mountinfo parsing is fixture-tested, and Windows accepts
+  explicit UNC shares (mapped drives still need resolution). Windows ACL policy
+  and native Windows/Linux execution remain to be validated.
 
 - `scanner-images`: portable bounded PNG/JPEG/TIFF/WebP decoding, EXIF orientation,
   crop/rotate/deskew, thumbnails and conservative foreground geometry. Seven tests
