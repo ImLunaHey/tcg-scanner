@@ -48,9 +48,15 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   platform/storage work.
 
 - `scanner-images`: portable bounded PNG/JPEG/TIFF/WebP decoding, EXIF orientation,
-  crop/rotate/deskew, thumbnails and conservative foreground geometry. Six tests
+  crop/rotate/deskew, thumbnails and conservative foreground geometry. Seven tests
   cover corner mapping, both tilt directions, backing transitions and multiple
   objects. Orientation recognition and camera extraction remain in progress.
+  Embedded scanner ICC profiles are converted to sRGB with pure Rust colour
+  management. A read-only comparison of all 128 prepared B-001 captures succeeded:
+  minimum source-crop intersection-over-union 0.98898; maximum deskew difference
+  0.30398°. This checks geometry, not complete orientation/recognition parity.
+  Run `cargo run --release -p scanner-images --example compare_geometry -- MANIFEST`
+  to repeat against a saved batch.
 
 ## Validation
 

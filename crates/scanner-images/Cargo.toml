@@ -10,6 +10,7 @@ publish = false
 [dependencies]
 image.workspace = true
 imageproc.workspace = true
+moxcms.workspace = true
 scanner-types.workspace = true
 sha2.workspace = true
 
