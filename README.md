@@ -179,6 +179,10 @@ to the public internet.
 | Physical Scan/Enter button | [Button configuration](Docs/scanner-button.md) |
 | HTTP and local JSON-RPC | [HTTP API](Docs/http-api.md) · [Local API](Docs/local-api.md) |
 
+The repository includes `.codex/config.toml` and `.mcp.json` to connect agents to
+the installed Swift MCP server. See [MCP setup](Docs/mcp.md) for prerequisites,
+supported clients and scan/continue-batch tools.
+
 ## Storage and recovery
 
 The default image root is `~/Scans`. A configured SMB share is also supported;

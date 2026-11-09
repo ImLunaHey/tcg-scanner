@@ -1,4 +1,4 @@
-# Scanner MCP — milestone 4
+# Scanner MCP
 
 `scanner-mcp` is a Swift stdio server using the [official Swift MCP SDK](https://github.com/modelcontextprotocol/swift-sdk)
 (resolved version 0.12.1). Every tool calls ScannerService over its private Unix
@@ -7,21 +7,29 @@ Closing an MCP connection does not stop the service or cancel an accepted job.
 
 ## Installation and connection
 
-```sh
-# Stop an existing installation first; scan files and metadata are retained.
-Scripts/uninstall-launch-agent.sh
-Scripts/install-launch-agent.sh
-"$HOME/Library/Application Support/Scanner/bin/scanner" service-status --json
+The repository includes project-level connection settings:
 
-# Register with Codex:
-codex mcp add scanner -- "$HOME/Library/Application Support/Scanner/bin/scanner-mcp"
+- [`.codex/config.toml`](../.codex/config.toml) for Codex in a trusted checkout.
+- [`.mcp.json`](../.mcp.json) for clients that support this project configuration format.
+
+Both launch the installed signed `scanner-mcp` from the current user's
+`~/Library/Application Support/Scanner/bin/`. The small shell command expands
+`$HOME` and immediately replaces itself with the Swift executable. No username,
+access key, server address or checkout path is embedded in the configuration.
+ScannerService must already be installed and running; opening an MCP connection
+does not install, restart or scan anything.
+
+```sh
+"$HOME/Library/Application Support/Scanner/bin/scanner" service-status --json
 codex mcp get scanner --json
 ```
 
-The current machine already has this registration. Start a new Codex session to
-load it if the current session's tools have not refreshed. The official
-[Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)
-describes stdio registration and shared CLI/IDE configuration.
+Open a new agent session from this checkout to load the project configuration.
+Codex only loads project MCP settings in trusted projects; see the official
+[Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp).
+A host application may additionally filter which configured MCP servers it exposes;
+`codex mcp get` confirms configuration, not attachment to an already-running session.
+For a new installation, follow [service operations](service-operations.md).
 
 Other MCP clients should launch the absolute installed executable path, with no
 arguments for normal control. Use `--read-only` to expose only read tools, or
@@ -44,12 +52,18 @@ A generic client configuration, replacing the username with the actual account:
 
 ## Tools
 
-The server advertises 22 tools. Read-only mode advertises 17 and also rejects
-direct calls to the five state-changing tools; annotations alone are not enforcement.
+The server advertises 29 tools. Read-only mode exposes 18 read tools and rejects
+direct calls to state-changing tools; annotations alone are not enforcement.
 Each tool publishes an input schema, output schema and read/write annotations.
 
 | Tool | Access | Purpose |
 | --- | --- | --- |
+| `scanner_prepare_card` | Write | Prepare a saved card image without feeding hardware |
+| `scanner_identify_card` | Write | Identify a saved card |
+| `scanner_get_card_identification` | Read | Read recognition and review results |
+| `scanner_review_card` | Write | Record a reviewed identity, finish and condition |
+| `scanner_estimate_finish` | Write | Refresh local finish evidence |
+| `scanner_check_condition` | Write | Refresh local visible-mark checks |
 | `scanner_list_devices` | Read | Discover scanners |
 | `scanner_get_device` | Read | Readiness and configured defaults |
 | `scanner_get_capabilities` | Read | Driver capabilities and unknowns |
@@ -60,6 +74,7 @@ Each tool publishes an input schema, output schema and read/write annotations.
 | `scanner_create_profile` | Write | Create with an explicit UUID |
 | `scanner_update_profile` | Write | Update supplied fields only |
 | `scanner_start_scan` | Write, physical action | Queue a scan with an explicit request UUID |
+| `scanner_continue_batch` | Write, physical action | Add another feed to a completed batch, keeping settings and numbering |
 | `scanner_get_job` | Read | Job state, images and errors |
 | `scanner_list_jobs` | Read | Paginated job history |
 | `scanner_cancel_job` | Write | Cancel queued/active work |
@@ -81,20 +96,23 @@ status remain available. Discovery and diagnostics never initiate a scan.
 1. Discover devices, inspect capabilities, select a profile and read readiness.
    `ready` is omitted when unknown; a true result does not reserve the feeder.
 2. Have the operator confirm appropriate media is loaded before a physical scan.
-   Current scanning is ordinary A4, RGB, 8 bits per channel. Card feeding and
-   software front/back pairing are not validated or implemented at this milestone.
+   Discovery and opening this MCP connection never start a physical scan.
 3. Optionally save defaults with `scanner_set_settings` using `dpi`, `duplex`,
    `format` and optional `deviceID`. This validates and persists future defaults;
    it does not immediately write hardware properties. Busy devices reject changes.
 4. Call `scanner_start_scan` with one new `requestID` UUID for the intended scan.
    Pass either a profile UUID or `useDeviceSettings: true`, or explicit scan settings.
-   If omitted, explicit settings default to 300 DPI, simplex, PNG.
+   The service enforces 600 DPI. Defaults are simplex and PNG. For cards, use
+   `duplex: true`, `prepareCards: true` and the correct `cardLanguage` (`en` or `ko`);
+   card preparation enables overscan unless explicitly overridden through another interface.
 5. Poll `scanner_get_job` with `id`, or use events (`after`, `waitSeconds` up to 20).
    Creation is asynchronous. Check the terminal state and errors, including when
    some images were retained from a failed or cancelled job.
 6. Fetch the manifest and originals. To cancel, call `scanner_cancel_job` and poll
    until terminal; an already-feeding page may finish.
-7. A further intended scan requires fresh media readiness and a new request UUID.
+7. A further feed requires fresh media readiness and a new request UUID. Use
+   `scanner_continue_batch` with `id` and `requestID` to append to a completed batch,
+   or `scanner_start_scan` to create a new batch. See [continuing batches](continuing-batches.md).
 
 Example tool arguments (replace placeholders with real IDs):
 
@@ -105,10 +123,8 @@ Example tool arguments (replace placeholders with real IDs):
 }
 ```
 
-Reuse the **same requestID and same arguments** after a lost response. When
-retrying a request originally submitted before the PNG-default change with no
-format specified, pass `format: "tiff"` to preserve the original effective input. Changing
-inputs with that ID returns conflict; a new ID requests another physical scan.
+Reuse the **same requestID and same arguments** after a lost response. Changing
+inputs with that ID returns conflict; a new ID requests another physical feed.
 Create-profile likewise requires an explicit `id` UUID for safe retries. Profile
 updates accept a UUID or unique name; use its stable UUID when renaming.
 Queued jobs keep snapshots even when profiles/defaults are changed later.
@@ -132,7 +148,8 @@ Partial diagnostic reports can also contain errors inside successful query data.
 and `length` (default 65536, maximum 262144). Decode `base64`, verify `chunkSHA256`,
 and follow `nextOffset` until `eof`. Verify the concatenated bytes against
 `metadata.image.sha256` and `metadata.image.bytes`. No filesystem path is accepted.
-The manifest preserves driver callback order and marks side identity unknown.
+The manifest preserves driver callback order; `cardGames` provides detected
+front/back assignments and `processedImages` contains prepared copies.
 
 For a local file export, the CLI performs the same verified transfer. Use the
 original format’s extension; downloading does not convert historical TIFFs to PNG:
@@ -145,7 +162,7 @@ original format’s extension; downloading does not convert historical TIFFs to 
 ## Access and limits
 
 The server uses local stdio only; there is no TCP listener or remote authentication
-surface in this milestone. The private Unix socket enforces same-user access.
+surface. The private Unix socket enforces same-user access.
 Read-only mode restricts this adapter, not other processes running as that user.
 MCP exposes no arbitrary shell commands or arbitrary file reads. Output directories
 for scans must remain inside the service's configured storage root.
@@ -157,12 +174,13 @@ frame size limit. Use trusted local MCP clients. The service separately bounds
 its socket requests, job queue and image reads. Do not use all call slots for event
 long polling if immediate controls are needed.
 
-Only DPI, duplex and original format are configurable through these tools.
+Scan tools expose DPI, duplex, original format, profiles, card preparation and card language.
 Multifeed, paper thickness and transport safety settings cannot be changed.
-A4 300-DPI TIFF simplex/duplex and PNG duplex have physical scan evidence. Other
-workflow branches have automated fixtures, not equivalent hardware validation.
+The current service enforces 600 DPI. Card preparation, game detection, recognition,
+finish estimates and condition checks operate on saved images and preserve originals.
+Finish/condition estimates are evidence for review, not verified physical grades.
 
-The compiled MCP executable has passed a complete mock scan/cancel/download
-workflow, read-only checks against the real fi-8170, and a supervised physical
-300-DPI duplex paper scans in TIFF and PNG initiated and retrieved through MCP. Both marked
-sides and checksums were verified; see [validation evidence](milestone-4-validation.md).
+The compiled MCP executable has automated scan, continuation, cancellation,
+download and read-only integration coverage using a mock backend. Earlier physical
+paper tests are recorded in [milestone 4 evidence](milestone-4-validation.md).
+Configuring or validating this connection does not require a physical test scan.

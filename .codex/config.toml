@@ -1,0 +1,6 @@
+[mcp_servers.scanner]
+command = "/bin/sh"
+args = ["-c", 'exec "$HOME/Library/Application Support/Scanner/bin/scanner-mcp"']
+enabled = true
+startup_timeout_sec = 15
+tool_timeout_sec = 120
