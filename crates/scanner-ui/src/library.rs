@@ -1,9 +1,13 @@
+use scanner_types::images::OriginalImage;
 use scanner_types::{
     error::{Result, ScannerError},
     scan::ScanRecord,
 };
 use serde_json::Value;
-use std::path::{Component, Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 pub struct Card {
     pub sequence: u32,
@@ -32,6 +36,7 @@ pub fn read_library() -> Result<Vec<ScanRecord>> {
 }
 
 pub fn cards(record: &ScanRecord) -> Vec<Card> {
+    let record = Arc::new(record.clone());
     record
         .images
         .iter()
@@ -93,10 +98,8 @@ pub fn cards(record: &ScanRecord) -> Vec<Card> {
                     .map(str::to_owned)
                     .collect(),
                 source: ImageSource {
-                    directory: PathBuf::from(&record.output_directory),
-                    relative: image.relative_path.clone(),
-                    bytes: image.bytes,
-                    sha256: image.sha256.clone(),
+                    record: record.clone(),
+                    image: image.clone(),
                 },
             }
         })
@@ -109,64 +112,17 @@ fn field<'a>(value: &'a Value, key: &str) -> &'a str {
 
 #[derive(Clone)]
 pub struct ImageSource {
-    directory: PathBuf,
-    relative: String,
-    bytes: u64,
-    sha256: String,
+    record: Arc<ScanRecord>,
+    image: OriginalImage,
 }
 
 impl ImageSource {
     pub fn thumbnail(self) -> Result<Vec<u8>> {
-        use sha2::{Digest, Sha256};
-        use std::io::Read;
-        let invalid = || {
-            ScannerError::new(
-                "storage",
-                "Saved image is unavailable or failed its integrity check.",
-            )
-        };
-        if self.bytes > 32 * 1024 * 1024 {
-            return Err(invalid());
-        }
-        let path = image_path(&self.directory, &self.relative).ok_or_else(invalid)?;
-        let file = std::fs::File::open(path).map_err(|_| invalid())?;
-        let info = file.metadata().map_err(|_| invalid())?;
-        if !info.is_file() || info.len() != self.bytes {
-            return Err(invalid());
-        }
-        let mut bytes = Vec::new();
-        file.take(self.bytes + 1)
-            .read_to_end(&mut bytes)
-            .map_err(|_| invalid())?;
-        if bytes.len() as u64 != self.bytes
-            || format!("{:x}", Sha256::digest(&bytes)) != self.sha256
-        {
-            return Err(invalid());
-        }
+        let parent = Path::new(&self.record.output_directory)
+            .parent()
+            .ok_or_else(|| ScannerError::new("storage", "Saved batch path is invalid."))?;
+        let root = scanner_files::StorageRoot::open(parent)?;
+        let bytes = root.read_image(&self.record, &self.image, 32 * 1024 * 1024)?;
         Ok(scanner_images::thumbnail::thumbnail(&bytes, 1024, false)?.bytes)
-    }
-}
-
-fn image_path(directory: &Path, relative: &str) -> Option<PathBuf> {
-    let relative = Path::new(relative);
-    if relative
-        .components()
-        .any(|c| !matches!(c, Component::Normal(_)))
-        || relative.as_os_str().is_empty()
-    {
-        return None;
-    }
-    let root = directory.canonicalize().ok()?;
-    let path = root.join(relative).canonicalize().ok()?;
-    path.starts_with(&root).then_some(path)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn absolute_and_parent_paths_are_not_accepted() {
-        assert!(image_path(Path::new("/tmp"), "../etc/passwd").is_none());
-        assert!(image_path(Path::new("/tmp"), "/etc/passwd").is_none());
     }
 }

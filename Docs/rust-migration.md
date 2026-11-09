@@ -47,6 +47,13 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   Disk-manifest reconciliation and Windows ACL policy remain with their owning
   platform/storage work.
 
+- `scanner-files`: pinned directory access, symlink/hard-link rejection, original
+  checksum verification, bounded chunk reads, exclusive batch/image creation,
+  atomic manifest publication, immutable edits and continuation numbering. Tests
+  include same-size tampering, traversal, retained staging, duplicate captures,
+  multipage TIFF metadata and read-only access to existing originals/edits.
+  Mount-policy enforcement and Windows ACL policy remain with platform work.
+
 - `scanner-images`: portable bounded PNG/JPEG/TIFF/WebP decoding, EXIF orientation,
   crop/rotate/deskew, thumbnails and conservative foreground geometry. Seven tests
   cover corner mapping, both tilt directions, backing transitions and multiple

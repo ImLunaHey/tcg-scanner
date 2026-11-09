@@ -14,7 +14,7 @@ scanner-store.workspace = true
 scanner-images.workspace = true
 serde_json.workspace = true
 dirs.workspace = true
-sha2.workspace = true
+scanner-files.workspace = true
 
 [lints]
 workspace = true
