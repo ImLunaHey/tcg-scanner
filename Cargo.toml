@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/scanner-types", "crates/scanner-store", "crates/scanner-ui", "crates/scanner-images", "crates/scanner-recognition", "crates/scanner-files", "crates/scanner-core", "crates/scanner-catalogue", "crates/scanner-device"]
+members = ["crates/scanner-types", "crates/scanner-store", "crates/scanner-ui", "crates/scanner-images", "crates/scanner-recognition", "crates/scanner-files", "crates/scanner-core", "crates/scanner-catalogue", "crates/scanner-device", "crates/scanner-rpc"]
 
 [workspace.package]
 version = "0.1.0"
@@ -9,6 +9,7 @@ rust-version = "1.98"
 repository = "https://github.com/ImLunaHey/tcg-scanner"
 
 [workspace.dependencies]
+scanner-rpc = { path = "crates/scanner-rpc", version = "0.1.0" }
 scanner-device = { path = "crates/scanner-device", version = "0.1.0" }
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls"] }
 scanner-catalogue = { path = "crates/scanner-catalogue", version = "0.1.0" }

@@ -3745,6 +3745,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "scanner-rpc"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "scanner-core",
+ "scanner-files",
+ "scanner-store",
+ "scanner-types",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tokio-util",
+ "uuid",
+]
+
+[[package]]
 name = "scanner-store"
 version = "0.1.0"
 dependencies = [

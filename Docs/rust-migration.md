@@ -158,6 +158,17 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   read of `sv09-177` returned validated Salamence ex metadata. Other-game catalogue
   adapters and typed price conversion remain in progress.
 
+- `scanner-rpc`: transport-independent v1 JSON-RPC dispatch for device discovery,
+  inspection/settings reports, diagnostics, scan submission/status/cancellation,
+  batch continuation, job pagination, service status, events and profile CRUD.
+  Existing method aliases share the same coordinator and durable operations.
+  Requests are limited to 64 KiB, require a string/numeric ID and reject unknown
+  parameters; errors preserve structured scanner error data. Protocol tests use
+  an isolated database and controlled driver to verify malformed-request rejection,
+  profile conflicts/partial updates, submission idempotency and cancellation cleanup.
+  This crate opens no listener. Authentication, transport concurrency/body limits,
+  HTTP/CLI/MCP wiring and the remaining library/control methods are still pending.
+
 ## Validation
 
 The Rune library slice opens saved batches, searches cards and shows their latest
