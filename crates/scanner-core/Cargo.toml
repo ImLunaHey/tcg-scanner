@@ -12,6 +12,8 @@ scanner-types.workspace = true
 scanner-store.workspace = true
 scanner-files.workspace = true
 scanner-images.workspace = true
+scanner-recognition.workspace = true
+image.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
 async-trait.workspace = true
@@ -21,7 +23,6 @@ chrono.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
-image.workspace = true
 
 [lints]
 workspace = true

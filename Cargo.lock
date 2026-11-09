@@ -3617,6 +3617,7 @@ dependencies = [
  "image",
  "scanner-files",
  "scanner-images",
+ "scanner-recognition",
  "scanner-store",
  "scanner-types",
  "serde_json",

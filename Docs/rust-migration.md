@@ -55,6 +55,12 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   retry deduplication, preserved settings, closure ordering, queued cancellation,
   continuation checksums and inspection ownership. Native scanner adapters and
   the concrete card-processing pipeline are still being connected.
+  `NativeCardProcessor` now supplies the bounded in-process preparation path:
+  verified source read, colour-managed crop/deskew, Tesseract orientation and an
+  immutable PNG copy. A real B-001 original was copied into an isolated local
+  batch, prepared successfully, and its source checksum reverified unchanged.
+  Its public code-insert cue and quarter-turn agree with the saved Swift result.
+  Automatic identity/finish/condition processing still needs integration.
 
 - `scanner-files`: pinned directory access, symlink/hard-link rejection, original
   checksum verification, bounded chunk reads, exclusive batch/image creation,
