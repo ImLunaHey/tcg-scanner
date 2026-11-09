@@ -8,6 +8,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Link } from "wouter";
+import { CameraFinish } from "./CameraFinish";
 import { CameraDetails } from "./CameraDetails";
 import { Api, ApiError } from "./api";
 import { InstallCamera } from "./InstallCamera";
@@ -36,6 +37,7 @@ export type CameraResult = {
   candidates: Candidate[];
   uncataloguedCard?: { name: string; setCode: string; collectorNumber: string };
   energySymbol?: { type: string };
+  finishEstimate?: import("./Identification").FinishEstimate;
 };
 const cameraAPI = new Api("");
 const gameNames = {
@@ -204,7 +206,7 @@ export function Camera() {
       } finally {
         if (alive) {
           setBusy(false);
-          timer = setTimeout(() => void tick(), 500);
+          timer = setTimeout(() => void tick(), 200);
         }
       }
     }
@@ -375,6 +377,9 @@ export function Camera() {
               <small>LAST CARD</small>
               <strong>{title}</strong>
               <span>{subtitle}</span>
+              {result.game === "pokemon" && (
+                <CameraFinish estimate={result.finishEstimate} compact />
+              )}
             </span>
             <ChevronRight size={16} />
           </button>

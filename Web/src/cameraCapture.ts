@@ -48,7 +48,9 @@ export class SteadyCard {
         ? this.stable + 1
         : 0;
     this.previous = frame;
-    if (variance < 180 || this.stable < 2 || now - this.lastAttempt < 4500)
+    // New matched cards can advance quickly; unclear frames retry more gently.
+    const interval = this.matched ? 1200 : 2500;
+    if (variance < 180 || this.stable < 2 || now - this.lastAttempt < interval)
       return false;
     if (
       this.matched &&

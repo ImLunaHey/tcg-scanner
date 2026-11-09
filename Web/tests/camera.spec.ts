@@ -95,6 +95,7 @@ test("camera identifies automatically without saving and stops on exit", async (
         schemaVersion: 1,
         state: "matched",
         game: "pokemon",
+        finishEstimate: { state: "estimated", suggestedFinish: "holo", method: "fixture", evidence: ["Numbered catalogue printing and marker agree."], limitations: ["Check the physical card under light."] },
         candidates: [
           {
             id: "swsh3-136",
@@ -128,6 +129,7 @@ test("camera identifies automatically without saving and stops on exit", async (
   const tile = page.getByRole("button", { name: "View Furret details" });
   await expect(tile).toBeVisible();
   await expect(tile.locator("img")).toBeVisible();
+  await expect(tile.getByText("Holo", { exact: true })).toBeVisible();
   expect(
     await page.evaluate(
       () => (window as unknown as { cameraURLs: Set<string> }).cameraURLs.size,
@@ -146,6 +148,8 @@ test("camera identifies automatically without saving and stops on exit", async (
     dialog.getByText("Darkness Ablaze", { exact: true }),
   ).toBeVisible();
   await expect(dialog.getByText("136/189", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Holo", { exact: true })).toBeVisible();
+  await expect(dialog.getByText(/Camera estimate from printed markers/)).toBeVisible();
   const full = (await dialog.boundingBox())!;
   expect(full.width).toBe(screen.width);
   expect(full.height).toBe(screen.height);

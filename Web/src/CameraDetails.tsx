@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { CameraFinish } from "./CameraFinish";
 import { Modal } from "./Modal";
 import type { CameraResult } from "./Camera";
 
@@ -92,9 +93,10 @@ export function CameraDetails({
           {result.energySymbol && !result.candidates.length && (
             <p>Energy type identified; exact printing unknown.</p>
           )}
+          <CameraFinish estimate={result.finishEstimate} />
           <p className="camera-details-note">
-            Check the printed set and number. Finish and condition aren’t
-            assessed here. Nothing is saved to your collection.
+            Check the printed set and number. Condition isn’t assessed here.
+            Nothing is saved to your collection.
           </p>
           <button className="button" onClick={close}>
             Back to camera

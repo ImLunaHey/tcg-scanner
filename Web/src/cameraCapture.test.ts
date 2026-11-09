@@ -8,8 +8,8 @@ describe("camera capture", () => {
     expect(gate.ready(card, 500)).toBe(false);
     expect(gate.ready(card, 1000)).toBe(true);
     gate.accept(card, 1000);
-    expect(gate.ready(card, 5000)).toBe(false);
-    expect(gate.ready(card, 5500)).toBe(true);
+    expect(gate.ready(card, 3400)).toBe(false);
+    expect(gate.ready(card, 3500)).toBe(true);
   });
   it("does not keep submitting a matched card, but detects a replacement", () => {
     const gate = new SteadyCard();
@@ -21,6 +21,15 @@ describe("camera capture", () => {
     expect(gate.ready(next, 20000)).toBe(false);
     expect(gate.ready(next, 20500)).toBe(false);
     expect(gate.ready(next, 21000)).toBe(true);
+  });
+  it("accepts a changed matched card without waiting for the unclear-frame retry", () => {
+    const gate = new SteadyCard();
+    gate.accept(card, 0);
+    gate.matched = true;
+    const next = card.map((x) => 255 - x);
+    expect(gate.ready(next, 800)).toBe(false);
+    expect(gate.ready(next, 1000)).toBe(false);
+    expect(gate.ready(next, 1200)).toBe(true);
   });
   it("ignores uniform backgrounds and movement", () => {
     const gate = new SteadyCard();

@@ -2109,3 +2109,14 @@
   .camera-capture-area { top: 50%; }
   .camera-feedback { top: auto; bottom: 16px; left: 310px; right: 70px; }
 }
+
+.camera-finish-pill { display: inline-flex; align-self: flex-start; border: 1px solid #7776; border-radius: 20px; padding: 3px 8px; font-size: .65rem; line-height: 1.3; background: #ffffff0a; color: #aaa; }
+.camera-match-tile > span > .camera-finish-pill { font-size: .65rem; }
+.camera-finish-pill[data-state="uncertain"] { background: #ad6b1826; border-color: #bb8a4455; color: #e8c58d; }
+.camera-finish-pill[data-state="estimated"][data-finish="holo"] { background: #8d65cb33; border-color: #b394e866; color: #d9c6ff; }
+.camera-finish-pill[data-state="estimated"][data-finish="reverseHolo"] { background: #428b9433; border-color: #65a8b266; color: #a2e1e7; }
+.camera-finish-pill[data-state="estimated"][data-finish="normal"] { background: #52765c33; border-color: #89af9966; color: #b4d9c1; }
+.camera-finish-details { padding-top: 20px; border-top: 1px solid #333; }
+.camera-finish-details h2 { margin-bottom: 12px; }
+.camera-finish-details p, .camera-finish-details details { color: #aaa; font-size: .8rem; line-height: 1.6; margin-top: 12px; }
+.camera-finish-details ul { list-style: disc; padding-left: 20px; margin: 12px 0; }
