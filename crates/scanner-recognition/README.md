@@ -30,3 +30,18 @@ fronts. The remaining inputs were 15 reference-missing fronts and six backs.
 All 69 also ran through native Tesseract 5.5.1 with the installed English data;
 OCR text output is retained locally for matching comparisons. No saved scan or
 OCR text is uploaded by these engines or the benchmark.
+
+Regional OCR and orientation regression commands:
+
+```sh
+cargo run --release -p scanner-recognition --example ocr_saved -- INPUT_JSON TESSERACT_LIBRARY TESSDATA_DIRECTORY OUTPUT_JSON
+cargo run --release -p scanner-recognition --example match_saved -- CATALOGUE_JSON METADATA_DIRECTORY OUTPUT_JSON combined
+cargo run --release -p scanner-recognition --example orient_saved -- INPUT_JSON TESSERACT_LIBRARY TESSDATA_DIRECTORY ORIENTATION_JSON
+```
+
+The regional benchmark retains whole/title/footer/left/right reads independently.
+Its combined variant is an evaluation, not an automatic acceptance policy. With
+complete metadata for the evaluated candidates it yields 38 unique correct fronts,
+four ambiguous and 21 unresolved, with no incorrect unique match; all six backs
+remain unmatched. The same whole-only pass yields 17 correct fronts. Aggregate
+results are in `Tools/RecognitionBench/results-rust-2026-11-09.json`.

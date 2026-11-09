@@ -8,8 +8,10 @@ use std::path::PathBuf;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args_os().skip(1).map(PathBuf::from).collect();
-    if args.len() != 3 {
-        return Err("usage: match_saved CATALOGUE_JSON METADATA_DIRECTORY READINGS_JSON".into());
+    if !(3..=4).contains(&args.len()) {
+        return Err(
+            "usage: match_saved CATALOGUE_JSON METADATA_DIRECTORY READINGS_JSON [VARIANT]".into(),
+        );
     }
     let cards: Vec<CatalogueCard> = serde_json::from_slice(&std::fs::read(&args[0])?)?;
     let readings: Value = serde_json::from_slice(&std::fs::read(&args[2])?)?;
@@ -20,11 +22,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matcher = PokemonMatcher::new(cards, CardLanguage::English);
     let mut results = vec![];
     for case in cases {
-        let lines: Vec<RecognizedLine> = serde_json::from_value(
-            case.get("lines")
-                .unwrap_or(&case["evidence"]["lines"])
-                .clone(),
-        )?;
+        let reading = if let Some(variant) = args.get(3) {
+            &case["variants"][variant.to_str().ok_or("Invalid variant")?]
+        } else {
+            case.get("lines").unwrap_or(&case["evidence"]["lines"])
+        };
+        let lines: Vec<RecognizedLine> = serde_json::from_value(reading.clone())?;
         let mut matches = vec![];
         let mut missing = vec![];
         for rank in matcher.rank(&lines).into_iter().take(8) {

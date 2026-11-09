@@ -92,6 +92,16 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   17 unique correct front matches, eight ambiguous and 38 unresolved; all six
   backs remain unmatched. Five inputs need additional candidate metadata, so this
   is an incomplete catalogue evaluation, not a final coverage figure.
+  A subsequent regional pass with the missing candidate metadata fetched yields
+  38 unique correct fronts, four ambiguous and 21 unresolved, with zero incorrect
+  unique matches and all six backs unmatched. Whole-only on the same complete
+  metadata yields 17 correct, 12 ambiguous and 34 unresolved; regional-only yields
+  29 correct, three ambiguous and 31 unresolved. These are saved upright fixtures,
+  not a claim of parity with the 62 correct native baseline. Readings retain their
+  separate pass provenance and full-image box coordinates. Native orientation now
+  combines all four OCR directions with conservative back-layout, logo, Energy
+  and public code-insert cues; ambiguous direction remains unverified. All six
+  saved Pokémon back layouts pass under all four input rotations.
 
 ## Validation
 

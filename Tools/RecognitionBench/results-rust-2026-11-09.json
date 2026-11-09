@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-09",
+  "engine": "Rust in-process Tesseract 5.5.1",
+  "dataset": {
+    "fixtures": 69,
+    "fronts": 63,
+    "backs": 6,
+    "inputSHA256": "1b94374e2b478e60f96f8dce30afaefd4203e224970039bdac98533a4e3bc51e"
+  },
+  "englishModelSHA256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+  "ocrSeconds": 25.585104625,
+  "matching": "Rust PokemonMatcher with complete metadata for top-eight candidates; at most five surviving candidates",
+  "variants": {
+    "whole": {
+      "counts": {
+        "unresolved": 34,
+        "correct": 17,
+        "ambiguous": 12,
+        "backClear": 6
+      },
+      "wrong": []
+    },
+    "regional": {
+      "counts": {
+        "unresolved": 31,
+        "correct": 29,
+        "ambiguous": 3,
+        "backClear": 6
+      },
+      "wrong": []
+    },
+    "combined": {
+      "counts": {
+        "unresolved": 21,
+        "correct": 38,
+        "ambiguous": 4,
+        "backClear": 6
+      },
+      "wrong": []
+    }
+  },
+  "limitations": [
+    "Saved upright fixtures only for OCR matching",
+    "No correctness guarantee outside this dataset",
+    "Missing-reference DINOv3 candidates remain unverified",
+    "Native macOS run; Linux and Windows not executed"
+  ]
+}
