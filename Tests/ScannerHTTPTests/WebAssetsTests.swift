@@ -12,11 +12,14 @@ import ScannerAPI
     defer { try? FileManager.default.removeItem(at: root) }
     try Data("<html>Sign in</html>".utf8).write(to: root.appendingPathComponent("index.html"))
     try Data("console.log('fixture')".utf8).write(to: root.appendingPathComponent("assets/main.js"))
+    try Data("{}".utf8).write(to: root.appendingPathComponent("manifest.webmanifest"))
+    try Data("// worker".utf8).write(to: root.appendingPathComponent("sw.js"))
+    try Data([1, 2, 3]).write(to: root.appendingPathComponent("assets/camera-192.png"))
     var config = try GatewayConfiguration(); config.authorities.insert("localhost")
     let gateway = try ScannerGateway(socketPath: "/tmp/no-scanner-web-test", token: httpTestToken, configuration: config, webAssets: WebAssets(directory: root.path))
     let app = Application(responder: gateway)
     try await app.test(.router) { client in
-        for route in ["/", "/index.html", "/assets/main.js", "/inventory", "/library", "/profiles", "/scanner",
+        for route in ["/camera", "/manifest.webmanifest", "/sw.js", "/assets/camera-192.png", "/", "/index.html", "/assets/main.js", "/inventory", "/library", "/profiles", "/scanner",
                       "/batches/5F2213C2-7E6E-41E1-9A9B-C756613A1A15",
                       "/batches/5F2213C2-7E6E-41E1-9A9B-C756613A1A15?card=2",
                       "/inventory?search=Great+Tusk", "/inventory/sets?search=Prismatic",

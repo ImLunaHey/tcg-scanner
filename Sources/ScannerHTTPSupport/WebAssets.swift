@@ -26,10 +26,12 @@ public struct WebAssets: Sendable {
             case "js": type = "text/javascript; charset=utf-8"
             case "css": type = "text/css; charset=utf-8"
             case "svg": type = "image/svg+xml"
+            case "webmanifest" where relative == "manifest.webmanifest": type = "application/manifest+json"
+            case "png": type = "image/png"
             case "woff2": type = "font/woff2"
             default: throw ScannerError("configuration", "Web root contains an unexpected file type.")
             }
-            guard relative == "index.html" || relative == "favicon.svg" || relative.hasPrefix("assets/"), files.count < 128 else {
+            guard relative == "index.html" || ["favicon.svg", "manifest.webmanifest", "sw.js"].contains(relative) || relative.hasPrefix("assets/"), files.count < 128 else {
                 throw ScannerError("configuration", "Web root contains unexpected or excessive assets.")
             }
             let fd = open(url.path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK)
@@ -54,7 +56,7 @@ public struct WebAssets: Sendable {
             || (path.components.count == 3 && path.components.prefix(2) == ["inventory", "sets"]
                 && path.components[2].range(of: #"^[A-Za-z0-9][A-Za-z0-9.+_-]{0,255}$"#, options: .regularExpression) != nil)
         let batchRoute = path.components.count == 2 && path.components[0] == "batches" && UUID(uuidString: path.components[1]) != nil
-        let appRoute = inventoryRoute || batchRoute || ["/library", "/profiles", "/scanner"].contains(key)
+        let appRoute = inventoryRoute || batchRoute || ["/library", "/profiles", "/scanner", "/camera"].contains(key)
         guard let asset = files[key] ?? (appRoute ? files["/index.html"] : nil) else { return nil }
         guard request.method == .get || request.method == .head else { throw GatewayError(405, "methodNotAllowed", "Web assets are read-only.") }
         guard request.headers[.transferEncoding] == nil, request.headers[.contentLength] == nil || request.headers[.contentLength] == "0" else {
@@ -69,5 +71,5 @@ public struct WebAssets: Sendable {
     }
     // WebKit reports renderer-managed style attributes under style-src-attr.
     // Permit attributes only; stylesheets and executable code remain same-origin.
-    static let contentPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' blob:; connect-src 'self'; worker-src 'self'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+    static let contentPolicy = "default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' blob:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; media-src 'self' blob:; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 }

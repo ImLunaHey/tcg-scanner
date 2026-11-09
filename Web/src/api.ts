@@ -44,7 +44,7 @@ export class Api {
     private token: string,
     private expired: () => void = () => {},
   ) {}
-  async response(path: string, options: RequestInit = {}, authenticated = true): Promise<Response> {
+  async response(path: string, options: RequestInit = {}, authenticated = true, timeoutMs = 30_000): Promise<Response> {
     const response = await fetch(`/api/v1/${path}`, {
       ...options,
       credentials: "omit",
@@ -55,8 +55,8 @@ export class Api {
         ...options.headers,
       },
       signal: options.signal
-        ? AbortSignal.any([options.signal, AbortSignal.timeout(30_000)])
-        : AbortSignal.timeout(30_000),
+        ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)])
+        : AbortSignal.timeout(timeoutMs),
     }).catch((error) => {
       if (error.name === "AbortError") throw error;
       throw new ApiError(

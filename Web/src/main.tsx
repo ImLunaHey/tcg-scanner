@@ -39,3 +39,8 @@ createRoot(document.getElementById("root")!).render(
     </AppBoundary>
   </StrictMode>,
 );
+
+// Network-only worker: no app-managed image, API or camera cache.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  void navigator.serviceWorker.register("/sw.js").catch(() => { /* Browser installation is optional. */ });
+}

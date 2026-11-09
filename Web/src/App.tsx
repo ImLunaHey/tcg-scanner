@@ -1,6 +1,7 @@
 import { Component, useState, type ReactNode } from "react";
 import { Link, Route, Switch, useLocation } from "wouter";
 import {
+  Camera as CameraIcon,
   ArrowRight,
   FolderOpen,
   Boxes,
@@ -20,6 +21,7 @@ import { BatchDetail, Library } from "./Library";
 import { Inventory } from "./Inventory";
 import { Profiles } from "./Profiles";
 import { Scanner } from "./Scanner";
+import { Camera } from "./Camera";
 import { Brand, ErrorNote } from "./ui";
 
 function Login() {
@@ -152,6 +154,7 @@ function Workspace() {
   }
   const navigation = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/camera", label: "Camera", icon: CameraIcon },
     { href: "/library", label: "Library", icon: FolderOpen },
     { href: "/inventory", label: "Inventory", icon: Boxes },
     { href: "/profiles", label: "Profiles", icon: SlidersHorizontal },
@@ -233,6 +236,7 @@ function Workspace() {
         <main id="main-content" tabIndex={-1} className="main-content">
           <Switch>
             <Route path="/" component={Dashboard} />
+            <Route path="/camera" component={Camera} />
             <Route path="/library" component={Library} />
             <Route path="/inventory"><Inventory /></Route>
             <Route path="/inventory/sets"><Inventory view="sets" /></Route>

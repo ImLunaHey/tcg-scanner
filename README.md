@@ -23,6 +23,8 @@ original images. The desktop app does not need to be open.
   previews and exports, backed by SQLite and files on disk.
 - **Remote control:** authenticated HTTP API, live events and a responsive React
   dashboard with system light/dark appearance and image zoom.
+- **Mobile camera lookup:** installable [camera PWA](Docs/camera-scanner.md) that
+  identifies a card held in view without creating scans, batches or inventory entries.
 - **Store integration:** optional send/resync to a separate Store application's
   staging inbox, preserving batch/card references for review before approval.
 
