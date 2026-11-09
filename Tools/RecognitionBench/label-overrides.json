@@ -1,0 +1,22 @@
+{
+  "gap-002": {
+    "expected": "me06-026",
+    "kind": "positive",
+    "labelSource": "visually checked printed name/number; newly available Delta Reign metadata"
+  },
+  "gap-004": {
+    "expected": "me06-113",
+    "kind": "positive",
+    "labelSource": "visually checked printed name/number; newly available Delta Reign metadata"
+  },
+  "gap-006": {
+    "expected": "me06-061",
+    "kind": "positive",
+    "labelSource": "visually checked printed name/number; newly available Delta Reign metadata"
+  },
+  "gap-008": {
+    "expected": "me06-070",
+    "kind": "positive",
+    "labelSource": "visually checked printed name/number; newly available Delta Reign metadata"
+  }
+}
