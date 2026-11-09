@@ -66,6 +66,13 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   is not an acceptance rule. Whole-image native Tesseract ran on all 69 inputs;
   this run does not establish text-matching accuracy. Catalogue evidence, regional
   OCR and packaging the native libraries remain in progress.
+  The Pokémon evidence matcher now preserves title/number/set-total checks, promo
+  prefixes, Energy set codes, Korean class/set constraints and independent footer
+  agreement. All candidates from the saved native baseline survive the ported
+  rules. With cached metadata, native Tesseract's first whole-image pass yields
+  17 unique correct front matches, eight ambiguous and 38 unresolved; all six
+  backs remain unmatched. Five inputs need additional candidate metadata, so this
+  is an incomplete catalogue evaluation, not a final coverage figure.
 
 ## Validation
 
