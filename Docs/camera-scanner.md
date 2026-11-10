@@ -10,10 +10,15 @@ implementation where explicitly stated.
 Open `/camera` on the scanner's HTTPS address. No login is required. Tap
 **Start camera**, and allow camera access. Hold one card front
 inside the guide, with all four corners visible against a contrasting background.
-The camera fills the viewport. After roughly 0.4 seconds of steady video, the page
+The camera fills the viewport. After roughly 0.2 seconds of steady video, the page
 automatically sends a JPEG to ScannerService on the Mac. The last identified card
 appears in a compact bottom-left tile. Tap it for a full-screen image and catalogue
-details; lookups pause until the details close. The preview uses the captured
+details; lookups pause until the details close. Sampling continues every 100 ms while a lookup runs. The status shows frames
+checked, lookup count and elapsed recognition time; it does not invent server
+processing stages. Only one lookup is active, and a response for a changed view
+is discarded before the newest steady frame is submitted.
+
+The preview uses the captured
 camera image, held in browser memory, rather than saving it to scan storage. Move
 to the next card or tap **Check again** to repeat a lookup.
 
@@ -47,7 +52,7 @@ remain blocked until storage validation passes; there is no local fallback.
   navigation, loss of connectivity or backgrounding. Returning to the page
   requires tapping Start again. Late responses from a stopped camera are ignored.
 - A steady matched card is not repeatedly submitted. Changed matched cards can
-  advance after a 1.2-second minimum interval; unclear frames retry after 2.5 seconds, with only one request in flight per page and one camera
+  advance after a 1.2-second minimum interval; unclear frames can retry after 1.2 seconds, with only one request in flight per page and one camera
   identification at a time across the service. Hardware capture and automatic
   batch identification take priority when already active.
 - English uses the existing Pokémon, Yu-Gi-Oh! and Star Wars: Unlimited matchers.

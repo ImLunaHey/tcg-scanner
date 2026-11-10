@@ -435,3 +435,49 @@ for (const behavior of ["reject", "ignored"] as const) {
     await expect(flash).toBeEnabled();
   });
 }
+
+test("sampling continues during a slow lookup and stale matches are discarded", async ({
+  page,
+}) => {
+  await setup(page);
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requests = 0;
+  await page.route("**/api/v1/camera/identify", async (route) => {
+    requests++;
+    if (requests === 1) {
+      await pending;
+      await route.fulfill({
+        json: {
+          state: "matched",
+          candidates: [
+            { id: "old", name: "Old card", localID: "1", setName: "Fixture" },
+          ],
+        },
+      });
+    } else await route.fulfill({ json: { state: "noMatch", candidates: [] } });
+  });
+  await page.goto("/camera");
+  await page.getByRole("button", { name: "Start camera", exact: true }).click();
+  await expect.poll(() => requests).toBe(1);
+  const activity = page.getByTestId("camera-activity");
+  const count = async () =>
+    Number((await activity.innerText()).match(/^(\d+)/)?.[1]);
+  await expect(activity).toContainText("waiting for recognition");
+  const first = await count();
+  await expect.poll(count).toBeGreaterThan(first + 5);
+  expect(requests).toBe(1);
+  await page.evaluate(() => {
+    (window as unknown as { cameraVariant: number }).cameraVariant = 1;
+  });
+  const changedAt = await count();
+  await expect.poll(count).toBeGreaterThan(changedAt + 5);
+  release();
+  await expect.poll(() => requests).toBeGreaterThanOrEqual(2);
+  await expect(
+    page.getByRole("button", { name: "View Old card details" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Stop camera", exact: true }).click();
+});

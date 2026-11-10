@@ -17,6 +17,7 @@ import { CameraDetails } from "./CameraDetails";
 import { Api, ApiError } from "./api";
 import { InstallCamera } from "./InstallCamera";
 import {
+  difference,
   cameraJPEG,
   cameraSnapshot,
   cameraViewport,
@@ -98,15 +99,26 @@ export function Camera() {
   const [error, setError] = useState<string>();
   const [result, setResult] = useState<CameraResult>();
   const [busy, setBusy] = useState(false);
+  const [activity, setActivity] = useState("");
   const reset = useRef(() => {});
   useEffect(() => {
     if (!active) return;
+    setActivity("");
     let alive = true,
       stream: MediaStream | undefined,
       timer: ReturnType<typeof setTimeout> | undefined;
     const controller = new AbortController();
     const gate = new SteadyCard();
+    let inFlight = false,
+      started = 0,
+      frames = 0,
+      attempts = 0;
+    let latest: Uint8Array | undefined;
+    let generation = 0;
+    let lastProgress = 0;
+    let lastDuration = "";
     reset.current = () => {
+      generation++;
       gate.submitted = undefined;
       gate.matched = false;
       gate.lastAttempt = -Infinity;
@@ -123,7 +135,82 @@ export function Camera() {
     }
     document.addEventListener("visibilitychange", stopWhenHidden);
     window.addEventListener("offline", stopWhenHidden);
-    async function tick() {
+    async function identify(
+      captured: HTMLCanvasElement,
+      submitted: Uint8Array,
+      version: number,
+    ) {
+      try {
+        const base64 = await cameraJPEG(captured);
+        const snapshot = await cameraSnapshot(captured);
+        if (!alive) return;
+        const response = await cameraAPI.response(
+          "camera/identify",
+          {
+            method: "POST",
+            signal: controller.signal,
+            body: JSON.stringify({ base64, language }),
+          },
+          false,
+          75_000,
+        );
+        const value: CameraResult = await response.json();
+        if (!alive || detailsOpen.current || version !== generation) return;
+        if (latest && difference(submitted, latest) >= 12) {
+          gate.submitted = undefined;
+          gate.lastAttempt = -Infinity;
+          setPhase("steady");
+          setStatus("View changed · checking the newest frame next");
+          return;
+        }
+        gate.matched = value.state === "matched" || value.state === "codeCard";
+        if (!gate.matched)
+          gate.lastAttempt = Math.max(gate.lastAttempt, Date.now() - 500);
+        if (
+          value.candidates.length ||
+          value.uncataloguedCard ||
+          value.energySymbol ||
+          value.state === "codeCard"
+        ) {
+          if (previewURL.current) URL.revokeObjectURL(previewURL.current);
+          previewURL.current = snapshot
+            ? URL.createObjectURL(snapshot)
+            : undefined;
+          setPreview(previewURL.current);
+          setResult(value);
+        }
+        setPhase(gate.matched ? "detected" : "retry");
+        setStatus(
+          value.state === "matched"
+            ? `${value.candidates[0]?.name || "Card found"} · ready for the next card`
+            : value.state === "noCard"
+              ? "Keep all four corners inside the guide"
+              : value.state === "cardBack"
+                ? "Turn the card over to show its front"
+                : value.state === "codeCard"
+                  ? "Pokémon LIVE code card"
+                  : value.state === "ambiguous"
+                    ? "Several possible matches · try closer, with less glare"
+                    : "No match yet · try closer, with less glare",
+        );
+      } catch (e) {
+        if (!alive || version !== generation || detailsOpen.current) return;
+        setError(
+          e instanceof ApiError && e.kind === "busy"
+            ? "Recognition is busy. Still watching; will retry automatically."
+            : cameraMessage(e),
+        );
+        gate.lastAttempt =
+          Date.now() + (e instanceof ApiError && e.status === 429 ? 60_000 : 0);
+        setPhase("retry");
+        setStatus("Try closer, with more light and less glare");
+      } finally {
+        inFlight = false;
+        lastDuration = `${((Date.now() - started) / 1000).toFixed(1)}s last lookup`;
+        if (alive) setBusy(false);
+      }
+    }
+    function tick() {
       if (!alive) return;
       try {
         const v = video.current;
@@ -156,56 +243,41 @@ export function Camera() {
             canvas.height,
           );
           const sample = sampleCard(canvas);
-          if (gate.ready(sample, Date.now())) {
+          latest = sample;
+          frames++;
+          const now = Date.now();
+          const ready = gate.ready(sample, now);
+          if (now - lastProgress >= 500) {
+            lastProgress = now;
+            setActivity(
+              `${frames} frames checked · ${attempts} lookups${inFlight ? ` · ${((now - started) / 1000).toFixed(1)}s waiting for recognition` : lastDuration ? ` · ${lastDuration}` : ""}`,
+            );
+          }
+          if (inFlight) {
+            setPhase("identifying");
+            setStatus(
+              gate.observation === "moving"
+                ? "View moving · still watching while recognition finishes"
+                : gate.observation === "searching"
+                  ? "Low detail in view · improve lighting or move closer"
+                  : now - started > 8000
+                    ? "Recognition is taking longer · keep the card clear and avoid glare"
+                    : "Reading the captured frame · still watching the live view",
+            );
+          } else if (ready) {
             gate.accept(sample, Date.now());
             setBusy(true);
             setError(undefined);
             setPhase("identifying");
-            setStatus("Checking identity and finish on your Mac");
-            const base64 = await cameraJPEG(canvas);
-            const snapshot = await cameraSnapshot(canvas);
-            if (!alive) return;
-            const response = await cameraAPI.response(
-              "camera/identify",
-              {
-                method: "POST",
-                signal: controller.signal,
-                body: JSON.stringify({ base64, language }),
-              },
-              false,
-              75_000,
-            );
-            const value: CameraResult = await response.json();
-            if (!alive || detailsOpen.current) return;
-            gate.matched =
-              value.state === "matched" || value.state === "codeCard";
-            if (
-              value.candidates.length ||
-              value.uncataloguedCard ||
-              value.energySymbol ||
-              value.state === "codeCard"
-            ) {
-              if (previewURL.current) URL.revokeObjectURL(previewURL.current);
-              previewURL.current = snapshot
-                ? URL.createObjectURL(snapshot)
-                : undefined;
-              setPreview(previewURL.current);
-              setResult(value);
-            }
-            setPhase(gate.matched ? "detected" : "retry");
-            setStatus(
-              value.state === "matched"
-                ? `${value.candidates[0]?.name || "Card found"} · ready for the next card`
-                : value.state === "noCard"
-                  ? "Keep all four corners inside the guide"
-                  : value.state === "cardBack"
-                    ? "Turn the card over to show its front"
-                    : value.state === "codeCard"
-                      ? "Pokémon LIVE code card"
-                      : value.state === "ambiguous"
-                        ? "Several possible matches · try closer, with less glare"
-                        : "No match yet · try closer, with less glare",
-            );
+            setStatus("Sending a clear frame for recognition");
+            inFlight = true;
+            started = Date.now();
+            attempts++;
+            const captured = document.createElement("canvas");
+            captured.width = canvas.width;
+            captured.height = canvas.height;
+            captured.getContext("2d")!.drawImage(canvas, 0, 0);
+            void identify(captured, sample, generation);
           } else if (gate.observation === "searching") {
             setPhase("searching");
             setStatus("Place one card inside the guide");
@@ -229,8 +301,7 @@ export function Camera() {
         setStatus("Hold steady to retry");
       } finally {
         if (alive) {
-          setBusy(false);
-          timer = setTimeout(() => void tick(), 200);
+          timer = setTimeout(tick, 100);
         }
       }
     }
@@ -415,6 +486,9 @@ export function Camera() {
                     }
                   </strong>
                   <small>{status}</small>
+                  <small aria-live="off" data-testid="camera-activity">
+                    {activity}
+                  </small>
                 </span>
               </div>
             )

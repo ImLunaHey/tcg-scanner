@@ -51,7 +51,7 @@ export class SteadyCard {
         : 0;
     this.previous = frame;
     // New matched cards can advance quickly; unclear frames retry more gently.
-    const interval = this.matched ? 1200 : 2500;
+    const interval = 1200;
     this.observation =
       variance < 180
         ? "searching"

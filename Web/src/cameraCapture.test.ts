@@ -10,9 +10,9 @@ describe("camera capture", () => {
     expect(gate.ready(card, 1000)).toBe(true);
     expect(gate.observation).toBe("ready");
     gate.accept(card, 1000);
-    expect(gate.ready(card, 3400)).toBe(false);
+    expect(gate.ready(card, 2100)).toBe(false);
     expect(gate.observation).toBe("waiting");
-    expect(gate.ready(card, 3500)).toBe(true);
+    expect(gate.ready(card, 2200)).toBe(true);
   });
   it("does not keep submitting a matched card, but detects a replacement", () => {
     const gate = new SteadyCard();
