@@ -1,4 +1,5 @@
 mod commands;
+mod condition;
 mod editing;
 mod editing_view;
 pub use editing_view::panel as editing_panel;

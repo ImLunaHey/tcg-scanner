@@ -232,6 +232,7 @@ pub fn review_panel(s: &State, t: tok::Theme) -> El {
     panel
         .child(assessment(s, t, ready))
         .child(review_buttons(t, ready, selected.is_some()))
+        .child(super::condition::panel(s, t))
 }
 fn assessment(s: &State, t: tok::Theme, ready: bool) -> El {
     row()

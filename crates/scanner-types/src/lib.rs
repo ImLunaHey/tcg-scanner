@@ -2,6 +2,7 @@
 //! Unknown additive metadata survives a read/write cycle during migration.
 pub mod cards;
 pub mod catalogue;
+pub mod condition;
 pub mod device;
 pub mod error;
 pub mod images;

@@ -18,6 +18,29 @@ fn seed(h: &Harness, job: Uuid) -> Uuid {
     id
 }
 #[tokio::test]
+async fn condition_route_requires_authentication_and_never_checks_an_unknown_game() {
+    let h = Harness::new();
+    let (job, _) = h.saved();
+    let id = seed(&h, job);
+    let path = format!("/api/v1/images/{job}:1/condition-check");
+    let request = json!({"identificationID":id});
+    let denied = h
+        .send(h.request("POST", &path, Body::from(request.to_string()), false))
+        .await;
+    assert_eq!(denied.status(), 401);
+    let response = response_json(h.call("POST", &path, request).await).await;
+    assert_eq!(response["error"]["kind"], "unsupportedGame");
+    let invalid = h
+        .call(
+            "POST",
+            &path,
+            json!({"identificationID":id,"path":"untrusted"}),
+        )
+        .await;
+    assert_eq!(invalid.status(), 400);
+    h.engine.shutdown().await;
+}
+#[tokio::test]
 async fn authenticated_rest_reviews_share_rpc_state_and_preserve_originals_and_evidence() {
     let h = Harness::new();
     let (job, bytes) = h.saved();

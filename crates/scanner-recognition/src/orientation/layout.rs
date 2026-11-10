@@ -1,7 +1,7 @@
 use image::{RgbImage, imageops};
 
 /// Colour/layout is supporting evidence only; the caller must corroborate logos.
-pub(super) fn pokemon(image: &RgbImage) -> Option<u8> {
+pub(crate) fn pokemon(image: &RgbImage) -> Option<u8> {
     let small = crate::preprocess::thumbnail(image, 256);
     let matches: Vec<_> = (0..4)
         .filter(|&turns| pokemon_upright(&rotate(&small, turns)))

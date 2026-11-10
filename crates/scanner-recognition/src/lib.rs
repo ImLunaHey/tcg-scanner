@@ -1,3 +1,4 @@
+pub mod condition;
 pub mod embedding;
 pub mod matching;
 pub mod ocr;

@@ -46,6 +46,9 @@ impl Gateway {
                 .identification_route(head, path, job, sequence, body)
                 .await;
         }
+        if tail == ["condition-check"] && head.method == "POST" {
+            return self.condition_route(path, job, sequence, body).await;
+        }
         if head.method == "POST" && tail == ["edits"] {
             path.only(&[])?;
             only(&body, &["id", "crop", "quarterTurns", "deskewDegrees"])?;

@@ -395,3 +395,29 @@ Eleven UI tests, native/wasm strict Clippy and the structure audit pass.
 The PR now runs pinned Rust 1.98.0 CI on macOS, Linux and Windows and builds the
 Rune browser WebAssembly target. Native jobs load simulated SANE/TWAIN libraries;
 these exercise driver contracts without implying physical scanner validation.
+
+The first CI run compiled every target. macOS and WebAssembly passed; Linux
+exposed directory fsync on capability `O_PATH` handles, and Windows exposed private
+state creation/ownership assumptions. Directory sync now opens the pinned directory
+for reading. Windows creates state with a protected, inheritable owner/SYSTEM/admin
+ACL in the native create operation and accepts privileged default owners only when
+the DACL remains private. The fixes are undergoing another native CI run.
+
+Native condition analysis now follows the existing blue-back visible-mark scope:
+bounded sRGB pixels, exclusion of boundary-connected backing, border components,
+rotation-consistent normalized regions and at most 24 findings. It never sets a
+selling grade. The service records observations automatically even when catalogue
+recognition fails, and offers `images.checkCondition` through RPC, authenticated
+REST (`condition-check`), MCP and Rune. Source SHA/identification IDs are checked;
+manual review fields and unrelated evidence survive repeated checks.
+
+The read-only B-001 run checked all 47 prepared Pokémon backs and excluded all 81
+front/code sides, finding one candidate border mark. Removing preparation hints
+produced the same 47/81 split through colour/layout evidence. The aggregate is in
+`Tools/RecognitionBench/results-condition-2026-11-10.json`; these observations are
+not independent confirmation of physical wear. Reproduce with
+`cargo run -p scanner-core --example condition_saved -- MANIFEST`.
+Saved Swift observations also flagged a tiny region on sequence 3; native analysis
+did not reproduce it with area, nearest, triangle, Catmull-Rom, Gaussian or Lanczos3
+resampling. The finding on sequence 51 agrees in location. Classification parity
+is established on this fixture; identical small-mark sensitivity is not.

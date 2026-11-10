@@ -187,6 +187,7 @@ impl Engine {
             }
         }
         pending.completed_at = Some(chrono::Utc::now());
+        self.enrich_condition(record, &mut pending).await;
         pending
     }
 }

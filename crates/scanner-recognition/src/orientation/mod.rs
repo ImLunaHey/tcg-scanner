@@ -4,6 +4,7 @@ mod layout;
 mod text;
 use crate::ocr::{RecognizedLine, Tesseract};
 use image::{RgbImage, imageops};
+pub(crate) use layout::pokemon as pokemon_back_layout;
 use scanner_types::error::{Result, ScannerError};
 use serde::Serialize;
 
