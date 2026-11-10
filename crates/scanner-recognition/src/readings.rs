@@ -44,6 +44,28 @@ pub(crate) fn read_options(
             _ => image.clone(),
         };
         let readings = tesseract.read_card(&rotated)?;
+        if game == CardGame::Pokemon
+            && readings.whole.iter().chain(&readings.title).any(|l| {
+                l.y > 0.8
+                    && l.x < 0.7
+                    && matches!(
+                        l.text
+                            .chars()
+                            .filter(|c| c.is_alphabetic())
+                            .flat_map(char::to_uppercase)
+                            .collect::<String>()
+                            .as_str(),
+                        "ENERGY" | "BASICENERGY" | "기본에너지" | "에너지"
+                    )
+            })
+        {
+            let mut refined = readings.whole.clone();
+            refined.extend(tesseract.read_energy_heading(&rotated)?);
+            results.push(Reading {
+                turns,
+                lines: refined,
+            });
+        }
         if game == CardGame::Yugioh {
             results.push(Reading {
                 turns,

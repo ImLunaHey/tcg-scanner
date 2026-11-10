@@ -1,5 +1,32 @@
 # Energy type from the corner symbol
 
+## Portable Rust implementation
+
+`scanner_recognition::symbols::energy` now owns the same bounded ink-shape
+algorithm in Rust. Its compiled reference masks are byte-for-byte transcriptions
+of the existing glyph and printed-symbol references described below. The service
+combines whole-card body text with regional title OCR before accepting an Energy
+heading, so regional cropping cannot hide Special Energy rules. Unnumbered
+Energy results return before any catalogue access; numbered cards still require
+the ordinary printing checks.
+
+On 10 November 2026, the Rust pixel detector reproduced all nine saved Energy
+fixtures (two Psychic, one Metal, six Fire). Covering the small corner removed
+the evidence in all nine cases. This tests saved-image shape parity, not accuracy
+across every Energy printing. Run the opt-in Rust test with
+`SCANNER_ENERGY_FIXTURES` pointing to a private JSON array of
+`{name,path,lines,turns,id}` records; no private scans are committed or uploaded.
+
+The fresh OCR test accepts `SCANNER_ENERGY_RECOGNITION_IMAGE`,
+`SCANNER_TESSERACT_LIBRARY` and `SCANNER_TESSERACT_DATA`, rotates the saved Psychic
+front four ways and substitutes a catalogue transport that fails on any request.
+All four rotations passed with Tesseract 5.5.1 on 10 November 2026. A bounded,
+downsampled title retry resolves the stylized heading when whole-card OCR is weak;
+the same 0.7 heading threshold remains. Printed identifiers require readable
+footer text, excluding low-confidence digit artifacts in the central artwork.
+
+## Original detector and evidence contract
+
 `EnergySymbolDetector` identifies basic Energy types locally from the small
 top-right printed symbol. It does not use background colour, the central artwork,
 the batch number, or a hand-assigned card identity.

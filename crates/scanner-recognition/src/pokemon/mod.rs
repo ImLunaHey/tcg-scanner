@@ -1,5 +1,6 @@
 //! Native OCR and conservative catalogue suggestions. No automatic confirmation.
 mod candidates;
+mod energy;
 mod printed;
 mod supplement;
 use crate::matching::{PokemonMatcher, footer_orientation_score};
@@ -54,7 +55,7 @@ impl PokemonRecognizer {
         let permit = self.workers.clone().acquire_owned().await.map_err(error)?;
         let library = self.library.clone();
         let data = self.data.clone();
-        let (readings, bytes, permit) = tokio::task::spawn_blocking(move || {
+        let (readings, energy, bytes, permit) = tokio::task::spawn_blocking(move || {
             let result = readings::read_options(
                 &bytes,
                 &library,
@@ -63,11 +64,22 @@ impl PokemonRecognizer {
                 scanner_types::cards::CardGame::Pokemon,
                 options,
             );
-            (result, bytes, permit)
+            let energy = result.as_ref().ok().and_then(|r| energy::read(&bytes, r));
+            (result, energy, bytes, permit)
         })
         .await
         .map_err(error)?;
-        let readings = readings?;
+        let mut readings = readings?;
+        let energy = match energy {
+            Some(energy::ReadingSymbol {
+                unnumbered: Some(evidence),
+                ..
+            }) => return Ok(evidence),
+            other => other,
+        };
+        if let Some(energy) = &energy {
+            readings.retain(|r| r.turns == energy.turns);
+        }
         if readings.iter().all(|r| r.lines.is_empty()) {
             return Ok(RecognitionEvidence {
                 warnings: vec!["No readable card text. Select the front image.".into()],
@@ -78,7 +90,12 @@ impl PokemonRecognizer {
             CardLanguage::English => &self.english,
             CardLanguage::Korean => &self.korean,
         };
-        let evidence = resolve(readings, language, catalogue).await?;
+        let mut evidence = resolve(readings, language, catalogue).await?;
+        if let Some(energy) = energy {
+            evidence
+                .extensions
+                .insert("energySymbol".into(), serde_json::json!(energy.symbol));
+        }
         let (library, data) = (self.library.clone(), self.data.clone());
         tokio::task::spawn_blocking(move || {
             let _permit = permit;

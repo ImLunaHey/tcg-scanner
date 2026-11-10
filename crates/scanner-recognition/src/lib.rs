@@ -10,6 +10,7 @@ pub mod orientation;
 mod preprocess;
 
 pub mod pokemon;
+pub mod symbols;
 
 pub mod star_wars;
 pub mod yugioh;

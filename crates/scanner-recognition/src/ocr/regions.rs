@@ -61,6 +61,10 @@ impl Tesseract {
     fn read_region(&mut self, image: &RgbImage, region: [f64; 4]) -> Result<Vec<RecognizedLine>> {
         self.read_region_with_mode(image, region, false)
     }
+    /// A tight title pass excludes the icon and most textured Energy artwork.
+    pub(crate) fn read_energy_heading(&mut self, image: &RgbImage) -> Result<Vec<RecognizedLine>> {
+        self.read_scaled_region(image, [0.035, 0.03, 0.60, 0.055], true, 400, false)
+    }
     fn read_region_with_mode(
         &mut self,
         image: &RgbImage,
