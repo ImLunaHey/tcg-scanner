@@ -511,3 +511,11 @@ cannot send. Review links use native platform handling on macOS/Windows and an
 in-process OpenURI desktop-portal request on Linux; no xdg-open helper is used.
 The portal call compiles independently against the pinned zbus API. Native and
 WebAssembly UI checks pass; a real Linux desktop portal remains a platform test.
+
+The Rust client now verifies each image chunk's identity, offsets and checksum,
+then verifies the whole saved SHA before completing a download. `scanner-export`
+streams native images/batches without replacing existing files, retains verified
+files after failures, and adds the batch completion manifest last. Browser ZIP
+exports retain the 64 MiB image-data limit. Real TCP tests cover multi-chunk
+downloads, corrupt edited images, destination races and rewritten original/edit
+paths. The export library also compiles for WebAssembly; Rune controls follow.
