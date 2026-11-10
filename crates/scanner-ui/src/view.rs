@@ -31,6 +31,7 @@ fn library_view(s: &State, t: tok::Theme) -> El {
         .gap(20.)
         .child(crate::connection_view::toolbar(s, t))
         .child(crate::operations::controls(s, t))
+        .child(crate::exports::panel(s, t))
         .child(
             text(
                 s.error

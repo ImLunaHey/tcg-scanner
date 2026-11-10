@@ -21,6 +21,7 @@ pub enum Page {
 }
 
 pub struct State {
+    pub exports: crate::exports::Exports,
     pub page: Page,
     pub valuation: crate::valuation::Valuation,
     pub collection: crate::collection::Collection,
@@ -53,6 +54,7 @@ pub struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
+            exports: Default::default(),
             page: Page::Library,
             valuation: Default::default(),
             collection: Default::default(),
@@ -86,6 +88,7 @@ impl Default for State {
 }
 impl State {
     pub fn setup(&mut self, waker: Waker) {
+        self.exports.task.set_waker(waker.clone());
         self.collection.set_waker(waker.clone());
         self.ops.set_waker(waker.clone());
         self.valuation.task.set_waker(waker.clone());
@@ -138,6 +141,7 @@ impl State {
         if self.ops.mutation.pending() {
             return;
         }
+        self.exports.clear();
         self.ops.disconnect();
         self.valuation.clear();
         self.ops.transfer.clear();
@@ -176,6 +180,7 @@ impl State {
         changed |= self.poll_settings();
         changed |= self.poll_valuation();
         changed |= self.poll_transfer();
+        changed |= self.poll_export();
         if let Some(result) = self.connecting.take() {
             match result {
                 Ok(connected) => {

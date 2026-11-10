@@ -76,6 +76,13 @@ pub fn view(s: &State, t: tok::Theme) -> El {
         .child(profile_form(s, t))
         .child(super::view::retry(s, t))
         .child(device(s, t))
+        .child(crate::exports::capabilities(s, t))
+        .child(
+            text(s.exports.notice.as_deref().unwrap_or(""))
+                .font(type_::LABEL)
+                .color(t.text_secondary)
+                .wrap(),
+        )
         .child(
             text(
                 s.status

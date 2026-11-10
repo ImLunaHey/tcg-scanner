@@ -11,6 +11,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+scanner-export.workspace = true
 url.workspace = true
 rune.workspace = true
 scanner-types.workspace = true
@@ -36,12 +37,14 @@ rune = { workspace = true, features = ["webgl"] }
 # Rune's GPU instance cache requires Send/Sync. Browser UI is single-threaded;
 # wgpu only enables these implementations when wasm atomics are disabled.
 wgpu = { version = "~30.0.1", default-features = false, features = ["fragile-send-sync-non-atomic-wasm"] }
+js-sys = "0.3"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 gloo-timers = { version = "0.3", features = ["futures"] }
-web-sys = { version = "0.3", features = ["Window", "Location"] }
+web-sys = { version = "0.3", features = ["Window", "Location", "Document", "Element", "HtmlAnchorElement", "Blob", "BlobPropertyBag", "Url"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tempfile.workspace = true
 image.workspace = true
 
 [lints]

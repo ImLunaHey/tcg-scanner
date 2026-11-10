@@ -1,5 +1,6 @@
 // Development-only browser verification against scanner-http's synthetic fixture.
 import { chromium } from 'playwright';
+import { createHash } from 'node:crypto';
 import { readFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 const [origin, tokenFile, screenshots] = process.argv.slice(2);
@@ -68,6 +69,7 @@ try {
     page.getByRole('button', { name: /^Open batch / }).first().dispatchEvent('click'),
   ]);
   await editImage(page, screenshots);
+  const exports = await exportFiles(page, screenshots);
   await Promise.all([
     response(page, 'v1.profiles.list'),
     page.getByRole('button', { name: 'Settings', exact: true }).dispatchEvent('click'),
@@ -102,7 +104,7 @@ try {
     await mkdir(screenshots, { recursive: true });
     await page.screenshot({ path: join(screenshots, 'reviewed.png') });
   }
-  console.log(JSON.stringify({ methods, review: result.state, finish: result.finish, condition: result.condition, inventoryCopies: inventory.result.totalCopies, storage, errors }, null, 2));
+  console.log(JSON.stringify({ methods, review: result.state, finish: result.finish, condition: result.condition, inventoryCopies: inventory.result.totalCopies, exports, storage, errors }, null, 2));
 } finally { await browser.close(); }
 function response(page, method) {
   return page.waitForResponse(response => response.url() === `${origin}/rpc` && response.request().postDataJSON().method === method, { timeout: 15000 });
@@ -141,4 +143,34 @@ async function editImage(page, screenshots) {
   if (original.result?.width !== 200 || original.result?.height !== 300)
     throw new Error('Opening the editor must reload the original image');
   await page.getByRole('button', { name: 'Close editor', exact: true }).dispatchEvent('click');
+}
+
+async function exportFiles(page, directory) {
+  const result = {};
+  for (const label of ['Export manifest', 'Export image', 'Export original', 'Export batch']) {
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 15000 }),
+      page.getByRole('button', { name: label, exact: true }).dispatchEvent('click'),
+    ]);
+    const stream = await download.createReadStream();
+    const chunks = [];
+    for await (const chunk of stream) chunks.push(chunk);
+    const bytes = Buffer.concat(chunks);
+    result[label] = { name: download.suggestedFilename(), bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
+    if (directory) await download.saveAs(join(directory, download.suggestedFilename()));
+    if (label === 'Export manifest') {
+      result.manifest = JSON.parse(bytes.toString('utf8'));
+    } else if (label === 'Export image') {
+      const expected = result.manifest.processedImages.at(-1).image;
+      if (result[label].sha256 !== expected.sha256 || bytes.readUInt32BE(16) !== 180 || bytes.readUInt32BE(20) !== 160)
+        throw new Error('Edited export did not match the exact saved image');
+    } else if (label === 'Export original') {
+      if (result[label].sha256 !== result.manifest.images[0].sha256 || bytes.readUInt32BE(16) !== 200 || bytes.readUInt32BE(20) !== 300)
+        throw new Error('Original export did not preserve the captured image');
+    } else if (bytes.readUInt32LE(0) !== 0x04034b50) {
+      throw new Error('Batch export was not a ZIP archive');
+    }
+  }
+  delete result.manifest;
+  return result;
 }

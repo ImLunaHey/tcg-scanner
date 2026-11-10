@@ -518,4 +518,8 @@ streams native images/batches without replacing existing files, retains verified
 files after failures, and adds the batch completion manifest last. Browser ZIP
 exports retain the 64 MiB image-data limit. Real TCP tests cover multi-chunk
 downloads, corrupt edited images, destination races and rewritten original/edit
-paths. The export library also compiles for WebAssembly; Rune controls follow.
+paths. Rune now exposes manifest, selected/original image, batch and capability
+exports. Desktop save/folder dialogs support cancellation; browsers generate
+downloads in Rust/WebAssembly. The browser flow downloads both images, verifies
+their saved hashes and dimensions, and opens the ZIP to verify its manifest and
+files. The workspace passes 225 tests plus strict native and WebAssembly Clippy.
