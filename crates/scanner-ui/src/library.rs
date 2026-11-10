@@ -61,6 +61,7 @@ pub fn cards(record: &ScanRecord) -> Vec<Card> {
                     None => candidates.first(),
                 }
             });
+            let printed = review.and_then(|r| crate::printed::title(&r["evidence"]));
             let edit = record.processed_images.as_ref().and_then(|items| {
                 items
                     .iter()
@@ -73,9 +74,11 @@ pub fn cards(record: &ScanRecord) -> Vec<Card> {
                 name: candidate
                     .and_then(|c| c["name"].as_str())
                     .map(str::to_owned)
+                    .or_else(|| printed.as_ref().map(|p| p.0.clone()))
                     .unwrap_or_else(|| format!("Image {:03}", original.sequence)),
                 subtitle: candidate
                     .map(|c| format!("{} · {}", field(c, "setName"), field(c, "localID")))
+                    .or_else(|| printed.as_ref().map(|p| p.1.clone()))
                     .unwrap_or_else(|| {
                         format!("{} × {} · {}", image.width, image.height, original.side)
                     }),

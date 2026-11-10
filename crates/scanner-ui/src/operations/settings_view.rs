@@ -266,13 +266,7 @@ fn device(s: &State, t: tok::Theme) -> El {
                 .color(t.text_secondary),
             );
         }
-        pane = pane.children(
-            report
-                .warnings
-                .iter()
-                .take(6)
-                .map(|w| text(w).font(type_::BODY).color(t.text_secondary).wrap()),
-        );
+        pane = pane.child(super::report::view(report, t));
     }
     pane
 }

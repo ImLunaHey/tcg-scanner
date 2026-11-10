@@ -266,6 +266,7 @@ pub fn review_panel(s: &State, t: tok::Theme) -> El {
         }
     }
     panel
+        .child(crate::printed::panel(s, t))
         .child(assessment(s, t, ready))
         .child(review_buttons(t, ready, selected.is_some()))
         .child(super::finish::panel(s, t))

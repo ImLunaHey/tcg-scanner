@@ -6,6 +6,7 @@ mod collection;
 mod connection_view;
 mod library;
 mod operations;
+mod printed;
 mod reference_preview;
 mod state;
 mod task;
