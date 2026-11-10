@@ -401,7 +401,7 @@ exposed directory fsync on capability `O_PATH` handles, and Windows exposed priv
 state creation/ownership assumptions. Directory sync now opens the pinned directory
 for reading. Windows creates state with a protected, inheritable owner/SYSTEM/admin
 ACL in the native create operation and accepts privileged default owners only when
-the DACL remains private. The fixes are undergoing another native CI run.
+the DACL remains private. The finish-service checkpoint (`d3cb3fb`) now passes full native test/Clippy/build jobs on Windows, Linux and macOS, plus the WebAssembly job. Physical hardware testing is still outstanding.
 
 Native condition analysis now follows the existing blue-back visible-mark scope:
 bounded sRGB pixels, exclusion of boundary-connected backing, border components,
@@ -461,3 +461,11 @@ supply physical-finish training labels. Tests cover shared fetches, persistent
 reuse, corrupt-cache recovery, hostile URLs and corrupt images. The complete
 workspace passed 195 tests at the finish-service checkpoint with both native
 SANE/TWAIN fixture libraries enabled.
+
+The reusable `scanner-pricing` crate ports market quote extraction, ECB GBP rate
+parsing, physical-card selection and conservative per-card valuation. Decimal
+arithmetic preserves JSON precision and rounds each copy before summing. Tests
+cover conflicting regular/stamped products, missing reverse prices, stale rates,
+DTD/duplicate-rate rejection, edition-specific quotes and per-copy rounding.
+Shared JSON decimal support passes 204 workspace tests and strict WebAssembly
+Clippy. Service caching and valuation UI integration follow this domain slice.

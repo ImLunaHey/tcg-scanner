@@ -24,3 +24,5 @@ pub mod recognition;
 pub mod game_detection;
 
 pub mod inventory;
+
+pub mod pricing;

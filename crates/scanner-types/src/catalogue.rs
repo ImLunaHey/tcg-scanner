@@ -29,6 +29,8 @@ pub struct DetailedVariant {
     pub size: Option<String>,
     pub stamp: Option<Vec<String>>,
     pub subtype: Option<String>,
+    #[serde(flatten)]
+    pub extensions: Extensions,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

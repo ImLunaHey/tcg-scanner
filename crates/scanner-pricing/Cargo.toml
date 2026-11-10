@@ -1,0 +1,21 @@
+[package]
+name = "scanner-pricing"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[dependencies]
+scanner-types.workspace = true
+scanner-catalogue.workspace = true
+rust_decimal.workspace = true
+quick-xml.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
+tokio.workspace = true
+async-trait.workspace = true
+
+[lints]
+workspace = true

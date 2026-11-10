@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/scanner-types", "crates/scanner-store", "crates/scanner-ui", "crates/scanner-images", "crates/scanner-recognition", "crates/scanner-files", "crates/scanner-core", "crates/scanner-catalogue", "crates/scanner-device", "crates/scanner-rpc", "crates/scanner-http", "crates/scanner-platform", "crates/scanner-client", "crates/scanner-app", "crates/scanner-mcp", "crates/scanner-library"]
+members = ["crates/scanner-types", "crates/scanner-store", "crates/scanner-ui", "crates/scanner-images", "crates/scanner-recognition", "crates/scanner-files", "crates/scanner-core", "crates/scanner-catalogue", "crates/scanner-device", "crates/scanner-rpc", "crates/scanner-http", "crates/scanner-platform", "crates/scanner-client", "crates/scanner-app", "crates/scanner-mcp", "crates/scanner-library", "crates/scanner-pricing"]
 
 [workspace.package]
 version = "0.1.0"
@@ -9,6 +9,9 @@ rust-version = "1.98"
 repository = "https://github.com/ImLunaHey/tcg-scanner"
 
 [workspace.dependencies]
+scanner-pricing = { path = "crates/scanner-pricing", version = "0.1.0" }
+rust_decimal = { version = "1.43", default-features = false, features = ["std", "serde-with-arbitrary-precision"] }
+quick-xml = "0.42"
 scanner-library = { path = "crates/scanner-library", version = "0.1.0" }
 scanner-mcp = { path = "crates/scanner-mcp", version = "0.1.0" }
 scanner-client = { path = "crates/scanner-client", version = "0.1.0" }
@@ -21,7 +24,7 @@ reqwest = { version = "0.13.5", default-features = false, features = ["rustls"] 
 scanner-catalogue = { path = "crates/scanner-catalogue", version = "0.1.0" }
 scanner-recognition = { path = "crates/scanner-recognition", version = "0.1.0" }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["arbitrary_precision"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["serde", "v4"] }
 thiserror = "2"
