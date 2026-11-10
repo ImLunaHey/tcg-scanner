@@ -95,7 +95,7 @@ uint16_t DSM_Entry(Identity *app, Identity *source, uint32_t group, uint16_t dat
         if (message == 0x402) {if(!source_opened || scenario==1)return fail(11);if(phase!=4){++invalid_sequence;return fail(11);}source_opened=0;phase=3;return 0;}
     }
     if (!source_opened) return fail(11);
-    if (dat==1 && (message==2 || message==8 || message==6)) {
+    if (dat==1 && (message==1 || message==2 || message==8 || message==6)) {
         Capability *capability=data;
         int index=-1;for(int i=0;i<17;++i)if(ids[i]==capability->id)index=i;
         if(index<0)return fail(13);
@@ -105,6 +105,12 @@ uint16_t DSM_Entry(Identity *app, Identity *source, uint32_t group, uint16_t dat
             if(scenario==2 && capability->id==0x1118 && values[index].value==600){values[index].value=599;condition=10;return 2;}
             if(capability->id==0x0101)values[7].value=75;
             return 0;
+        }
+        if(message==1 && (capability->id==0x1118 || capability->id==0x1119)) {
+            unsigned char *range=allocate(22);
+            uint16_t kind=7; uint32_t values_range[5]={150,600,150,300,300};
+            memcpy(range,&kind,2); memcpy(range+2,values_range,20);
+            capability->type=6;capability->handle=range;return 0;
         }
         One *one=allocate(sizeof(One));
         *one=message==8?(One){5,capability->id==0x1003?8:10}:values[index];

@@ -40,6 +40,17 @@ impl Drop for Container {
     }
 }
 pub(super) fn read(manager: &mut Manager, id: u16, message: u16) -> Result<Scalar> {
+    read_container(manager, id, message, container::current)
+}
+pub(super) fn allowed(manager: &mut Manager, id: u16) -> Result<serde_json::Value> {
+    read_container(manager, id, 1, container::allowed)
+}
+fn read_container<T>(
+    manager: &mut Manager,
+    id: u16,
+    message: u16,
+    decode: impl FnOnce(u16, &[u8]) -> Result<T>,
+) -> Result<T> {
     let mut capability = Capability {
         id,
         container_type: 0,
@@ -69,17 +80,22 @@ pub(super) fn read(manager: &mut Manager, id: u16, message: u16) -> Result<Scala
         let length = match capability.container_type {
             5 => 6,
             6 => 22,
-            4 => {
-                let header = std::slice::from_raw_parts(pointer, 14);
+            3 | 4 => {
+                let header_len = if capability.container_type == 3 {
+                    6
+                } else {
+                    14
+                };
+                let header = std::slice::from_raw_parts(pointer, header_len);
                 let count = container::dword(header, 2)? as usize;
                 if count > 4096 {
                     return Err(error("Oversized TWAIN capability."));
                 }
-                14 + count * container::item_size(container::word(header, 0)?)?
+                header_len + count * container::item_size(container::word(header, 0)?)?
             }
             _ => return Err(error("Unsupported TWAIN capability container.")),
         };
-        container::current(
+        decode(
             capability.container_type,
             std::slice::from_raw_parts(pointer, length),
         )

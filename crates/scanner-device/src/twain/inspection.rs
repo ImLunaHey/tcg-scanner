@@ -15,6 +15,15 @@ pub(super) fn inspect(manager: &mut Manager, id: &str) -> Result<Inspection> {
     for &(id, name) in capabilities::INSPECTION_CAPS {
         match capabilities::read(manager, id, 2) {
             Ok(value) => {
+                let allowed = match capabilities::allowed(manager, id) {
+                    Ok(value) => Some(value),
+                    Err(_) => {
+                        inspection
+                            .unknown_capabilities
+                            .push(format!("{name} supported values"));
+                        None
+                    }
+                };
                 let read_only = match capabilities::read(manager, id, 8) {
                     Ok(support) if support.kind == 5 => support.raw & 2 == 0,
                     _ => {
@@ -28,7 +37,7 @@ pub(super) fn inspect(manager: &mut Manager, id: &str) -> Result<Inspection> {
                     name.into(),
                     Setting {
                         current: value.json(),
-                        allowed: None,
+                        allowed,
                         default_value: None,
                         read_only,
                         evidence: Evidence::DriverExposedNotTested,

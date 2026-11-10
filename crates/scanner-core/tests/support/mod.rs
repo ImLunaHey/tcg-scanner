@@ -45,6 +45,32 @@ impl ScannerBackend for Driver {
         let mut report = Inspection::new(self.devices().await?.remove(0));
         report.session_opened = true;
         report.session_closed = rx.await.unwrap();
+        let setting = |value, allowed| scanner_types::device::Setting {
+            current: value,
+            allowed,
+            default_value: None,
+            read_only: false,
+            evidence: scanner_types::device::Evidence::DriverExposedNotTested,
+        };
+        report.units.push(scanner_types::device::UnitSnapshot {
+            unit_type: 3,
+            settings: [
+                (
+                    "resolutionDPI".into(),
+                    setting(serde_json::json!(600), Some(serde_json::json!([300, 600]))),
+                ),
+                (
+                    "supportsDuplexScanning".into(),
+                    setting(serde_json::json!(true), None),
+                ),
+                (
+                    "documentLoaded".into(),
+                    setting(serde_json::json!(true), None),
+                ),
+            ]
+            .into(),
+            ..Default::default()
+        });
         Ok(report)
     }
     async fn capture(

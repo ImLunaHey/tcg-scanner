@@ -78,6 +78,40 @@ pub(super) fn dword(bytes: &[u8], offset: usize) -> Result<u32> {
 fn invalid(message: &str) -> ScannerError {
     ScannerError::new("driver", message)
 }
+pub(super) fn allowed(container_type: u16, bytes: &[u8]) -> Result<Value> {
+    let kind = word(bytes, 0)?;
+    let size = item_size(kind)?;
+    match container_type {
+        5 => Ok(json!([current(5, bytes)?.json()])),
+        6 => Ok(json!({
+            "minimum": Scalar {kind, raw: dword(bytes, 2)?}.json(),
+            "maximum": Scalar {kind, raw: dword(bytes, 6)?}.json(),
+            "step": Scalar {kind, raw: dword(bytes, 10)?}.json(),
+        })),
+        3 | 4 => {
+            let count = dword(bytes, 2)? as usize;
+            let offset = if container_type == 3 { 6 } else { 14 };
+            if count == 0 || count > 4096 || bytes.len() < offset + count * size {
+                return Err(invalid("Invalid TWAIN supported-values container."));
+            }
+            let mut values = Vec::with_capacity(count);
+            for item in bytes[offset..offset + count * size].chunks_exact(size) {
+                let mut raw = [0; 4];
+                raw[..size].copy_from_slice(item);
+                values.push(
+                    Scalar {
+                        kind,
+                        raw: u32::from_le_bytes(raw),
+                    }
+                    .json(),
+                );
+            }
+            Ok(json!(values))
+        }
+        _ => Err(invalid("Unsupported TWAIN supported-values container.")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -89,6 +123,12 @@ mod tests {
         bytes.extend_from_slice(&0u32.to_le_bytes());
         bytes.extend_from_slice(&[2, 0, 9, 0]);
         assert_eq!(current(4, &bytes).unwrap().json(), 9);
+        assert_eq!(allowed(4, &bytes).unwrap(), json!([2, 9]));
+        assert_eq!(
+            allowed(3, &[4, 0, 2, 0, 0, 0, 44, 1, 88, 2]).unwrap(),
+            json!([300, 600])
+        );
+        assert_eq!(allowed(5, &[7, 0, 88, 2, 0, 0]).unwrap(), json!([600.0]));
         assert_eq!(current(5, &[7, 0, 254, 255, 0, 128]).unwrap().json(), -1.5);
         assert_eq!(current(5, &[7, 0, 88, 2, 0, 0]).unwrap().json(), 600.0);
         assert_eq!(current(5, &[1, 0, 255, 255, 0, 0]).unwrap().json(), -1);

@@ -83,3 +83,4 @@ async fn event_waiters_are_bounded_and_disconnected_subscribers_release_capacity
     h.engine.shutdown().await;
 }
 mod images;
+mod settings;

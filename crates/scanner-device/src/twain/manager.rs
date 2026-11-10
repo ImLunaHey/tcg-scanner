@@ -310,6 +310,10 @@ mod tests {
             assert!(inspection.session_opened && inspection.session_closed);
             assert!(inspection.errors.is_empty());
             assert_eq!(inspection.units[0].settings["xResolution"].current, 300.0);
+            assert_eq!(
+                inspection.units[0].settings["xResolution"].allowed,
+                Some(serde_json::json!({"minimum":150.0,"maximum":600.0,"step":150.0}))
+            );
             assert!(!inspection.units[0].settings["xResolution"].read_only);
             assert!(inspection.units[0].settings["feederLoaded"].read_only);
             assert_eq!(counter(1), 0);

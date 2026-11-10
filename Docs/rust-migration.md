@@ -75,6 +75,12 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   tampering, active-job refusal and the eight-edits-per-original limit. Thumbnails
   currently reverify sources on each request rather than using a fingerprint cache;
   decoding retains the Rust 48-megapixel bound.
+  Device status and validated defaults now use backend-specific inspection
+  evidence for ImageCaptureCore, SANE and TWAIN. Defaults require confirmed
+  inspection closure, supported feeder/DPI/duplex observations and an idle
+  coordinator; accepted writes survive caller disconnects. Unknown SANE paper
+  readiness remains unknown. TWAIN inspection now copies supported-value
+  containers as well as current values, with native allocation-lifetime tests.
 
 - `scanner-device`: portable driver contracts extracted from the coordinator and
   a Rust ImageCaptureCore adapter. It includes main-thread discovery/inspection,
@@ -169,7 +175,7 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
 - `scanner-rpc`: transport-independent v1 JSON-RPC dispatch for device discovery,
   inspection/settings reports, diagnostics, scan submission/status/cancellation,
   batch continuation, job pagination, service status, events, profile CRUD and
-  image metadata/chunks/thumbnails/edits.
+  image metadata/chunks/thumbnails/edits, device readiness and validated defaults.
   Existing method aliases share the same coordinator and durable operations.
   Requests are limited to 64 KiB, require a string/numeric ID and reject unknown
   parameters; errors preserve structured scanner error data. Protocol tests use

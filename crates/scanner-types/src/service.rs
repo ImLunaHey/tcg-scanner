@@ -6,6 +6,21 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceStatus {
+    pub schema_version: u32,
+    pub device: crate::device::Device,
+    pub service: ServiceStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inspection: Option<crate::device::Inspection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub configured_settings: Option<ScanSettings>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ready: Option<bool>,
+    pub warnings: Vec<String>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ScanSettings {
     pub dpi: u32,
