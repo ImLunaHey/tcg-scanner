@@ -5,3 +5,5 @@ mod transport;
 mod validation;
 pub use client::TcgDex;
 pub use transport::JsonTransport;
+
+pub mod library;

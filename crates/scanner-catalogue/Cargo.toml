@@ -8,6 +8,12 @@ repository.workspace = true
 publish = false
 
 [dependencies]
+scanner-images.workspace = true
+image.workspace = true
+sha2.workspace = true
+base64.workspace = true
+regex.workspace = true
+chrono.workspace = true
 scanner-types.workspace = true
 reqwest.workspace = true
 tokio.workspace = true

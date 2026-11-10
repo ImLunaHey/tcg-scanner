@@ -16,6 +16,7 @@ pub struct TcgDex {
     transport: Arc<dyn JsonTransport>,
     catalogue: Cache<Vec<CatalogueCard>>,
     details: Cache<CardDetail>,
+    sets: Cache<SetDetail>,
 }
 impl TcgDex {
     pub fn new(language: CardLanguage) -> Result<Self> {
@@ -27,6 +28,7 @@ impl TcgDex {
             transport,
             catalogue: Cache::new(1, Duration::from_secs(24 * 3600)),
             details: Cache::new(128, Duration::from_secs(15 * 60)),
+            sets: Cache::new(64, Duration::from_secs(24 * 3600)),
         }
     }
     pub async fn catalogue(&self) -> Result<Arc<Vec<CatalogueCard>>> {
@@ -48,9 +50,15 @@ impl TcgDex {
     }
     pub async fn set(&self, id: &str) -> Result<SetDetail> {
         validation::id(id)?;
-        let set = self.load(&format!("sets/{id}"), 2 * 1024 * 1024).await?;
-        validation::set(&set, id)?;
-        Ok(set)
+        let set = self
+            .sets
+            .get(id, || async {
+                let set = self.load(&format!("sets/{id}"), 2 * 1024 * 1024).await?;
+                validation::set(&set, id)?;
+                Ok(set)
+            })
+            .await?;
+        Ok(set.as_ref().clone())
     }
     async fn load<T: DeserializeOwned>(&self, path: &str, limit: usize) -> Result<T> {
         let language = match self.language {

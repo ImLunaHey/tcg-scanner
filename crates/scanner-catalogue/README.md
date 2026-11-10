@@ -18,3 +18,12 @@ cargo test -p scanner-catalogue
 This is an internal workspace library (`publish = false`), with a versioned path
 dependency on shared `scanner-types`. Publication and licensing are not inferred.
 Other games and typed market-price conversion are still being migrated.
+
+`library::LibraryCatalogue` adds bounded set checklists, background release dates
+and opaque reference-thumbnail keys. Dates and checklists share 64 cached TCGdex
+set responses for one day. Three date workers queue at most 2,000 sources; failed
+lookups retry after five minutes. Thumbnail keys register only allowlisted public
+catalogue URLs; callers cannot supply arbitrary URLs. Two workers accept at most
+8 MiB / 16 megapixels per static PNG/JPEG, returning a checked 512-pixel JPEG.
+The 128-entry thumbnail cache and release-date cache are currently memory-only;
+restarting may require refetching optional metadata and reloading a checklist.

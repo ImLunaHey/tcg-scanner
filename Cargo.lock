@@ -3863,10 +3863,16 @@ name = "scanner-catalogue"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "base64 0.22.1",
+ "chrono",
+ "image",
+ "regex",
  "reqwest",
+ "scanner-images",
  "scanner-types",
  "serde",
  "serde_json",
+ "sha2",
  "tokio",
 ]
 
