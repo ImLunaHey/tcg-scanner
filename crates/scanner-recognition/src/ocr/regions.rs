@@ -65,6 +65,12 @@ impl Tesseract {
     pub(crate) fn read_energy_heading(&mut self, image: &RgbImage) -> Result<Vec<RecognizedLine>> {
         self.read_scaled_region(image, [0.035, 0.03, 0.60, 0.055], true, 400, false)
     }
+    /// Individual word bounds prevent an adjacent rarity mark from becoming
+    /// part of an estimated character rectangle.
+    pub fn read_footer_words(&mut self, image: &RgbImage) -> Result<Vec<RecognizedLine>> {
+        validate(image)?;
+        self.read_scaled_region(image, [0., 0.85, 1., 0.15], false, 1600, true)
+    }
     fn read_region_with_mode(
         &mut self,
         image: &RgbImage,

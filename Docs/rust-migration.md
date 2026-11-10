@@ -641,3 +641,21 @@ Recognition and publication keep owned permits/reservations. Tests cover future
 and reviewed exclusions, concurrent retry admission, pause/capture priority,
 source preservation and failure backoff. Maintenance checks every 30 seconds;
 no physical job is created by a catalogue retry.
+
+Portable Pokémon printed evidence now includes uncatalogued title/code/fraction
+transcriptions, Energy corner symbols and black footer rarity shapes. Uncatalogued
+transcriptions enable the scheduled retry path without inventing catalogue IDs.
+Energy retains the existing masks and requires a readable heading plus no body
+rules; a bounded title retry improves stylized Tesseract headings. All nine saved
+Energy fixtures match, corner occlusion rejects all nine, and fresh Psychic OCR
+passes all four rotations with catalogue access forbidden.
+
+Rarity uses actual Tesseract word bounds containing only the numeric fraction;
+merged symbols are not separated by guessed character widths. It corroborates or
+flags candidates without removing conflicts or assigning foil. Across 33 saved
+fronts, Rust produces 15 measurements: 12 agree with the earlier Swift measurements,
+none conflict, nine earlier measurements remain unresolved, and three new ones
+need visual review. This is a remaining OCR coverage limitation, not parity in
+recall. Sanitized results are in `Tools/RecognitionBench/results-symbols-2026-11-10.json`.
+The workspace passes 274 tests with native SANE/TWAIN fixtures and Tesseract enabled,
+plus strict native and WebAssembly Clippy.

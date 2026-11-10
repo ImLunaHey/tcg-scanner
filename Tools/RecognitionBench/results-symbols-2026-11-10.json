@@ -1,0 +1,192 @@
+{
+  "date": "2026-11-10",
+  "scope": "33 saved playable fronts from B-045 and B-046; comparisons are measurements, not ground-truth rarity labels",
+  "engine": "Tesseract 5.5.1 + portable black-footer-shape-v1",
+  "savedFrames": 33,
+  "swiftMeasured": 21,
+  "rustMeasured": 15,
+  "matchingMeasuredSymbols": 12,
+  "conflictingMeasuredSymbols": 0,
+  "previouslyMeasuredNowUnresolved": 9,
+  "additionalMeasurements": 3,
+  "energy": {
+    "savedFixtures": 9,
+    "matchedTypes": 9,
+    "cornerOcclusionRejections": 9,
+    "freshPsychicRotations": 4,
+    "freshPsychicRotationsCorrect": 4,
+    "catalogueRequests": 0
+  },
+  "limitations": [
+    "OCR word bounds are intentionally stricter than inferred character boxes; merged fractions and rarity glyphs remain unresolved.",
+    "Missing Swift measurements are not negative labels; three additional Rust detections have not been manually validated.",
+    "Energy fixtures are existing regression cases, not held-out accuracy across eras."
+  ],
+  "results": [
+    {
+      "id": "B-045:2",
+      "swiftSymbol": "circle",
+      "rustSymbol": null
+    },
+    {
+      "id": "B-045:4",
+      "swiftSymbol": "circle",
+      "rustSymbol": "circle"
+    },
+    {
+      "id": "B-045:6",
+      "swiftSymbol": "circle",
+      "rustSymbol": null
+    },
+    {
+      "id": "B-045:8",
+      "swiftSymbol": "circle",
+      "rustSymbol": null
+    },
+    {
+      "id": "B-045:10",
+      "swiftSymbol": "circle",
+      "rustSymbol": "circle"
+    },
+    {
+      "id": "B-045:12",
+      "swiftSymbol": "diamond",
+      "rustSymbol": "diamond"
+    },
+    {
+      "id": "B-045:14",
+      "swiftSymbol": null,
+      "rustSymbol": null
+    },
+    {
+      "id": "B-045:16",
+      "swiftSymbol": "diamond",
+      "rustSymbol": "diamond"
+    },
+    {
+      "id": "B-045:20",
+      "swiftSymbol": null,
+      "rustSymbol": null
+    },
+    {
+      "id": "B-045:22",
+      "swiftSymbol": "circle",
+      "rustSymbol": null
+    },
+    {
+      "id": "B-045:24",
+      "swiftSymbol": null,
+      "rustSymbol": null
+    },
+    {
+      "id": "B-045:26",
+      "swiftSymbol": "circle",
+      "rustSymbol": "circle"
+    },
+    {
+      "id": "B-045:28",
+      "swiftSymbol": "circle",
+      "rustSymbol": null
+    },
+    {
+      "id": "B-045:30",
+      "swiftSymbol": "circle",
+      "rustSymbol": null
+    },
+    {
+      "id": "B-045:34",
+      "swiftSymbol": null,
+      "rustSymbol": null
+    },
+    {
+      "id": "B-045:36",
+      "swiftSymbol": null,
+      "rustSymbol": "diamond"
+    },
+    {
+      "id": "B-045:44",
+      "swiftSymbol": null,
+      "rustSymbol": null
+    },
+    {
+      "id": "B-045:46",
+      "swiftSymbol": null,
+      "rustSymbol": null
+    },
+    {
+      "id": "B-046:2",
+      "swiftSymbol": "circle",
+      "rustSymbol": null
+    },
+    {
+      "id": "B-046:4",
+      "swiftSymbol": "circle",
+      "rustSymbol": null
+    },
+    {
+      "id": "B-046:8",
+      "swiftSymbol": "circle",
+      "rustSymbol": null
+    },
+    {
+      "id": "B-046:6",
+      "swiftSymbol": "circle",
+      "rustSymbol": "circle"
+    },
+    {
+      "id": "B-046:12",
+      "swiftSymbol": "diamond",
+      "rustSymbol": "diamond"
+    },
+    {
+      "id": "B-046:10",
+      "swiftSymbol": null,
+      "rustSymbol": "circle"
+    },
+    {
+      "id": "B-046:16",
+      "swiftSymbol": null,
+      "rustSymbol": "diamond"
+    },
+    {
+      "id": "B-046:14",
+      "swiftSymbol": null,
+      "rustSymbol": null
+    },
+    {
+      "id": "B-046:20",
+      "swiftSymbol": null,
+      "rustSymbol": null
+    },
+    {
+      "id": "B-046:22",
+      "swiftSymbol": null,
+      "rustSymbol": null
+    },
+    {
+      "id": "B-046:24",
+      "swiftSymbol": "circle",
+      "rustSymbol": "circle"
+    },
+    {
+      "id": "B-046:26",
+      "swiftSymbol": "circle",
+      "rustSymbol": "circle"
+    },
+    {
+      "id": "B-046:28",
+      "swiftSymbol": "circle",
+      "rustSymbol": "circle"
+    },
+    {
+      "id": "B-046:32",
+      "swiftSymbol": "diamond",
+      "rustSymbol": "diamond"
+    },
+    {
+      "id": "B-046:34",
+      "swiftSymbol": "diamond",
+      "rustSymbol": "diamond"
+    }
+  ]
+}
