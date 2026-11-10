@@ -444,3 +444,12 @@ modern-ex catalogue rule produced one holo suggestion and one Energy card was
 unsupported. The remaining 79 were unresolved. Stored Vision text produced far
 more usable observations. Portable finish OCR therefore remains a parity blocker;
 these component results are not a claim of end-to-end recognition accuracy.
+
+Finish assessment is now recorded during native recognition and exposed as
+`images.estimateFinish`, authenticated REST `finish-estimate`, MCP and Rune's
+"Assess finish" action. It checks the current identification and exact source
+SHA, survives caller disconnection, and publishes before shutdown completes.
+Tests verify that manual finish/condition and unrelated evidence survive,
+repeated checks persist, changed sources and stale IDs fail, and REST rejects
+unauthenticated or extra-field requests. The Rune control compiles natively and
+for WebAssembly; suggestions require an explicit user choice.

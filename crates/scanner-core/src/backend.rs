@@ -25,6 +25,20 @@ pub trait CardRecognizer: Send + Sync {
     fn method(&self, _: &ScanRecord, _: &scanner_types::images::OriginalImage) -> &'static str {
         "native-card-recognition-rust-v1"
     }
+    /// Assess the exact saved source without changing manual review fields.
+    async fn estimate_finish(
+        &self,
+        _: &ScanRecord,
+        _: &scanner_types::images::OriginalImage,
+        _: &scanner_types::recognition::RecognitionEvidence,
+        _: Option<&scanner_types::images::CardPreparation>,
+        _: scanner_types::cards::CardLanguage,
+    ) -> Result<scanner_types::finish::FinishEstimate> {
+        Err(scanner_types::error::ScannerError::new(
+            "unsupported",
+            "Finish analysis is not configured.",
+        ))
+    }
     /// The record and source are verified snapshots; implementations return
     /// suggestions only, never manual confirmation or a condition grade.
     async fn recognize(

@@ -10,12 +10,17 @@ pub struct NativeCardRecognizer {
     root: Arc<StorageRoot>,
     pokemon: PokemonRecognizer,
     other_games: OtherGames,
+    finish: scanner_recognition::finish::FinishAnalyzer,
 }
 impl NativeCardRecognizer {
     pub fn new(root: Arc<StorageRoot>, library: PathBuf, data: PathBuf) -> Result<Self> {
         Ok(Self {
             root,
             pokemon: PokemonRecognizer::new(library.clone(), data.clone())?,
+            finish: scanner_recognition::finish::FinishAnalyzer::new(
+                library.clone(),
+                data.clone(),
+            )?,
             other_games: OtherGames::new(library, data)?,
         })
     }
@@ -24,6 +29,7 @@ impl NativeCardRecognizer {
         documents: Arc<scanner_catalogue::persistent::Documents>,
     ) -> Self {
         self.pokemon = self.pokemon.with_documents(documents.clone());
+        self.finish = self.finish.with_documents(documents.clone());
         self.other_games = self.other_games.with_documents(documents);
         self
     }
@@ -42,6 +48,30 @@ impl CardRecognizer for NativeCardRecognizer {
             CardGame::StarwarsUnlimited => "tesseract-swu-db-rust-v1",
             CardGame::Unknown => "native-card-recognition-rust-v1",
         }
+    }
+    async fn estimate_finish(
+        &self,
+        record: &ScanRecord,
+        image: &OriginalImage,
+        evidence: &RecognitionEvidence,
+        preparation: Option<&scanner_types::images::CardPreparation>,
+        language: scanner_types::cards::CardLanguage,
+    ) -> Result<scanner_types::finish::FinishEstimate> {
+        let (root, snapshot, source) = (self.root.clone(), record.clone(), image.clone());
+        let bytes = tokio::task::spawn_blocking(move || {
+            root.read_image(&snapshot, &source, 32 * 1024 * 1024)
+        })
+        .await
+        .map_err(crate::image_access::worker)??;
+        self.finish
+            .estimate(
+                bytes,
+                evidence.clone(),
+                preparation.cloned(),
+                language,
+                false,
+            )
+            .await
     }
     async fn recognize(
         &self,

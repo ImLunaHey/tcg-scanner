@@ -23,7 +23,7 @@ pub fn estimate(
         return ordinary(bytes, evidence, preparation, language, ocr);
     }
     analyze(bytes, evidence, preparation, language, ocr, camera)
-        .unwrap_or_else(|_| failed(evidence))
+        .unwrap_or_else(|_| unavailable(evidence))
 }
 fn analyze(
     bytes: &[u8],
@@ -80,7 +80,7 @@ fn analyze(
     };
     Ok(edition::decision(edition, border))
 }
-fn failed(evidence: &RecognitionEvidence) -> FinishEstimate {
+pub fn unavailable(evidence: &RecognitionEvidence) -> FinishEstimate {
     let candidate = (evidence.candidates.len() == 1).then(|| evidence.candidates[0].id.clone());
     let mut result = FinishEstimate::new(
         FinishState::Uncertain,

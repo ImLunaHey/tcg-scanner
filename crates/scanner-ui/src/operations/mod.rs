@@ -2,6 +2,7 @@ mod commands;
 mod condition;
 mod editing;
 mod editing_view;
+mod finish;
 pub use editing_view::panel as editing_panel;
 mod review;
 mod settings;

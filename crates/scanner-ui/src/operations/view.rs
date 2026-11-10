@@ -232,6 +232,7 @@ pub fn review_panel(s: &State, t: tok::Theme) -> El {
     panel
         .child(assessment(s, t, ready))
         .child(review_buttons(t, ready, selected.is_some()))
+        .child(super::finish::panel(s, t))
         .child(super::condition::panel(s, t))
 }
 fn assessment(s: &State, t: tok::Theme, ready: bool) -> El {
@@ -271,7 +272,7 @@ fn review_buttons(t: tok::Theme, ready: bool, selected: bool) -> El {
         ))
 }
 
-fn finish_label(value: CardFinish) -> &'static str {
+pub(super) fn finish_label(value: CardFinish) -> &'static str {
     use CardFinish::*;
     match value {
         Unverified => "Finish unverified",

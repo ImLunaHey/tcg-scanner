@@ -7,7 +7,7 @@ use scanner_types::{
 };
 use uuid::Uuid;
 
-async fn saved_pair(
+pub(super) async fn saved_pair(
     mut h: Harness,
 ) -> (Harness, ScanRecord, CardIdentification, std::path::PathBuf) {
     let job = h

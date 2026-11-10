@@ -23,6 +23,7 @@ pub(crate) fn tools() -> Vec<T> {
         .unwrap()
         .clone();
     vec![
+        T::new("scanner_estimate_finish", "images.estimateFinish", "Record conservative local finish and stamped-edition evidence for the exact saved identification source. Never changes manually confirmed finish or condition; no hardware feed.", [image.clone(), vec![("identificationID", F::uuid().required())]].concat()).writes(false),
         T::new("scanner_check_condition", "images.checkCondition", "Record experimental visible border-mark observations on the exact saved identification source. Never assigns or changes the user's selling grade. Requires a recognized Pokemon pair and current identificationID; no hardware feed.", [image.clone(), vec![("identificationID", F::uuid().required())]].concat()).writes(false),
         T::new("scanner_list_inventory","inventory.list","List physical card copies across saved batches, excluding code inserts. Pagination and filters affect entries; totals and sets describe the whole library. Confirmed quantities remain separate from unreviewed suggestions. Copy locations identify their source batches.",[page.clone(),vec![("search",F::text(160)),("set",F::text(512))]].concat()).external(),
         T::new("scanner_prepare_card","images.prepareCard","Crop a saved card and orient readable text into an immutable PNG. Originals remain. Inspect warnings for uncertain orientation or clipping. Never feeds hardware. Reuse id for retries.",[image.clone(),vec![("id",F::uuid().required())]].concat()).writes(false),

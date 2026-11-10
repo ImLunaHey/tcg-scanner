@@ -14,23 +14,28 @@ impl Router {
                 | "v1.images.identify"
                 | "v1.images.prepareCard"
                 | "v1.images.checkCondition"
+                | "v1.images.estimateFinish"
         ) {
             return None;
         }
         Some(self.recognition_action(method, params).await)
     }
     async fn recognition_action(&self, method: &str, params: &Params) -> Result<Value, Failure> {
-        if method == "v1.images.checkCondition" {
+        if matches!(
+            method,
+            "v1.images.estimateFinish" | "v1.images.checkCondition"
+        ) {
             params.only(&["jobID", "sequence", "identificationID"])?;
-            return value(
-                self.engine
-                    .check_condition(
-                        params.uuid("jobID")?,
-                        params.integer("sequence", 0, 1, 1000)? as u32,
-                        params.uuid("identificationID")?,
-                    )
-                    .await?,
+            let (job, sequence, identity) = (
+                params.uuid("jobID")?,
+                params.integer("sequence", 0, 1, 1000)? as u32,
+                params.uuid("identificationID")?,
             );
+            return value(if method == "v1.images.estimateFinish" {
+                self.engine.estimate_finish(job, sequence, identity).await?
+            } else {
+                self.engine.check_condition(job, sequence, identity).await?
+            });
         }
         if method == "v1.images.prepareCard" {
             params.only(&["id", "jobID", "sequence"])?;

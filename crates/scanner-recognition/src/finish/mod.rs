@@ -3,7 +3,7 @@ mod analyzer;
 mod assessment;
 mod background;
 pub use analyzer::FinishAnalyzer;
-pub use assessment::estimate;
+pub use assessment::{estimate, unavailable};
 mod border;
 mod decision;
 mod edition;

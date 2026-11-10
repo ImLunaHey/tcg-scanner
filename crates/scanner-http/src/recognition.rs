@@ -12,6 +12,19 @@ use axum::{
 use serde_json::{Map, Value, json};
 use uuid::Uuid;
 impl Gateway {
+    pub(crate) async fn finish_route(
+        &self,
+        path: &Path,
+        job: Uuid,
+        sequence: u32,
+        mut body: Map<String, Value>,
+    ) -> Result<Response> {
+        path.only(&[])?;
+        only(&body, &["identificationID"])?;
+        body.insert("jobID".into(), json!(job));
+        body.insert("sequence".into(), json!(sequence));
+        Ok(Json(self.call("images.estimateFinish", json!(body)).await?).into_response())
+    }
     pub(crate) async fn condition_route(
         &self,
         path: &Path,
