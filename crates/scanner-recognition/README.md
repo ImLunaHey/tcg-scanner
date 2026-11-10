@@ -45,3 +45,22 @@ complete metadata for the evaluated candidates it yields 38 unique correct front
 four ambiguous and 21 unresolved, with no incorrect unique match; all six backs
 remain unmatched. The same whole-only pass yields 17 correct fronts. Aggregate
 results are in `Tools/RecognitionBench/results-rust-2026-11-09.json`.
+
+Native service recognition also routes English Yu-Gi-Oh! and Star Wars Unlimited
+fronts through Tesseract and their public catalogues. YGO requires exact title or
+passcode evidence without a contradiction; a printed set code resolves the
+printing. Missing codes retain an explicitly unresolved printing. Independent
+passes with equal support can remain ambiguous. SWU requires an English set and
+collector number, a consistent total when printed, and an exact name (or one
+substitution plus exact subtitle). Conflicting SWU printings remain unmatched.
+Neither path estimates foil or condition. Korean requests never substitute English.
+
+The YGO reader includes an independent pass over standard printed fields. Saved
+B-044 testing improves from no base matches to four correct base identities; all
+four printing codes remain unresolved. The first B-050 SWU run matches four of
+16 saved printing labels and leaves twelve unresolved, with no wrong printing.
+These are small saved fixtures, not broad game accuracy claims. Aggregate results
+and limitations are in `Tools/RecognitionBench/results-other-games-2026-11-10.json`.
+The read-only `scanner-core` `identify_saved` example accepts archived manifests,
+`all` labelled captures and an optional public catalogue cache path. `inspect_region`
+is a local diagnostic for cropped text; threshold trials are not production rules.

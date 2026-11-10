@@ -102,7 +102,7 @@ impl CardIdentification {
             evidence: None,
             selected_card_id: None,
             error: None,
-            method: "tesseract-tcgdex-rust-v1".into(),
+            method: "native-card-recognition-rust-v1".into(),
             finish: CardFinish::Unverified,
             condition: CardCondition::Unassessed,
             assessment_source: "manual-review".into(),

@@ -312,3 +312,18 @@ The native checklist example also completed live reads of SWU `SOR` (950 catalog
 printings) and YGOPRODeck `LOB` (252 English/legacy printings), using the isolated
 main-drive public-data cache. These counts validate provider integration, not card
 recognition accuracy or foil/condition assessment.
+
+Native YGO/SWU recognition now runs through the same durable core workflow as
+Pokémon. It preserves exact identifiers and conservative conflict rules, records
+the correct provider-specific method, and keeps finish/condition unassessed.
+Printed SWU footer evidence can classify two-sided cards after verified text
+orientation. Tests cover contradictory identity fields, multiple printings,
+unsupported language, name/subtitle/total checks and independent-pass ambiguity.
+
+Read-only archived fixtures expose a remaining OCR quality gap: targeted YGO field
+reads identify the correct base card on B-044's four fronts, but none resolves its
+set code. General regions previously identified none. B-050 yields four exact SWU
+printing matches and twelve unresolved out of sixteen, with no wrong printing
+selected. Threshold/segmentation probes did not establish a safe printing-code
+improvement. This is not recognition parity with Apple Vision; manual review and
+further portable recognition improvements remain necessary before cutover.

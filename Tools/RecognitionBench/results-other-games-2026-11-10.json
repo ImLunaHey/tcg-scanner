@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-10",
+  "engine": "Rust in-process Tesseract 5.5.1",
+  "englishModelSHA256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+  "datasets": {
+    "B-044": {
+      "manifestSHA256": "fa67081a99b9aabe8fdb67f18acb15e94be7e5977253b3c788bd600eed5d8706",
+      "fronts": 4,
+      "counts": {
+        "exactPrintings": 0,
+        "correctBaseOnly": 4,
+        "unresolved": 0,
+        "ambiguous": 0,
+        "wrong": 0
+      }
+    },
+    "B-050": {
+      "manifestSHA256": "8ae7ba2fff37c3c5a384f7324abdaa578f488d6bec0147e865cbbd26fea50178",
+      "fronts": 16,
+      "counts": {
+        "exactPrintings": 4,
+        "correctBaseOnly": 0,
+        "unresolved": 12,
+        "ambiguous": 0,
+        "wrong": 0
+      }
+    }
+  },
+  "yugiohGeneralRegionsBaseline": {
+    "fronts": 4,
+    "exactPrintings": 0,
+    "correctBaseOnly": 0,
+    "unresolved": 4,
+    "wrong": 0
+  },
+  "limitations": [
+    "B-044 contains four copies of one printing, not four independent identities",
+    "B-050 agreement is measured against saved identification labels",
+    "Saved prepared fronts only; no new hardware captures",
+    "Native macOS run; Linux and Windows not executed",
+    "No foil or condition inference",
+    "Targeted YGO fields improve base identity only; set codes remain unresolved",
+    "Tesseract coverage remains below the installed Vision pipeline"
+  ]
+}

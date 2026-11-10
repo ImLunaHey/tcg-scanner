@@ -113,7 +113,19 @@ fn from_scores(readings: &[Vec<RecognizedLine>]) -> Orientation {
         && *score >= 20.
         && *score >= total * 0.8
     {
-        Orientation::known(turns as u8, "text")
+        let words: Vec<_> = readings[turns]
+            .iter()
+            .filter(|l| l.confidence >= 0.5)
+            .map(|l| l.text.as_str())
+            .collect();
+        let basis = if crate::star_wars::printed::is_card(words.iter().copied()) {
+            "starwars-card-text"
+        } else if crate::star_wars::printed::is_leader_unit(words.iter().copied()) {
+            "starwars-leader-unit-text"
+        } else {
+            "text"
+        };
+        Orientation::known(turns as u8, basis)
     } else {
         Orientation::unknown()
     }
@@ -138,5 +150,28 @@ mod tests {
         let result = from_scores(&[vec![], good, vec![], vec![]]);
         assert!(result.verified);
         assert_eq!(result.quarter_turns, 1);
+    }
+    #[test]
+    fn printed_swu_identity_marks_two_sided_cards_without_inventing_a_back() {
+        let words = [
+            "Kelleran Beq",
+            "The Sabered Hand",
+            "LFL FFG",
+            "ASH EN 206/264",
+        ];
+        let reading = words
+            .into_iter()
+            .map(|text| RecognizedLine {
+                text: text.into(),
+                confidence: 0.95,
+                x: 0.,
+                y: 0.5,
+                width: 0.8,
+                height: 0.05,
+            })
+            .collect();
+        let result = from_scores(&[reading, vec![], vec![], vec![]]);
+        assert!(result.verified);
+        assert_eq!(result.basis, "starwars-card-text");
     }
 }

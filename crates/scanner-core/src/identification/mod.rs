@@ -163,7 +163,10 @@ impl Engine {
         image: &OriginalImage,
     ) -> CardIdentification {
         let result = match &self.recognizer {
-            Some(recognizer) => recognizer.recognize(record, image).await,
+            Some(recognizer) => {
+                pending.method = recognizer.method(record, image).into();
+                recognizer.recognize(record, image).await
+            }
             None => Err(ScannerError::new(
                 "configuration",
                 "Recognition is not configured.",

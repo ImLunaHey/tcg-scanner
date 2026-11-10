@@ -27,16 +27,7 @@ impl Tesseract {
     /// Read an upright card and four text bands. Output boxes stay in the full
     /// image's normalized bottom-left coordinates, independent of crop/resize.
     pub fn read_card(&mut self, image: &RgbImage) -> Result<CardReadings> {
-        if image.width() < 20
-            || image.height() < 20
-            || image.width() > 20_000
-            || image.height() > 20_000
-            || u64::from(image.width()) * u64::from(image.height()) > 48_000_000
-        {
-            return Err(ocr_error(
-                "Card OCR requires 20–20000 pixel sides and at most 48 megapixels.",
-            ));
-        }
+        validate(image)?;
         let resized = (image.width().max(image.height()) > 1600)
             .then(|| crate::preprocess::thumbnail(image, 1600));
         let whole = self.recognize(resized.as_ref().unwrap_or(image), false)?;
@@ -53,7 +44,29 @@ impl Tesseract {
         })
     }
 
+    /// Independent pass over the standard YGO title, set-code and passcode
+    /// fields. Keep these lines separate from whole-card/regional readings.
+    pub(crate) fn read_yugioh(&mut self, image: &RgbImage) -> Result<Vec<RecognizedLine>> {
+        validate(image)?;
+        let mut lines = vec![];
+        for field in [
+            [0.04, 0.045, 0.79, 0.085],
+            [0.68, 0.710, 0.25, 0.025],
+            [0.035, 0.947, 0.30, 0.026],
+        ] {
+            lines.extend(self.read_region_with_mode(image, field, true)?);
+        }
+        Ok(lines)
+    }
     fn read_region(&mut self, image: &RgbImage, region: [f64; 4]) -> Result<Vec<RecognizedLine>> {
+        self.read_region_with_mode(image, region, false)
+    }
+    fn read_region_with_mode(
+        &mut self,
+        image: &RgbImage,
+        region: [f64; 4],
+        single_block: bool,
+    ) -> Result<Vec<RecognizedLine>> {
         let crop = Region::new(image.width(), image.height(), region);
         let pixels =
             imageops::crop_imm(image, crop.left, crop.top, crop.width, crop.height).to_image();
@@ -67,12 +80,44 @@ impl Tesseract {
                 .clamp(0., 255.) as u8;
             *pixel = Rgb([value; 3]);
         }
-        let mut lines = self.recognize(&pixels, false)?;
+        let padded = single_block.then(|| {
+            let mut out =
+                RgbImage::from_pixel(pixels.width() + 32, pixels.height() + 32, Rgb([255; 3]));
+            imageops::replace(&mut out, &pixels, 16, 16);
+            out
+        });
+        let mut lines = if single_block {
+            self.recognize(padded.as_ref().unwrap(), true)?
+        } else {
+            self.recognize(&pixels, false)?
+        };
         for line in &mut lines {
+            if single_block {
+                line.x =
+                    (line.x * f64::from(pixels.width() + 32) - 16.) / f64::from(pixels.width());
+                line.y =
+                    (line.y * f64::from(pixels.height() + 32) - 16.) / f64::from(pixels.height());
+                line.width *= f64::from(pixels.width() + 32) / f64::from(pixels.width());
+                line.height *= f64::from(pixels.height() + 32) / f64::from(pixels.height());
+            }
             crop.map(line, image.width(), image.height());
         }
         Ok(lines)
     }
+}
+
+fn validate(image: &RgbImage) -> Result<()> {
+    if image.width() < 20
+        || image.height() < 20
+        || image.width() > 20_000
+        || image.height() > 20_000
+        || u64::from(image.width()) * u64::from(image.height()) > 48_000_000
+    {
+        return Err(ocr_error(
+            "Card OCR requires 20–20000 pixel sides and at most 48 megapixels.",
+        ));
+    }
+    Ok(())
 }
 
 struct Region {

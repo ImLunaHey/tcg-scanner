@@ -22,6 +22,9 @@ pub trait CardProcessor: Send + Sync {
 
 #[async_trait]
 pub trait CardRecognizer: Send + Sync {
+    fn method(&self, _: &ScanRecord, _: &scanner_types::images::OriginalImage) -> &'static str {
+        "native-card-recognition-rust-v1"
+    }
     /// The record and source are verified snapshots; implementations return
     /// suggestions only, never manual confirmation or a condition grade.
     async fn recognize(

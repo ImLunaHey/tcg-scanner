@@ -1,7 +1,7 @@
 //! Native OCR and conservative catalogue suggestions. No automatic confirmation.
 mod candidates;
-mod readings;
 use crate::matching::{PokemonMatcher, footer_orientation_score};
+use crate::readings;
 use scanner_catalogue::TcgDex;
 use scanner_types::{
     cards::CardLanguage,

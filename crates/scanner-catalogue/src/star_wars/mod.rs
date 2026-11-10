@@ -69,7 +69,12 @@ fn decode_sets(bytes: &[u8]) -> Result<Vec<Set>> {
     if sets.len() >= 500
         || unique.len() != sets.len()
         || sets.iter().any(|s| {
-            !model::valid_id(&s.set_id)
+            s.set_id.is_empty()
+                || s.set_id.len() > 16
+                || !s
+                    .set_id
+                    .bytes()
+                    .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
                 || s.full_name.is_empty()
                 || s.full_name.len() > 128
                 || s.number_cards == 0
@@ -104,5 +109,11 @@ mod tests {
         for id in ["../SOR", "sor", "SOR?", "", "A"] {
             assert!(!model::valid_id(id));
         }
+    }
+    #[test]
+    fn auxiliary_short_set_codes_do_not_block_the_main_set_index() {
+        let bytes=br#"[{"setId":"GG","fullName":"Gamegenic","numberCards":6},{"setId":"SOR","fullName":"Spark of Rebellion","numberCards":252}]"#;
+        assert_eq!(decode_sets(bytes).unwrap().len(), 2);
+        assert!(!model::valid_id("GG"));
     }
 }
