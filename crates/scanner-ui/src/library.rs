@@ -118,6 +118,14 @@ pub struct ImageSource {
 }
 
 impl ImageSource {
+    pub fn key(&self) -> (uuid::Uuid, u32, Option<uuid::Uuid>, String) {
+        (
+            self.record.id,
+            self.image.sequence,
+            self.edit,
+            self.image.sha256.clone(),
+        )
+    }
     pub fn params(&self) -> Value {
         let mut value = serde_json::json!({"jobID":self.record.id,"sequence":self.image.sequence,"format":"png"});
         if let Some(edit) = self.edit {

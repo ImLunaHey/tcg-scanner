@@ -33,6 +33,7 @@ rune = { workspace = true, features = ["webgl"] }
 # wgpu only enables these implementations when wasm atomics are disabled.
 wgpu = { version = "~30.0.1", default-features = false, features = ["fragile-send-sync-non-atomic-wasm"] }
 wasm-bindgen-futures = "0.4"
+gloo-timers = { version = "0.3", features = ["futures"] }
 web-sys = { version = "0.3", features = ["Window", "Location"] }
 
 [lints]

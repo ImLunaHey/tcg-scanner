@@ -35,6 +35,7 @@ pub struct State {
     preview: Task<Vec<u8>>,
     cache: ImageCache,
     pub fixture: bool,
+    pub ops: crate::operations::Operations,
     #[cfg(not(target_arch = "wasm32"))]
     fixtures: Vec<ScanRecord>,
 }
@@ -63,6 +64,7 @@ impl Default for State {
             preview: Task::default(),
             cache: ImageCache::new(Arc::new(|| {})),
             fixture: false,
+            ops: Default::default(),
             #[cfg(not(target_arch = "wasm32"))]
             fixtures: vec![],
         }
@@ -70,6 +72,7 @@ impl Default for State {
 }
 impl State {
     pub fn setup(&mut self, waker: Waker) {
+        self.ops.set_waker(waker.clone());
         self.connecting.set_waker(waker.clone());
         self.listing.set_waker(waker.clone());
         self.details.set_waker(waker.clone());
@@ -116,6 +119,10 @@ impl State {
         }
     }
     pub fn disconnect(&mut self) {
+        if self.ops.mutation.pending() {
+            return;
+        }
+        self.ops.disconnect();
         self.connecting.cancel();
         self.listing.cancel();
         self.details.cancel();
@@ -125,6 +132,7 @@ impl State {
         self.batches.clear();
         self.cards.clear();
         self.record = None;
+        self.update_review();
         self.image = None;
         self.error = None;
         self.token = TextEdit::new("").secure();
@@ -143,7 +151,7 @@ impl State {
         }
     }
     pub fn poll(&mut self, _: f64, _: &mut Tx) -> bool {
-        let mut changed = false;
+        let mut changed = self.poll_operations();
         if let Some(result) = self.connecting.take() {
             match result {
                 Ok(connected) => {
@@ -152,6 +160,8 @@ impl State {
                     self.offset = 0;
                     self.receive_page(connected.page);
                     self.error = None;
+                    self.discover();
+                    self.schedule_watch();
                 }
                 Err(error) => self.error = Some(error.to_string()),
             }
@@ -188,10 +198,29 @@ impl State {
             .unwrap_or(0);
         self.select_batch(index);
     }
-    fn receive_record(&mut self, record: ScanRecord) {
+    pub(crate) fn receive_record(&mut self, record: ScanRecord) {
+        let old_key = self.cards.get(self.selected).map(|c| c.source.key());
+        let old_sequence = self.cards.get(self.selected).map(|c| c.sequence);
+        let same_batch = self.record.as_ref().is_some_and(|r| r.id == record.id);
+        if let Some(batch) = self.batches.iter_mut().find(|b| b.id == record.id) {
+            *batch = (&record).into();
+        }
         self.cards = library::cards(&record);
         self.record = Some(record);
-        self.select_card(0);
+        let selected = if same_batch {
+            self.cards
+                .iter()
+                .position(|c| Some(c.sequence) == old_sequence)
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        if old_key.is_some() && old_key == self.cards.get(selected).map(|c| c.source.key()) {
+            self.selected = selected;
+            self.update_review();
+        } else {
+            self.select_card(selected);
+        }
     }
     fn receive_preview(&mut self, result: Result<Vec<u8>>) {
         self.loading_image = false;
@@ -205,6 +234,7 @@ impl State {
         self.preview.cancel();
         self.cards.clear();
         self.record = None;
+        self.update_review();
         self.image = None;
         self.batch = index;
         self.query = TextEdit::new("");
@@ -227,6 +257,7 @@ impl State {
     }
     pub fn select_card(&mut self, index: usize) {
         self.selected = index;
+        self.update_review();
         self.image = None;
         self.image_error = None;
         self.preview.cancel();

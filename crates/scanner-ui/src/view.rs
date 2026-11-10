@@ -24,6 +24,7 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
                 .py(24.)
                 .gap(20.)
                 .child(crate::connection_view::toolbar(s, t))
+                .child(crate::operations::controls(s, t))
                 .child(
                     text(
                         s.error
@@ -222,14 +223,16 @@ fn detail(s: &State, t: tok::Theme) -> El {
             .center()
             .child(text(message).color(t.text_secondary).wrap());
     }
-    pane.child(preview).child(
-        col().gap(6.).children(
-            card.evidence
-                .iter()
-                .take(6)
-                .map(|line| text(line).font(type_::BODY).color(t.text_secondary).wrap()),
-        ),
-    )
+    pane.child(preview)
+        .child(crate::operations::review_panel(s, t))
+        .child(
+            col().gap(6.).children(
+                card.evidence
+                    .iter()
+                    .take(6)
+                    .map(|line| text(line).font(type_::BODY).color(t.text_secondary).wrap()),
+            ),
+        )
 }
 
 fn batch_label(batch: &scanner_types::service::JobSummary) -> String {

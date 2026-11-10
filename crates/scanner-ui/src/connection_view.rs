@@ -133,7 +133,7 @@ pub fn toolbar(s: &State, t: tok::Theme) -> El {
         .child(button(
             "Disconnect",
             "disconnect",
-            true,
+            !s.ops.mutation.pending(),
             t,
             State::disconnect,
         ));

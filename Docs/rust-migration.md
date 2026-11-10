@@ -349,3 +349,13 @@ Rune's pinned GPU cache requires wgpu's documented
 feature in its single-threaded browser build; the UI explicitly rejects wasm atomics.
 Desktop-only Rune features and file/image dependencies are target-gated. Browser
 runtime rendering, hosted assets and service mutations are subsequent work.
+
+Rune now exposes device discovery, profile selection, 600-DPI PNG defaults,
+duplex/language choices, scan submission, cancellation and continuation. Card
+preparation, identification and manual candidate/finish/condition reviews use the
+same authenticated service operations. Status/progress refresh asynchronously;
+unsaved review choices survive refreshes, and a completed write supersedes any
+older pending record read. Mutations are serialized in the UI. An uncertain
+response retains its original parameters/UUID for an explicit retry, and a real
+TCP lost-response test verifies identical scan submissions and duplicate-click
+suppression. These tests use a simulated service and never feed the live scanner.
