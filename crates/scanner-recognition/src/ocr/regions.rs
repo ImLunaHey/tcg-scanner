@@ -24,6 +24,18 @@ impl CardReadings {
 }
 
 impl Tesseract {
+    /// Upright whole and identity-band readings, kept independent for agreement checks.
+    pub(crate) fn read_identity(&mut self, image: &RgbImage) -> Result<CardReadings> {
+        validate(image)?;
+        Ok(CardReadings {
+            whole: self.recognize(image, false)?,
+            title: self.read_region(image, [0., 0., 1., 0.24])?,
+            footer: self.read_region(image, [0., 0.68, 1., 0.32])?,
+            left: vec![],
+            right: vec![],
+        })
+    }
+
     /// Read an upright card and four text bands. Output boxes stay in the full
     /// image's normalized bottom-left coordinates, independent of crop/resize.
     pub fn read_card(&mut self, image: &RgbImage) -> Result<CardReadings> {

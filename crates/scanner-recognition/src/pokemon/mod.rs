@@ -1,4 +1,5 @@
 //! Native OCR and conservative catalogue suggestions. No automatic confirmation.
+mod camera;
 mod candidates;
 mod energy;
 mod printed;
