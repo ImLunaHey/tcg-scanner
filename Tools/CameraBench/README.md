@@ -70,3 +70,32 @@ nearest-neighbour result cannot replace exact-printing confirmation safely.
   before optional finish analysis if that removes meaningful latency.
 - Re-run these fixtures plus real phone recordings, changed-card/stale-result
   checks, rotations, glare and textured backgrounds after each experiment.
+
+## Upright-first experiment, 10 November 2026
+
+Backend `6454923`, web through `5105a91`. Same eight prepared frames and seeded
+24-request schedule, rerun after confirming that the restarted service was ready.
+A separate startup attempt encountered HTTP 502 while the service initialized;
+those transport failures are retained in private startup results and are not
+mixed into these warmed-service measurements.
+
+The camera now tries independent upright whole-card and title/footer readings
+before orientation, broad retries, visual supplements and finish analysis. Early
+return requires one candidate with name, collector number and printed-total
+support. Uncertain results still use the existing fallback. Fast responses contain
+identity only, without a finish estimate; this comparison therefore measures time
+to identity, with finish removed from the critical path, not faster completion of
+all previous work.
+
+Successful-match median **392 ms**, nearest-rank p95 **507 ms** (n=12).
+Four of seven front fixtures still match consistently, three remain unresolved;
+no wrong confirmed matches and no HTTP errors across the 24 requests. The back
+still returns no match. Salamence now reaches an ambiguous fallback rather than
+being rejected at outline extraction. Those unresolved paths can still take
+seconds. This is progress toward subsecond identity, not evidence of 200 ms
+recognition or improved overall accuracy.
+
+Separately, browser results now retain a successful captured match even when the
+live view moves, with its own captured thumbnail and the existing Last card label.
+It does not mark the changed live view as matched. Reset, close, and detail-session
+boundaries still ignore stale responses. Diagnostics sit below the card guide.
