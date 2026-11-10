@@ -3,7 +3,7 @@ name: Rust portability
 on:
   pull_request:
   push:
-    branches: [main, t3/explain-card-detection]
+    branches: [main]
 
 permissions:
   contents: read
