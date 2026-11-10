@@ -481,3 +481,25 @@ test("sampling continues during a slow lookup and stale matches are discarded", 
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Stop camera", exact: true }).click();
 });
+
+
+test("last outline rejection stays visible during the next lookup", async ({ page }) => {
+  await setup(page);
+  let requests = 0;
+  await page.route("**/api/v1/camera/identify", async (route) => {
+    requests++;
+    if (requests === 1)
+      await route.fulfill({ json: { state: "noCard", candidates: [] } });
+    // Leave the next request pending to verify that progress doesn't hide the reason.
+  });
+  await page.goto("/camera");
+  await page.getByRole("button", { name: "Start camera", exact: true }).click();
+  const last = page.getByTestId("camera-last-lookup");
+  await expect(last).toHaveText("Last lookup: no complete card outline found");
+  await expect.poll(() => requests).toBe(2);
+  await expect(page.getByTestId("camera-activity")).toContainText("waiting for recognition");
+  await expect(last).toBeVisible();
+  await page.getByRole("button", { name: "Stop camera", exact: true }).click();
+  await page.getByRole("button", { name: "Start camera", exact: true }).click();
+  await expect(last).toHaveCount(0);
+});

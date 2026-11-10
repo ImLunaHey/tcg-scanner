@@ -100,10 +100,12 @@ export function Camera() {
   const [result, setResult] = useState<CameraResult>();
   const [busy, setBusy] = useState(false);
   const [activity, setActivity] = useState("");
+  const [lastLookup, setLastLookup] = useState("");
   const reset = useRef(() => {});
   useEffect(() => {
     if (!active) return;
     setActivity("");
+    setLastLookup("");
     let alive = true,
       stream: MediaStream | undefined,
       timer: ReturnType<typeof setTimeout> | undefined;
@@ -119,6 +121,7 @@ export function Camera() {
     let lastDuration = "";
     reset.current = () => {
       generation++;
+      setLastLookup("");
       gate.submitted = undefined;
       gate.matched = false;
       gate.lastAttempt = -Infinity;
@@ -163,6 +166,17 @@ export function Camera() {
           setStatus("View changed · checking the newest frame next");
           return;
         }
+        setLastLookup(
+          value.state === "matched"
+            ? `Last lookup: ${value.candidates[0]?.name || "card matched"}`
+            : {
+                noCard: "Last lookup: no complete card outline found",
+                cardBack: "Last lookup: card back found",
+                codeCard: "Last lookup: Pokémon LIVE code card found",
+                ambiguous: "Last lookup: several possible matches",
+                noMatch: "Last lookup: card found, no catalogue match",
+              }[value.state],
+        );
         gate.matched = value.state === "matched" || value.state === "codeCard";
         if (!gate.matched)
           gate.lastAttempt = Math.max(gate.lastAttempt, Date.now() - 500);
@@ -486,6 +500,9 @@ export function Camera() {
                     }
                   </strong>
                   <small>{status}</small>
+                  {lastLookup && (
+                    <small data-testid="camera-last-lookup">{lastLookup}</small>
+                  )}
                   <small aria-live="off" data-testid="camera-activity">
                     {activity}
                   </small>
