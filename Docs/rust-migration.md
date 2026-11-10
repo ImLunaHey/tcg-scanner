@@ -186,6 +186,15 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
 
 ## Validation
 
+`scanner-http` now adapts the Rust coordinator directly to authenticated REST and
+JSON-RPC, expiring/revocable bearer sessions, bounded original/thumbnail downloads
+and resumable SSE events. It preserves the existing public binary-image policy
+while authenticating metadata and controls. Integration tests exercise Host/Origin
+and header rejection before hardware access, body limits, session authority,
+REST/RPC profile sharing, image integrity, and concurrency leases through response
+completion/disconnection. Deployment wiring, connection limits, native credential
+files, remaining domain routes and Rune web assets are still pending.
+
 The Rune library slice opens saved batches, searches cards and shows their latest
 edits and identification evidence. Reads and verified thumbnails run off the UI
 thread. It currently reads the ledger without writing; service-backed scan and

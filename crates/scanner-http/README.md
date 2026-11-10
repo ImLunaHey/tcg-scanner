@@ -1,0 +1,44 @@
+# Scanner HTTP
+
+Internal in-process HTTP adapter built on Axum. `Gateway::new` takes a shared
+Rust coordinator, backend label, root token and validated `Configuration`;
+`Gateway::router` returns the Axum router for the host's listener. Bind only to
+`Configuration::address()`. The host owns connection limits, credential-file
+loading, shutdown and TLS termination for an explicit public HTTPS origin.
+These deployment pieces are separate from this request adapter.
+
+The integration suite is a runnable hardware-free example:
+
+```sh
+cargo test -p scanner-http --test gateway
+```
+
+Implemented routes include `/rpc` (POST JSON-RPC), device inspection/defaults,
+profiles, jobs, continuations, status, image metadata/edits/downloads/thumbnails,
+one-hour bearer sessions, and resumable SSE events. Inventory, recognition,
+pricing, Store transfer, public camera lookup and Rune web assets remain pending.
+The migration ledger tracks the complete interface scope.
+
+Control routes require exactly one Bearer authorization header. Credentials in
+URLs and cookies are not accepted. Only the root token can issue sessions;
+session credentials can revoke themselves. SHA-256 root digests use constant-time
+comparison, and token generation uses the operating system random source.
+
+The existing gateway's public binary-image policy is preserved: original and
+thumbnail GETs do not require login, but metadata and edits do. Host and Origin
+checks apply to all routes. Bind validation permits loopback or explicitly enabled
+Tailscale IPv4 addresses; it rejects wildcard/public addresses. Explicit public
+origins must be bare HTTPS origins.
+
+Bodies have a five-second deadline and 60 KiB REST / 64 KiB RPC limits. Response
+leases retain concurrency slots until the response body is consumed or dropped
+(16 total, two binary downloads, four SSE streams). Event cursors are bounded;
+SSE uses fixed event names and JSON encoding. Downloads verify chunk boundaries
+and the complete recorded SHA-256 before emitting the final chunk. Originals are
+read from the configured capability-pinned storage root, not URL-supplied paths.
+
+Reference APIs: [Axum](https://docs.rs/axum/0.8.9/axum/),
+[bounded body collection](https://docs.rs/axum/0.8.9/axum/body/fn.to_bytes.html),
+[OS randomness](https://docs.rs/getrandom/0.4.3/getrandom/fn.fill.html).
+Workspace path dependencies are intentional during migration; this crate is not
+currently published independently.

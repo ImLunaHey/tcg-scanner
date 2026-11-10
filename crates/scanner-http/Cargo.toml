@@ -1,0 +1,36 @@
+[package]
+name = "scanner-http"
+description = "Authenticated in-process HTTP adapter for the portable scanner coordinator"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+[dependencies]
+scanner-core.workspace = true
+scanner-rpc.workspace = true
+scanner-types.workspace = true
+axum = { version = "0.8.9", default-features = false, features = ["http1", "json", "tokio"] }
+http-body = "1.0"
+getrandom = "0.4.3"
+subtle = "2.6.1"
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+base64.workspace = true
+chrono.workspace = true
+tokio.workspace = true
+url.workspace = true
+uuid.workspace = true
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+[dev-dependencies]
+scanner-images.workspace = true
+image.workspace = true
+scanner-files.workspace = true
+scanner-store.workspace = true
+tempfile.workspace = true
+async-trait.workspace = true
+tokio-util.workspace = true
+tower = { version = "0.5", features = ["util"] }
+[lints]
+workspace = true
