@@ -2,6 +2,8 @@
 mod authentication;
 #[path = "gateway/library.rs"]
 mod library;
+#[path = "gateway/server.rs"]
+mod server;
 #[path = "gateway/streaming.rs"]
 mod streaming;
 mod support;

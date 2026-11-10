@@ -49,6 +49,9 @@ impl Gateway {
     pub fn router(self: &Arc<Self>) -> Router {
         Router::new().fallback(handle).with_state(self.clone())
     }
+    pub fn address(&self) -> std::net::SocketAddr {
+        self.configuration.address()
+    }
     async fn respond(self: &Arc<Self>, request: Request) -> Result<Response> {
         let (head, body) = request.into_parts();
         self.headers(&head)?;

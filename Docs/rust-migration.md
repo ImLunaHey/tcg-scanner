@@ -183,7 +183,7 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   an isolated database and controlled driver to verify malformed-request rejection,
   profile conflicts/partial updates, submission idempotency and cancellation cleanup.
   This crate opens no listener. Authentication, transport concurrency/body limits,
-  HTTP/CLI/MCP wiring and the remaining library/control methods are still pending.
+  MCP wiring and the remaining library/control methods are still pending.
 
 ## Validation
 
@@ -201,8 +201,19 @@ and resumable SSE events. It preserves the existing public binary-image policy
 while authenticating metadata and controls. Integration tests exercise Host/Origin
 and header rejection before hardware access, body limits, session authority,
 REST/RPC profile sharing, image integrity, and concurrency leases through response
-completion/disconnection. Deployment wiring, connection limits, remaining domain
-routes and Rune web assets are still pending.
+completion/disconnection. A native TCP listener now bounds connections, header
+size/count/time, connection lifetime and graceful shutdown. Real TCP tests use
+`scanner-client` to exercise authenticated RPC, structured errors and shutdown;
+oversized headers are rejected before device access. Remaining domain routes
+and Rune web assets are still pending.
+
+`scanner-app` composes the native service and CLI, private credential loading,
+global hardware ownership, platform scanner hosts and signal-driven shutdown.
+The CLI provides scan/status/job/profile commands and generic v1 calls using the
+bounded native `scanner-client`. Both binaries build; an isolated startup attempt
+correctly refused the installed Swift service's hardware lock before creating a
+database. Startup currently refuses unfinished jobs pending disk reconciliation.
+Service installation, sleep/wake handling and full CLI/MCP parity remain open.
 
 The Rune library slice opens saved batches, searches cards and shows their latest
 edits and identification evidence. Reads and verified thumbnails run off the UI

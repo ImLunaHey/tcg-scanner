@@ -2,10 +2,11 @@
 
 Internal in-process HTTP adapter built on Axum. `Gateway::new` takes a shared
 Rust coordinator, backend label, root token and validated `Configuration`;
-`Gateway::router` returns the Axum router for the host's listener. Bind only to
-`Configuration::address()`. The host owns connection limits, credential-file
-loading, shutdown and TLS termination for an explicit public HTTPS origin.
-These deployment pieces are separate from this request adapter.
+`Gateway::serve` accepts a TCP listener bound to `Configuration::address()`.
+It limits connections to 64, headers to 32 KiB/64 fields with a ten-second
+deadline, and drains connections on cancellation. `Gateway::router` is also
+available for embedding. The host owns credential-file loading, coordinator
+shutdown and TLS termination for an explicit public HTTPS origin.
 
 The integration suite is a runnable hardware-free example:
 

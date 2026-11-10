@@ -7,6 +7,9 @@ rust-version.workspace = true
 repository.workspace = true
 publish = false
 [dependencies]
+hyper = { version = "1.12", features = ["server", "http1"] }
+hyper-util = { version = "0.1.21", features = ["tokio", "service"] }
+tokio-util.workspace = true
 scanner-core.workspace = true
 scanner-rpc.workspace = true
 scanner-types.workspace = true
@@ -24,13 +27,13 @@ url.workspace = true
 uuid.workspace = true
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 [dev-dependencies]
+scanner-client.workspace = true
 scanner-images.workspace = true
 image.workspace = true
 scanner-files.workspace = true
 scanner-store.workspace = true
 tempfile.workspace = true
 async-trait.workspace = true
-tokio-util.workspace = true
 tower = { version = "0.5", features = ["util"] }
 [lints]
 workspace = true

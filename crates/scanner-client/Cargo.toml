@@ -1,0 +1,16 @@
+[package]
+name = "scanner-client"
+description = "Bounded authenticated native client for scanner JSON-RPC"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+[dependencies]
+scanner-types.workspace = true
+reqwest.workspace = true
+serde_json.workspace = true
+url.workspace = true
+uuid.workspace = true
+[lints]
+workspace = true

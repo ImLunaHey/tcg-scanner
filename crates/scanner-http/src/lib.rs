@@ -10,6 +10,7 @@ mod images;
 mod lease;
 mod path;
 mod routes;
+mod server;
 pub use access::generate_token;
 pub use configuration::Configuration;
 pub use gateway::Gateway;
