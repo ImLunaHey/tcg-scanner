@@ -523,3 +523,10 @@ exports. Desktop save/folder dialogs support cancellation; browsers generate
 downloads in Rust/WebAssembly. The browser flow downloads both images, verifies
 their saved hashes and dimensions, and opens the ZIP to verify its manifest and
 files. The workspace passes 225 tests plus strict native and WebAssembly Clippy.
+
+Camera geometry now runs in `scanner-images`: JPEG metadata is bounded before
+pixel allocation, EXIF/colour handling is shared, and Canny contours produce
+validated four-corner outlines with perspective correction. Partial, small and
+unsuitable shapes return no card. Synthetic tests verify asymmetric marks survive
+without mirroring. This replaces the geometry dependency on Vision/CoreImage;
+real phone-frame quality and the service/UI camera path are still in progress.

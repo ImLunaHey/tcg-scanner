@@ -1,4 +1,5 @@
 pub mod boundary;
+pub mod camera;
 pub mod decode;
 pub mod deskew;
 pub mod edit;
