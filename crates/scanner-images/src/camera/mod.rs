@@ -35,6 +35,27 @@ pub fn extract(bytes: &[u8]) -> Result<Option<EncodedImage>> {
     crate::encode_png(DynamicImage::ImageRgb8(corrected).to_rgba8()).map(Some)
 }
 
+/// Bounded guide-area fallback when perspective extraction fails. Detail only
+/// warrants an OCR attempt; it is not evidence of a card or a valid outline.
+pub fn guide_for_ocr(bytes: &[u8]) -> Result<Option<EncodedImage>> {
+    let image = decode(bytes)?;
+    let sample = image.thumbnail(32, 32).to_luma8();
+    let count = f64::from(sample.width() * sample.height());
+    let (sum, squared) = sample.pixels().fold((0., 0.), |(sum, squared), p| {
+        let value = f64::from(p[0]);
+        (sum + value, squared + value * value)
+    });
+    if squared / count - (sum / count).powi(2) < 180. {
+        return Ok(None);
+    }
+    let image = if image.width().max(image.height()) > 1600 {
+        image.thumbnail(1600, 1600)
+    } else {
+        image
+    };
+    crate::encode_png(image.to_rgba8()).map(Some)
+}
+
 fn decode(bytes: &[u8]) -> Result<DynamicImage> {
     if bytes.is_empty() || bytes.len() > MAX_IMAGE_BYTES {
         return Err(invalid());
@@ -101,6 +122,22 @@ mod tests {
             .encode_image(image)
             .unwrap();
         bytes
+    }
+    #[test]
+    fn guide_fallback_accepts_detail_without_claiming_a_complete_outline() {
+        let mut frame = RgbImage::new(600, 800);
+        assert!(guide_for_ocr(&jpeg(&frame)).unwrap().is_none());
+        imageproc::drawing::draw_filled_rect_mut(
+            &mut frame,
+            imageproc::rect::Rect::at(0, 40).of_size(450, 720),
+            Rgb([220, 200, 190]),
+        );
+        let bytes = jpeg(&frame);
+        assert!(extract(&bytes).unwrap().is_none());
+        let guide = guide_for_ocr(&bytes).unwrap().unwrap();
+        assert_eq!((guide.width, guide.height), (600, 800));
+        assert!(guide_for_ocr(b"invalid").is_err());
+        assert!(guide_for_ocr(&vec![0; MAX_IMAGE_BYTES + 1]).is_err());
     }
     #[test]
     fn rectifies_perspective_without_mirroring_or_retaining_background() {

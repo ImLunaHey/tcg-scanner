@@ -69,7 +69,7 @@ impl CameraRecognizer {
         .await
         .map_err(worker)?;
         let _permit = permit;
-        let Some((bytes, orientation)) = prepared? else {
+        let Some((bytes, orientation, outlined)) = prepared? else {
             return Ok(CameraIdentification::empty(CameraState::NoCard));
         };
         if let Some(state) = side(&orientation) {
@@ -77,7 +77,7 @@ impl CameraRecognizer {
         }
         tokio::time::timeout_at(
             deadline.into(),
-            self.resolve(bytes, language, orientation, deadline),
+            self.resolve(bytes, language, orientation, outlined, deadline),
         )
         .await
         .map_err(|_| {
@@ -92,6 +92,7 @@ impl CameraRecognizer {
         bytes: Vec<u8>,
         language: CardLanguage,
         orientation: Orientation,
+        outlined: bool,
         deadline: Instant,
     ) -> Result<CameraIdentification> {
         let options = Options {
@@ -99,7 +100,9 @@ impl CameraRecognizer {
                 .verified
                 .then_some(u32::from(orientation.quarter_turns)),
             deadline: Some(deadline),
-            allow_visual: orientation.verified && orientation.basis.starts_with("pokemon-"),
+            allow_visual: outlined
+                && orientation.verified
+                && orientation.basis.starts_with("pokemon-"),
         };
         if language == CardLanguage::English && orientation.basis.starts_with("starwars-") {
             return self
@@ -113,6 +116,11 @@ impl CameraRecognizer {
         if meaningful(&evidence) {
             let mut result =
                 CameraIdentification::from_evidence(evidence.clone(), CardGame::Pokemon);
+            // An unrectified guide can confirm printed identity, but cannot
+            // support crop-dependent finish analysis.
+            if !outlined {
+                return Ok(result);
+            }
             let preparation = CardPreparation {
                 orientation_verified: orientation.verified,
                 orientation_basis: Some(orientation.basis.into()),
@@ -167,15 +175,21 @@ fn prepare(
     data: PathBuf,
     language: CardLanguage,
     deadline: Instant,
-) -> Result<Option<(Vec<u8>, Orientation)>> {
-    let Some(card) = scanner_images::camera::extract(&bytes)? else {
-        return Ok(None);
+) -> Result<Option<(Vec<u8>, Orientation, bool)>> {
+    let extracted = scanner_images::camera::extract(&bytes)?;
+    let outlined = extracted.is_some();
+    let card = match extracted {
+        Some(card) => card,
+        None => match scanner_images::camera::guide_for_ocr(&bytes)? {
+            Some(guide) => guide,
+            None => return Ok(None),
+        },
     };
     let pixels = scanner_images::decode::decode(&card.bytes)?.to_rgb8();
     let mut ocr = Tesseract::new(&library, &data, language.as_str())?;
     ocr.set_deadline(deadline);
     let orientation = ocr.orientation(&pixels)?;
-    Ok(Some((card.bytes, orientation)))
+    Ok(Some((card.bytes, orientation, outlined)))
 }
 fn side(orientation: &Orientation) -> Option<CameraState> {
     if !orientation.verified {
