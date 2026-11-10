@@ -820,6 +820,7 @@
     border-radius: 15px;
     width: 620px;
     max-width: 100%;
+    min-width: 0;
     max-height: calc(100dvh - 48px);
     overflow-y: auto;
     padding: 28px;
@@ -1162,7 +1163,7 @@
   }
   .modal .form-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .comparison-grid {
     gap: 10px;

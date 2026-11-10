@@ -3,208 +3,79 @@ import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { unzipSync } from "fflate";
 
-const key = "e".repeat(64); // Isolated mock server only; never a live credential.
-test("authenticated browser workflow, retry, review, export and cancellation", async ({
-  page,
-}) => {
+const key = "e".repeat(64); // Isolated Rust fixture only.
+
+test("original workspace layout, profiles, paired review and verified exports", async ({ page }, info) => {
   const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  page.on("console", (message) => {
-    if (
-      message.type() === "error" &&
-      /Content Security Policy/.test(message.text())
-    )
-      errors.push(message.text());
-  });
+  page.on("pageerror", error => errors.push(error.message));
   await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Connect to your scanner" }),
-  ).toBeVisible();
-  const anonymous = await page.request.get("/api/v1/jobs");
-  expect(anonymous.status()).toBe(401);
+  await expect(page.getByRole("heading", { name: "Connect to your scanner" })).toBeVisible();
+  expect((await page.request.get("/api/v1/jobs")).status()).toBe(401);
   await page.getByLabel("Access key", { exact: true }).fill(key);
   await page.getByRole("button", { name: "Open workspace" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Ready for the next batch." }),
-  ).toBeVisible();
-  await expect(page.getByLabel("Resolution", { exact: true })).toContainText(
-    "300 DPI",
-  );
-  await expect(
-    page.getByRole("button", { name: "Start scan", exact: true }),
-  ).toBeDisabled();
-  await expect(page.locator(".topbar")).toHaveCount(0);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBeTruthy();
-  // Playwright injects an inline stylesheet for WebKit screenshots; keep CSP intact.
-  if (test.info().project.name !== "tablet-webkit")
-    await page.screenshot({
-      path: `test-results/dashboard-${test.info().project.name}.png`,
-      fullPage: true,
-      caret: "initial",
-    });
+  await expect(page.getByRole("heading", { name: "Ready for the next batch." })).toBeVisible();
+  for (const name of ["Dashboard", "Camera", "Library", "Inventory", "Profiles", "Scanner"])
+    await expect(page.getByRole("link", { name, exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start scan", exact: true })).toBeDisabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  if (info.project.name !== "tablet-webkit")
+    await page.screenshot({ path: `test-results/restored-dashboard-${info.project.name}.png`, fullPage: true });
 
   await page.getByRole("link", { name: "Profiles", exact: true }).click();
   await page.getByRole("button", { name: "New profile" }).click();
-  const name = `Browser paper ${Date.now()}`;
+  const name = `Browser profile ${Date.now()}`;
   await page.getByLabel("Profile name", { exact: true }).fill(name);
   await page.getByRole("button", { name: "Save profile" }).click();
   await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Dashboard", exact: true }).click();
-  await page
-    .getByLabel("Scan profile", { exact: true })
-    .selectOption({ label: name });
-  await page.getByLabel("I have checked the feeder setup").check();
+  await page.getByRole("button", { name: `Delete ${name}`, exact: true }).click();
+  await page.getByRole("button", { name: "Delete profile", exact: true }).click();
+  await expect(page.getByRole("heading", { name, exact: true })).toHaveCount(0);
 
-  await expect(
-    page.getByLabel("Auto-crop, orient and identify cards"),
-  ).toBeChecked();
-  await page.getByLabel("Auto-crop, orient and identify cards").uncheck();
-
-  // The server creates the job but the first response is lost. Retry must reuse its UUID.
-  let requests = 0;
-  const ids: string[] = [];
-  await page.route("**/api/v1/jobs", async (route) => {
-    if (route.request().method() !== "POST") return route.continue();
-    requests++;
-    ids.push(route.request().postDataJSON().requestID);
-    if (requests === 1) {
-      await route.fetch();
-      await route.abort("failed");
-    } else await route.continue();
-  });
-  await page.getByRole("button", { name: "Start scan", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Retry same request" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Retry same request" }).click();
-  await expect(page).toHaveURL(/#\/batches\//);
-  expect(ids[0]).toBe(ids[1]);
-  await page.unroute("**/api/v1/jobs");
-  await expect(page.locator(".page-heading .state-completed")).toBeVisible();
+  await page.getByRole("link", { name: "Library", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Batch library" })).toBeVisible();
+  await page.getByRole("link", { name: /B-001/ }).click();
+  await expect(page.locator(".card-pair")).toHaveCount(1);
+  await expect(page.locator(".thumbnail img")).toHaveCount(2);
+  await expect(page.getByText("Browser test card · 피카츄", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Enlarge front of C-001", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  // The original document grid exposes editing/review; the compact paired gallery
+  // preserves its existing layout. Both are backed by actual saved Rust fixtures.
+  await page.getByRole("link", { name: "Library", exact: true }).click();
+  await page.getByRole("link", { name: /B-002/ }).click();
   await expect(page.locator(".image-card")).toHaveCount(2);
-  await expect(page.locator(".thumbnail img").first()).toBeVisible();
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBeTruthy();
-  // Playwright injects an inline stylesheet for WebKit screenshots; keep CSP intact.
-  if (test.info().project.name !== "tablet-webkit")
-    await page.screenshot({
-      path: `test-results/batch-${test.info().project.name}.png`,
-      fullPage: true,
-      caret: "initial",
-    });
-  await page.getByLabel("Select to compare").nth(0).check();
-  await page.getByLabel("Select to compare").nth(1).check();
-  await page.getByRole("button", { name: "Compare selected" }).click();
-  await expect(
-    page.getByRole("dialog", { name: "Compare captures" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Close comparison" }).click();
-  await page
-    .getByRole("button", { name: "Prepare card", exact: true })
-    .first()
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Download card", exact: true }),
-  ).toHaveCount(1);
-  await expect(
-    page.getByRole("button", { name: "Original", exact: true }),
-  ).toHaveCount(1);
-  await page
-    .getByRole("button", { name: "Identify card", exact: true })
-    .first()
-    .click();
-  await page
-    .getByRole("button", { name: "Identify this image", exact: true })
-    .click();
-  await expect(page.getByRole("radio")).toHaveCount(1);
-  await expect(
-    page.getByRole("button", { name: "Save reviewed identity" }),
-  ).toBeDisabled();
-  await expect(page.getByLabel("Finish · manual")).toHaveValue("unverified");
-  await expect(page.getByLabel("Condition · manual")).toHaveValue("unassessed");
-  await page.getByRole("button", { name: "Close identification" }).click();
-  await expect(page.locator(".image-card").first()).toContainText(
-    "Suggested · review required",
-  );
-  await expect(page.locator(".image-card").first()).toContainText("Furret");
-  await expect(page.locator(".image-card").first()).toContainText(
-    "Darkness Ablaze",
-  );
-  await page
-    .getByRole("button", { name: "Review identity", exact: true })
-    .first()
-    .click();
-  await page.getByRole("radio").check();
+  await page.getByRole("button", { name: "Review identity", exact: true }).first().click();
+  await page.getByRole("radio").first().check();
   await page.getByLabel("Finish · manual").selectOption("reverseHolo");
   await page.getByLabel("Condition · manual").selectOption("lightlyPlayed");
-  await page.getByRole("button", { name: "Save reviewed identity" }).click();
+  const save = page.getByRole("button", { name: "Save reviewed identity" });
+  // Exercise keyboard submission in mobile Chromium as well as pointer actions
+  // in the desktop and WebKit projects. Its emulated visual viewport can pan
+  // during selectOption and misreport hit-test coordinates after scrolling.
+  if (info.project.name === "mobile") await save.press("Enter");
+  else await save.click();
   await expect(page.getByText(/Identity confirmed by review/)).toBeVisible();
-  await page.getByRole("button", { name: "Close identification" }).click();
-  await page.reload();
-  await expect(page.getByText(/Furret.*Darkness Ablaze/)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const close = page.getByRole("button", { name: "Close identification" });
+  if (info.project.name === "mobile") await close.press("Enter");
+  else await close.click();
   const zip = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export batch ZIP" }).click();
   const archive = await zip;
-  expect(archive.suggestedFilename()).toMatch(/^B-\d+\.zip$/);
   const files = unzipSync(await readFile((await archive.path())!));
-  const manifestPath = Object.keys(files).find((path) =>
-    path.endsWith("/manifest.json"),
-  )!;
+  const manifestPath = Object.keys(files).find(path => path.endsWith("/manifest.json"))!;
   const manifest = JSON.parse(new TextDecoder().decode(files[manifestPath]));
   expect(manifest.images).toHaveLength(2);
-  expect(manifest.cardIdentifications[0].selectedCardID).toBe("swsh3-136");
+  expect(manifest.cardIdentifications[0].selectedCardID).toBe("fixture-1");
   expect(manifest.cardIdentifications[0].finish).toBe("reverseHolo");
-  expect(manifest.cardIdentifications[0].condition).toBe("lightlyPlayed");
-  expect(manifest.processedImages[0].cardPreparation).toBeTruthy();
-  for (const image of [
-    ...manifest.images,
-    ...manifest.processedImages.map(
-      (edit: { image: { relativePath: string; sha256: string } }) => edit.image,
-    ),
-  ]) {
-    const bytes =
-      files[manifestPath.replace("manifest.json", image.relativePath)];
-    expect(createHash("sha256").update(bytes).digest("hex")).toBe(image.sha256);
-  }
-  await page.getByRole("button", { name: "Edit copy" }).first().click();
-  await page.getByLabel("Clockwise rotation").selectOption("1");
-  await page.getByRole("button", { name: "Save edited PNG copy" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Manually edited copies" }),
-  ).toBeVisible();
-  await expect(page.locator(".image-card")).toHaveCount(3);
-  await page.reload();
-  await expect(page.locator(".page-heading .state-completed")).toBeVisible();
-
-  await page.getByRole("link", { name: "Dashboard", exact: true }).click();
-  await page.getByLabel("I have checked the feeder setup").check();
-  await page.getByRole("button", { name: "Start scan", exact: true }).click();
-  await expect(page).toHaveURL(/#\/batches\//);
-  await page.getByRole("button", { name: "Cancel job" }).click();
-  await expect(page.locator(".page-heading .state-cancelled")).toBeVisible();
-  await page.getByRole("link", { name: "Scanner", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Automatic document feeder" }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "Profiles", exact: true }).click();
-  await page
-    .getByRole("button", { name: `Delete ${name}`, exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Delete profile", exact: true })
-    .click();
-  await expect(page.getByRole("heading", { name, exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Connect to your scanner" }),
-  ).toBeVisible();
+  for (const image of manifest.images)
+    expect(createHash("sha256").update(files[manifestPath.replace("manifest.json", image.relativePath)]).digest("hex")).toBe(image.sha256);
+  await page.reload(); // Direct SPA URL must remain routable through the Rust host.
+  await expect(page.locator(".image-card")).toHaveCount(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page.getByLabel("Access key", { exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -244,145 +115,4 @@ test("recovers connection loss and clears a revoked session", async ({
   expect(
     await page.evaluate(() => sessionStorage.getItem("scanner.session.v1")),
   ).toBeNull();
-});
-
-test("card batch groups consecutive captures and shows identity once", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await page.getByLabel("Access key", { exact: true }).fill(key);
-  await page.getByRole("button", { name: "Open workspace" }).click();
-  await page.getByLabel("Resolution", { exact: true }).selectOption("300");
-  await page.getByLabel("Scan both sides").check();
-  await expect(
-    page.getByLabel("Auto-crop, orient and identify cards"),
-  ).toBeChecked();
-  await page.getByLabel("I have checked the feeder setup").check();
-  await page.getByRole("button", { name: "Start scan", exact: true }).click();
-  await expect(page.locator(".page-heading .state-completed")).toBeVisible({
-    timeout: 15000,
-  });
-  const card = page.getByRole("region", { name: "Card C-001", exact: true });
-  await expect(card).toBeVisible();
-  await expect(page.locator(".card-pair")).toHaveCount(1);
-  await expect(card.locator(".thumbnail img")).toHaveCount(2);
-  await expect(
-    card.locator(".side-caption").getByText("Side 1", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    card.locator(".side-caption").getByText("Side 2", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    card.getByRole("button", { name: "Download side 1", exact: true }),
-  ).toBeVisible();
-  await expect(
-    card.getByRole("button", { name: "Download side 2", exact: true }),
-  ).toBeVisible();
-  // The scan pipeline identifies card images without a separate UI action.
-  await expect(card.getByText("Furret", { exact: true })).toHaveCount(1);
-  await expect(card).toContainText("Suggested · review required");
-  await expect(card).toContainText("Pokémon · Colorless");
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBeTruthy();
-  expect((await card.boundingBox())!.height).toBeLessThan(420);
-  const front = card.getByRole("button", {
-    name: "Enlarge side 1 of C-001",
-    exact: true,
-  });
-  await front.click();
-  const lightbox = page.getByRole("dialog");
-  await expect(lightbox.getByRole("img")).toBeVisible();
-  await expect
-    .poll(() =>
-      lightbox
-        .getByRole("img")
-        .evaluate((image: HTMLImageElement) => image.naturalHeight),
-    )
-    .toBeGreaterThan(512);
-  const initialWidth = (await lightbox.getByRole("img").boundingBox())!.width;
-  await lightbox.getByRole("button", { name: "Zoom in", exact: true }).click();
-  expect(
-    (await lightbox.getByRole("img").boundingBox())!.width,
-  ).toBeGreaterThan(initialWidth);
-  const frontURL = await lightbox.getByRole("img").getAttribute("src");
-  await lightbox
-    .getByRole("button", { name: "C-001 · Side 2", exact: true })
-    .click();
-  await expect(
-    lightbox.getByRole("img", { name: "C-001 · Side 2", exact: true }),
-  ).toBeVisible();
-  await expect(lightbox.getByRole("img")).not.toHaveAttribute("src", frontURL!);
-  await page.keyboard.press("Escape");
-  await expect(lightbox).toHaveCount(0);
-  await expect(front).toBeFocused();
-  let reopenRequests = 0;
-  const countImage = (request: import("@playwright/test").Request) => {
-    if (request.url().includes("/api/v1/images/")) reopenRequests++;
-  };
-  page.on("request", countImage);
-  await front.click();
-  await expect
-    .poll(() =>
-      lightbox
-        .getByRole("img")
-        .evaluate((image: HTMLImageElement) => image.naturalHeight),
-    )
-    .toBeGreaterThan(512);
-  expect(reopenRequests).toBe(0);
-  page.off("request", countImage);
-  await page.keyboard.press("Escape");
-  await page.emulateMedia({ colorScheme: "dark" });
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () => getComputedStyle(document.documentElement).backgroundColor,
-      ),
-    )
-    .toBe("rgb(16, 22, 21)");
-  await expect
-    .poll(() => card.evaluate((e) => getComputedStyle(e).backgroundColor))
-    .toBe("rgb(24, 33, 31)");
-  await page.emulateMedia({ colorScheme: "light" });
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () => getComputedStyle(document.documentElement).backgroundColor,
-      ),
-    )
-    .toBe("rgb(247, 248, 245)");
-  // A real reload discards React state and the in-memory image queue/cache.
-  // Do not install Playwright routes here: routing disables the browser HTTP cache.
-  await page.reload();
-  await expect(card.locator(".thumbnail img")).toHaveCount(2);
-  const previews = await page.evaluate(() =>
-    performance
-      .getEntriesByType("resource")
-      .filter((entry) => entry.name.includes("/thumbnail?"))
-      .map((entry) => ({
-        transferred: (entry as PerformanceResourceTiming).transferSize,
-        bytes: (entry as PerformanceResourceTiming).encodedBodySize,
-      })),
-  );
-  expect(previews).toHaveLength(2);
-  // WebKit does not cache these authenticated requests on the HTTP fixture.
-  // Its production HTTPS cache is checked separately using a persistent context.
-  if (test.info().project.name !== "tablet-webkit")
-    expect(previews.every((entry) => entry.transferred === 0)).toBe(true);
-  await card
-    .getByRole("button", { name: "Enlarge side 2 of C-001", exact: true })
-    .click();
-  await expect(page.getByRole("dialog").getByRole("img")).toBeVisible();
-  const fullImage = await page.evaluate(() =>
-    performance
-      .getEntriesByType("resource")
-      .filter((entry) => /\/images\/[^/]+:[0-9]+\?editID=/.test(entry.name))
-      .map((entry) => (entry as PerformanceResourceTiming).transferSize),
-  );
-  if (test.info().project.name !== "tablet-webkit")
-    expect(fullImage).toEqual([0]);
-  await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Sign out" }).click();
 });

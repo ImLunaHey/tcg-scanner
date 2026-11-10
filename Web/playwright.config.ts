@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-if (!process.env.SCANNER_BROWSER_HOST)
+if (!process.env.SCANNER_BROWSER_URL && !process.env.SCANNER_BROWSER_HOST)
   throw new Error(
     "Set SCANNER_BROWSER_HOST to this Mac’s Tailscale IPv4 for browser tests.",
   );
@@ -9,7 +9,10 @@ export default defineConfig({
   workers: 1,
   timeout: 45_000,
   use: {
-    baseURL: `http://${process.env.SCANNER_BROWSER_HOST}:8171`,
+    // Keep mocked API requests observable across reloads, including WebKit.
+    // The install manifest and network-only worker are checked separately.
+    serviceWorkers: "block",
+    baseURL: process.env.SCANNER_BROWSER_URL ?? `http://${process.env.SCANNER_BROWSER_HOST}:8171`,
     trace: "retain-on-failure",
   },
   projects: [
