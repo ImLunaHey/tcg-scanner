@@ -54,7 +54,10 @@ sleeves, glare and perspective still need a representative binder-photo set.
 Production uses `scanner-recognition::binder::BinderDetector` with ONNX Runtime,
 RGB letterboxing to 640×640, a one-class YOLOv8 `[1,5,8400]` output, confidence
 threshold 0.35, and IoU suppression 0.45. Detection is not identity evidence.
-The graph is checked against a configured SHA-256 at startup. No Python process
+The graph is checked against a configured SHA-256 at startup. DINO and binder
+sessions share one explicit `ModelRuntime` environment and must use the same
+ONNX Runtime library. The real-model integration test can be enabled with
+`SCANNER_MODEL_TEST_CONFIG=/absolute/service.json cargo test -p scanner-recognition --test native_models`. No Python process
 runs in the application. Without this configuration, the grid workflow works.
 
 The evaluated weights are the `pokemon_detector4` checkpoint from

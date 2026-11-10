@@ -26,14 +26,16 @@ pub struct DinoEncoder {
 impl DinoEncoder {
     /// Both graph and external weights are pinned; arbitrary unverified graphs are rejected.
     pub fn load(runtime: &Path, model: &Path) -> Result<Self> {
+        let runtime = crate::model_runtime::ModelRuntime::load(runtime)?;
+        Self::with_runtime(&runtime, model)
+    }
+    pub fn with_runtime(
+        runtime: &crate::model_runtime::ModelRuntime,
+        model: &Path,
+    ) -> Result<Self> {
         verify_file(model, MODEL_HASH)?;
         verify_file(&model.with_file_name("model.onnx_data"), WEIGHTS_HASH)?;
-        let environment = ort::init_from(runtime)
-            .map_err(model_error)?
-            .with_name("scanner-recognition")
-            .with_telemetry(false)
-            .build()
-            .map_err(model_error)?;
+        let environment = runtime.environment.clone();
         let session = Session::builder(&environment)
             .map_err(model_error)?
             .with_optimization_level(GraphOptimizationLevel::Level3)

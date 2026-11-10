@@ -1,3 +1,4 @@
+mod models;
 use crate::configuration::{Configuration, config};
 use scanner_catalogue::{library::LibraryCatalogue, persistent::Documents};
 use scanner_core::{
@@ -57,30 +58,7 @@ pub(crate) async fn configure(
                 data.clone(),
             ));
             let mut recognizer = NativeCardRecognizer::new(root, library.clone(), data.clone())?;
-            if let Some(visual) = configuration.visual_recognition.clone() {
-                let retriever = tokio::task::spawn_blocking(move || {
-                    scanner_recognition::embedding::VisualRetriever::load(
-                        &visual.runtime_library,
-                        &visual.model,
-                        &visual.index,
-                    )
-                })
-                .await
-                .map_err(config)??;
-                recognizer = recognizer.with_visual(Arc::new(retriever));
-            }
-            if let Some(binder) = configuration.binder_detection.clone() {
-                let detector = tokio::task::spawn_blocking(move || {
-                    scanner_recognition::binder::BinderDetector::load(
-                        &binder.runtime_library,
-                        &binder.model,
-                        &binder.sha256,
-                    )
-                })
-                .await
-                .map_err(config)??;
-                recognizer = recognizer.with_binder(detector);
-            }
+            recognizer = models::configure(recognizer, configuration).await?;
             if let Some(cache) = documents {
                 recognizer = recognizer.with_documents(cache);
             }

@@ -25,6 +25,14 @@ pub struct BinderDetector {
 }
 impl BinderDetector {
     pub fn load(runtime: &Path, model: &Path, sha256: &str) -> Result<Arc<Mutex<Self>>> {
+        let runtime = crate::model_runtime::ModelRuntime::load(runtime)?;
+        Self::with_runtime(&runtime, model, sha256)
+    }
+    pub fn with_runtime(
+        runtime: &crate::model_runtime::ModelRuntime,
+        model: &Path,
+        sha256: &str,
+    ) -> Result<Arc<Mutex<Self>>> {
         if std::fs::metadata(model).map_err(error)?.len() > 32 * 1024 * 1024 {
             return Err(error("Binder model exceeds 32 MiB."));
         }
@@ -32,12 +40,7 @@ impl BinderDetector {
         if format!("{:x}", Sha256::digest(&graph)) != sha256 {
             return Err(error("Binder model checksum mismatch."));
         }
-        let environment = ort::init_from(runtime)
-            .map_err(error)?
-            .with_name("scanner-binder")
-            .with_telemetry(false)
-            .build()
-            .map_err(error)?;
+        let environment = runtime.environment.clone();
         let session = Session::builder(&environment)
             .map_err(error)?
             .with_optimization_level(GraphOptimizationLevel::Level3)
