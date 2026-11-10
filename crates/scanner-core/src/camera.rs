@@ -45,6 +45,7 @@ impl Engine {
             drop(permit);
             engine.state.lock().await.camera = false;
             engine.wake.notify_one();
+            engine.idle.notify_waiters();
             let _ = reply.send(result);
         });
         tokio::time::timeout(Duration::from_secs(60), response)

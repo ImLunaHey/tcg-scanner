@@ -43,7 +43,7 @@ impl Engine {
         .map_err(|e| ScannerError::new("storage", e.to_string()))??;
         let record = store.record().clone();
         let mut state = self.state.lock().await;
-        if state.stopping {
+        if state.stopping || state.paused {
             drop(state);
             store.finish(vec![], true, true)?;
             self.database.save(store.record())?;
@@ -104,7 +104,7 @@ impl Engine {
         .map_err(|e| ScannerError::new("storage", e.to_string()))??;
         let record = store.record().clone();
         let mut state = self.state.lock().await;
-        if state.stopping {
+        if state.stopping || state.paused {
             drop(state);
             store.finish(vec![], true, true)?;
             self.database.save(store.record())?;

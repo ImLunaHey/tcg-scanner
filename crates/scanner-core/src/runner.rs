@@ -43,6 +43,7 @@ impl Engine {
                 Next::Capture(mut work, cancel) => {
                     self.execute(&mut work, cancel).await;
                     self.state.lock().await.active = None;
+                    self.idle.notify_waiters();
                 }
                 Next::Cancel(mut work, error) => {
                     let cancelled = error.is_none();

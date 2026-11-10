@@ -163,6 +163,17 @@ fn write_route(
 ) -> Result<(&'static str, Map<String, Value>, u16)> {
     path.only(&[])?;
     let (method, status) = match (head.method.as_str(), parts) {
+        ("POST", ["service", action @ ("pause" | "resume")]) => {
+            only(&p, &[])?;
+            (
+                if *action == "pause" {
+                    "service.pause"
+                } else {
+                    "service.resume"
+                },
+                200,
+            )
+        }
         ("POST", ["jobs"]) => {
             prepare_job(head, &mut p)?;
             ("jobs.create", 202)

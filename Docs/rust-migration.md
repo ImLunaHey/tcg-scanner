@@ -569,3 +569,12 @@ crates retain the same Git revision.
 A Linux CI staging retry race is fixed: final receipt publication and releasing
 the active transfer now share the submission reservation with retry admission.
 An immediate retry cannot observe a terminal receipt alongside stale ownership.
+
+The coordinator now exposes owned pause/resume transitions through RPC,
+authenticated REST, MCP and Rune. Pause blocks admission, cancels queued and active
+feeds, drains accepted writes, camera work, inspections and Store transfers, and
+survives caller disconnection. Resume waits for cleanup; cancelled feeds stay
+cancelled and hardware/storage quarantine remains. Integration tests cover queue
+cancellation, an in-flight submission, unknown inspection closure, shutdown and
+authentication. Focused suites and strict native/WebAssembly Clippy pass. Native
+sleep/wake event integration follows this coordinator slice.

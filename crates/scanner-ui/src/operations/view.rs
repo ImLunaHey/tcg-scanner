@@ -18,6 +18,17 @@ pub fn controls(s: &State, t: tok::Theme) -> El {
         .gap(8.)
         .child(selectors(s, t))
         .child(scan_buttons(s, t))
+        .child(button(
+            if s.status.as_ref().is_some_and(|s| s.paused) {
+                "Resume service"
+            } else {
+                "Pause and cancel scans"
+            },
+            "pause-service",
+            !s.ops.busy() && s.status.as_ref().is_some_and(|s| !s.stopping),
+            t,
+            State::toggle_pause,
+        ))
         .child(retry(s, t))
 }
 fn selectors(s: &State, t: tok::Theme) -> El {
@@ -119,7 +130,9 @@ fn scan_buttons(s: &State, t: tok::Theme) -> El {
     let available = !s.ops.busy();
     let can_start = available
         && !s.ops.devices.is_empty()
-        && s.status.as_ref().is_some_and(|s| !s.stopping && !s.paused);
+        && s.status.as_ref().is_some_and(|s| {
+            !s.stopping && !s.paused && !s.requires_restart && s.persistence_error.is_none()
+        });
     row()
         .gap(8.)
         .center_y()

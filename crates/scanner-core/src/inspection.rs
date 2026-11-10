@@ -46,6 +46,7 @@ impl Engine {
             state.quarantined |= uncertain;
         }
         self.wake.notify_one();
+        self.idle.notify_waiters();
         if let Ok(report) = &result {
             self.database.save_inspection(
                 &report.device.id,
@@ -64,7 +65,12 @@ impl Engine {
                 if !state.quarantined {
                     return true;
                 }
-                if state.camera || state.stopping || state.active.is_some() || state.inspecting {
+                if state.camera
+                    || state.paused
+                    || state.stopping
+                    || state.active.is_some()
+                    || state.inspecting
+                {
                     return false;
                 }
                 state.inspecting = true;
@@ -79,6 +85,7 @@ impl Engine {
                 state.quarantined = !recovered;
             }
             engine.wake.notify_one();
+            engine.idle.notify_waiters();
             recovered
         })
         .await

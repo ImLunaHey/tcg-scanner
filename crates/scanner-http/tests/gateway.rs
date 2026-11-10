@@ -22,3 +22,6 @@ mod web;
 
 #[path = "gateway/camera.rs"]
 mod camera;
+
+#[path = "gateway/lifecycle.rs"]
+mod lifecycle;

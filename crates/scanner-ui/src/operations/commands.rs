@@ -50,6 +50,21 @@ impl State {
         }
         Some(request)
     }
+    pub fn toggle_pause(&mut self) {
+        let Some(status) = &self.status else {
+            return;
+        };
+        self.submit(Command {
+            method: if status.paused {
+                "service.resume"
+            } else {
+                "service.pause"
+            },
+            params: json!({}),
+            job: None,
+            focus: false,
+        });
+    }
     pub fn start_scan(&mut self) {
         let Some(request) = self.scan_submission() else {
             return;
@@ -132,6 +147,11 @@ impl State {
                 self.ops.pending = None;
                 self.error = None;
                 self.finish_settings(&command, &value);
+                if matches!(command.method, "service.pause" | "service.resume")
+                    && let Ok(status) = serde_json::from_value(value.clone())
+                {
+                    self.status = Some(status);
+                }
                 if command.focus {
                     match serde_json::from_value::<ScanRecord>(value) {
                         Ok(record) => {

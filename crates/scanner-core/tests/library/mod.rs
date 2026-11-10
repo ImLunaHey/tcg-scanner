@@ -97,3 +97,5 @@ mod pricing;
 mod staging;
 
 mod camera;
+
+mod lifecycle;
