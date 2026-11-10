@@ -76,6 +76,7 @@ pub fn view(s: &State, t: tok::Theme) -> El {
         .child(profile_form(s, t))
         .child(super::view::retry(s, t))
         .child(device(s, t))
+        .child(super::buttons::panel(s, t))
         .child(crate::exports::capabilities(s, t))
         .child(
             text(s.exports.notice.as_deref().unwrap_or(""))

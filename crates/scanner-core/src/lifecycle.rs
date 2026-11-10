@@ -34,6 +34,9 @@ impl Engine {
             }
             state.paused = true;
             state.button_epoch = state.button_epoch.wrapping_add(1);
+            if let Some(observation) = &state.observation {
+                observation.cancel.cancel();
+            }
             if let Some(button) = &state.button {
                 button.cancel.cancel();
             }

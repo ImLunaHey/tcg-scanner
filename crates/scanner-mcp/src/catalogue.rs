@@ -54,6 +54,8 @@ pub(crate) fn tools() -> Vec<T> {
         T::new("scanner_read_image","images.read","Read a bounded base64 chunk of an original. Follow nextOffset until eof; verify chunkSHA256 and the final image SHA-256. Accepts no filesystem path.",[image,vec![("offset",F::integer(0,512*1024*1024)),("length",F::integer(1,262144))]].concat()),
         T::new("scanner_pause_service","service.pause","Pause service admission, cancel queued/active physical scans and wait for cleanup. Saved originals remain. No automatic feed on resume.",vec![]).writes(true),
         T::new("scanner_resume_service","service.resume","Resume admission after pause cleanup; never restarts cancelled feeds or clears hardware/storage faults.",vec![]).writes(false),
+        T::new("scanner_observe_button","diagnostics.buttonMonitor","Observe driver button events for 30–300 seconds on the sole connected scanner. Requires idle service; never creates a scan or enables vendor safety settings.",vec![("seconds",F::integer(30,300))]).writes(false),
+        T::new("scanner_stop_button_observation","diagnostics.stopButtonMonitor","Stop explicit button diagnostics and wait for session cleanup; does not cancel a scan job.",vec![]).writes(false),
         T::new("scanner_storage_status","storage.status","Read configured storage availability and required mount policy without creating files or mounting shares.",vec![]),
         T::new("scanner_reconnect_storage","storage.reconnect","Revalidate the configured mounted destination and reopen its directory while idle. Does not mount shares, move files, feed hardware or clear faults.",vec![]).writes(false),
         T::new("scanner_get_service_status","service.status","Read queue and health without opening hardware.",vec![]),

@@ -1,3 +1,4 @@
+mod observation;
 use crate::Engine;
 use scanner_types::{
     error::{Result, ScannerError},

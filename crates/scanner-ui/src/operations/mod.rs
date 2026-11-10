@@ -1,3 +1,4 @@
+mod buttons;
 mod commands;
 mod staging;
 mod storage;

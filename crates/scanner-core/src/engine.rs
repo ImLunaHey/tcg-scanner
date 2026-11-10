@@ -44,6 +44,7 @@ pub struct Engine {
 pub(crate) struct State {
     pub camera: bool,
     pub button: Option<crate::buttons::Reservation>,
+    pub observation: Option<crate::buttons::Reservation>,
     pub next_button_attempt: Option<std::time::Instant>,
     pub button_epoch: u64,
     pub queue: VecDeque<Work>,
@@ -131,6 +132,7 @@ impl Engine {
             active_job_id: state.active.as_ref().map(|(id, _)| *id),
             queued_jobs: state.queue.len(),
             paused: state.paused,
+            button_observation: state.observation.is_some(),
             stopping: state.stopping,
             persistence_error: state.persistence_error.clone(),
             storage_root: self.root.path().to_string_lossy().into(),
@@ -173,6 +175,9 @@ impl Engine {
             let mut state = self.state.lock().await;
             state.stopping = true;
             state.button_epoch = state.button_epoch.wrapping_add(1);
+            if let Some(observation) = &state.observation {
+                observation.cancel.cancel();
+            }
             if let Some(button) = &state.button {
                 button.cancel.cancel();
             }

@@ -14,6 +14,7 @@ async fn physical_button_press_creates_one_prepared_duplex_job_and_debounces() {
     h.engine.maintain_scan_button().await;
     let button = h.buttons.recv().await.unwrap();
     assert!(!button.cancel.is_cancelled());
+    assert!(!button.observation);
     button.finish.send(Ok(())).unwrap();
     let capture = h.next().await;
     let id = h.engine.status().await.active_job_id.unwrap();
@@ -130,4 +131,56 @@ async fn inspection_waits_for_button_cleanup_and_shutdown_drains_an_idle_listene
         .unwrap()
         .unwrap();
     assert!(h.engine.jobs(50, 0).await.unwrap().jobs.is_empty());
+}
+
+#[tokio::test]
+async fn explicit_observation_releases_automatic_listener_and_never_feeds() {
+    let mut h = Harness::new();
+    h.engine
+        .configure_scan_button("fixture-driver".into())
+        .unwrap();
+    h.engine.maintain_scan_button().await;
+    let automatic = h.buttons.recv().await.unwrap();
+    assert!(h.engine.start_button_observation(29).await.is_err());
+    h.engine.start_button_observation(30).await.unwrap();
+    assert!(h.engine.status().await.button_observation);
+    tokio::time::timeout(Duration::from_secs(3), automatic.cancel.cancelled())
+        .await
+        .unwrap();
+    assert!(h.buttons.try_recv().is_err());
+    automatic.finish.send(Ok(())).unwrap();
+    let observed = h.buttons.recv().await.unwrap();
+    assert!(observed.observation);
+    assert!(h.engine.start_button_observation(30).await.is_err());
+    let engine = h.engine.clone();
+    let stop = tokio::spawn(async move { engine.stop_button_observation().await });
+    tokio::time::timeout(Duration::from_secs(3), observed.cancel.cancelled())
+        .await
+        .unwrap();
+    assert!(!stop.is_finished());
+    observed.finish.send(Ok(())).unwrap();
+    stop.await.unwrap().unwrap();
+    assert!(!h.engine.status().await.button_observation);
+    assert!(h.engine.jobs(50, 0).await.unwrap().jobs.is_empty());
+    assert!(h.calls.try_recv().is_err());
+    h.engine.shutdown().await;
+}
+#[tokio::test]
+async fn stopping_observation_during_discovery_cannot_open_a_late_session() {
+    let mut h = Harness::new();
+    let (entered, release) = h.block_discovery();
+    h.engine.start_button_observation(30).await.unwrap();
+    entered.await.unwrap();
+    let engine = h.engine.clone();
+    let stop = engine.stop_button_observation();
+    tokio::pin!(stop);
+    tokio::select! { biased;
+        _ = &mut stop => panic!("Stop returned before discovery cleanup"),
+        _ = tokio::task::yield_now() => {}
+    }
+    release.send(()).unwrap();
+    stop.await.unwrap();
+    assert!(h.buttons.try_recv().is_err());
+    assert!(!h.engine.status().await.button_observation);
+    h.engine.shutdown().await;
 }

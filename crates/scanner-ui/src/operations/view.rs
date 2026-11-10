@@ -110,6 +110,8 @@ fn status_text(s: &State) -> String {
         .map(|s| {
             if s.stopping {
                 "Service stopping".into()
+            } else if s.button_observation {
+                "Observing scanner button".into()
             } else if s.paused {
                 "Scanner paused".into()
             } else {
@@ -131,7 +133,11 @@ fn scan_buttons(s: &State, t: tok::Theme) -> El {
     let can_start = available
         && !s.ops.devices.is_empty()
         && s.status.as_ref().is_some_and(|s| {
-            !s.stopping && !s.paused && !s.requires_restart && s.persistence_error.is_none()
+            !s.stopping
+                && !s.paused
+                && !s.button_observation
+                && !s.requires_restart
+                && s.persistence_error.is_none()
         });
     row()
         .gap(8.)

@@ -127,6 +127,8 @@ pub struct ServiceStatus {
     pub active_job_id: Option<Uuid>,
     pub queued_jobs: usize,
     pub paused: bool,
+    #[serde(default)]
+    pub button_observation: bool,
     pub stopping: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub persistence_error: Option<ScannerError>,

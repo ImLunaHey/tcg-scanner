@@ -21,6 +21,7 @@ pub struct Call {
     pub finish: oneshot::Sender<bool>,
 }
 pub struct ButtonCall {
+    pub observation: bool,
     pub cancel: CancellationToken,
     pub finish: oneshot::Sender<Result<()>>,
 }
@@ -35,7 +36,23 @@ impl ScannerBackend for Driver {
     async fn wait_for_scan_button(&self, _: &str, cancel: CancellationToken) -> Result<()> {
         let (finish, finished) = oneshot::channel();
         self.buttons
-            .send(ButtonCall { cancel, finish })
+            .send(ButtonCall {
+                observation: false,
+                cancel,
+                finish,
+            })
+            .unwrap_or_else(|_| panic!("Button receiver closed"));
+        finished.await.unwrap()
+    }
+    async fn observe_button(&self, _: &str, seconds: u32, cancel: CancellationToken) -> Result<()> {
+        assert!((30..=300).contains(&seconds));
+        let (finish, finished) = oneshot::channel();
+        self.buttons
+            .send(ButtonCall {
+                observation: true,
+                cancel,
+                finish,
+            })
             .unwrap_or_else(|_| panic!("Button receiver closed"));
         finished.await.unwrap()
     }

@@ -175,6 +175,14 @@ fn write_route(
                 200,
             )
         }
+        ("POST", ["diagnostics", "button-monitor"]) => {
+            only(&p, &["seconds"])?;
+            ("diagnostics.buttonMonitor", 202)
+        }
+        ("DELETE", ["diagnostics", "button-monitor"]) => {
+            only(&p, &[])?;
+            ("diagnostics.stopButtonMonitor", 200)
+        }
         ("POST", ["storage", "reconnect"]) => {
             only(&p, &[])?;
             ("storage.reconnect", 200)

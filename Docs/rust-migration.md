@@ -624,3 +624,11 @@ and recovery now run independently of power notifications. Recovery waits until
 faulted queued jobs have drained, so reconnect cannot restart an earlier feed.
 SANE/TWAIN explicitly report unsupported button monitoring; real button hardware
 validation remains outstanding.
+
+Explicit 30–300-second button observation is restored through the original
+`diagnostics.buttonMonitor` / `diagnostics.stopButtonMonitor` methods,
+authenticated REST, MCP and Rune settings. Its reservation exists before device
+selection; stop/sleep/shutdown cancel startup as well as an open listener and wait
+for cleanup. Diagnostic presses never create jobs. Tests verify automatic-listener
+handoff, queued/late cancellation, range/authentication validation and no feeds.
+Service status now exposes `buttonObservation` separately from manual pause.
