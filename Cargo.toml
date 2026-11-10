@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 exclude = ["vendor/rune"]
-members = ["crates/scanner-types", "crates/scanner-store", "crates/scanner-ui", "crates/scanner-images", "crates/scanner-recognition", "crates/scanner-files", "crates/scanner-core", "crates/scanner-catalogue", "crates/scanner-device", "crates/scanner-rpc", "crates/scanner-http", "crates/scanner-platform", "crates/scanner-client", "crates/scanner-app", "crates/scanner-mcp", "crates/scanner-library", "crates/scanner-pricing", "crates/scanner-staging", "crates/scanner-export"]
+members = ["crates/scanner-worker", "crates/scanner-types", "crates/scanner-store", "crates/scanner-ui", "crates/scanner-images", "crates/scanner-recognition", "crates/scanner-files", "crates/scanner-core", "crates/scanner-catalogue", "crates/scanner-device", "crates/scanner-rpc", "crates/scanner-http", "crates/scanner-platform", "crates/scanner-client", "crates/scanner-app", "crates/scanner-mcp", "crates/scanner-library", "crates/scanner-pricing", "crates/scanner-staging", "crates/scanner-export"]
 
 [workspace.package]
 version = "0.1.0"

@@ -587,3 +587,13 @@ macOS registration/cleanup succeeds without a power-state change; synthetic
 callbacks, lifecycle tests and Windows/Linux cross-target strict Clippy pass.
 See [native power lifecycle](native-power.md) for OS deadline limitations and the
 remaining physical suspend/resume checks.
+
+The camera now has an install manifest, generated PNG icons and a Rust/WebAssembly
+service worker. A failed `/camera` navigation renders an offline explanation;
+identification/API/image requests are not intercepted. The installed worker
+initializes synchronously from embedded WASM without an application cache. HTTPS
+Chromium checks verify activation, icons, offline HTML, reconnect, unauthenticated
+API refusal and empty CacheStorage/IndexedDB/local/session storage. Camera capture
+still passes. The library browser flow now also verifies pause/resume and all
+previous review, profile, inventory and checksum-verified export operations.
+Physical phone installation remains untested.

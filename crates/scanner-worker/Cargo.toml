@@ -1,0 +1,17 @@
+[package]
+name = "scanner-worker"
+description = "Rust camera service worker with a navigation-only offline explanation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+[lib]
+crate-type = ["cdylib", "rlib"]
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["ServiceWorkerGlobalScope", "WorkerGlobalScope", "EventTarget", "ExtendableEvent", "FetchEvent", "Request", "RequestMode", "Response", "ResponseInit", "Headers", "Url", "Clients"] }
+[lints]
+workspace = true

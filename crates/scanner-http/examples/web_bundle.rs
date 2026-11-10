@@ -1,4 +1,6 @@
 //! Development packaging only: add the HTML bootstrap and hash wasm-bindgen output.
+#[path = "web_bundle/camera.rs"]
+mod camera;
 use scanner_http::web::{WebAssets, WebManifest, file_type};
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, error::Error, path::Path};
@@ -19,6 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     ] {
         std::fs::copy(templates.join(name), output.join(name))?;
     }
+    camera::write(&output)?;
     let mut files = BTreeMap::new();
     collect(&output, &output, &mut files)?;
     let manifest = WebManifest {

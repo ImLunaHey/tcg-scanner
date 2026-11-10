@@ -27,6 +27,17 @@ try {
   ]).then(([response]) => response.json());
   if (!thumbnail.result?.sha256) throw new Error('The service did not return a verified thumbnail');
   await page.getByText('Browser test card', { exact: true }).first().waitFor();
+  for (const [label, method, paused] of [
+    ['Pause and cancel scans', 'v1.service.pause', true],
+    ['Resume service', 'v1.service.resume', false],
+  ]) {
+    const result = await Promise.all([
+      response(page, method),
+      page.getByRole('button', { name: label, exact: true }).dispatchEvent('click'),
+    ]).then(([response]) => response.json());
+    if (result.result?.paused !== paused) throw new Error('Service pause state did not change');
+  }
+
   if (await page.getByRole('button', { name: 'Finish unverified', exact: true }).count())
     await page.getByRole('button', { name: 'Finish unverified', exact: true }).dispatchEvent('click');
   if (await page.getByRole('button', { name: 'Condition unassessed', exact: true }).count())

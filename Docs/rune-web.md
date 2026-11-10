@@ -9,8 +9,9 @@ Build the browser bundle from the repository root:
 ```sh
 rustup target add wasm32-unknown-unknown
 cargo install wasm-bindgen-cli --version 0.2.128 --locked
-cargo build -p scanner-ui --lib --release --target wasm32-unknown-unknown
+cargo build -p scanner-ui -p scanner-worker --lib --release --target wasm32-unknown-unknown
 wasm-bindgen --target web --no-typescript --out-dir target/rune-web target/wasm32-unknown-unknown/release/scanner_ui.wasm
+wasm-bindgen --target web --no-typescript --out-dir target/rune-web target/wasm32-unknown-unknown/release/scanner_worker.wasm
 cargo run -p scanner-http --example web_bundle -- target/rune-web
 ```
 
@@ -58,3 +59,11 @@ synthetic card through the real API. It checks for JavaScript errors and verifie
 that neither browser storage nor visible text contains the credential. The first
 runtime check used Chromium's WebGL2 fallback over the machine's Tailscale address;
 it is not a WebGPU or Linux/Windows hardware test.
+
+The camera manifest installs `/camera` with a dedicated scope and generated PNG
+icons. The service worker's navigation handler is Rust/WebAssembly. Packaging
+embeds its small WASM module in the registered module script so listener setup is
+synchronous, including offline worker restarts. A failed camera navigation shows
+an offline explanation; API requests, camera frames and image downloads are not
+intercepted. No CacheStorage, IndexedDB or browser storage is created. Browser
+installation policy can disable registration without blocking online camera use.

@@ -34,3 +34,26 @@ pub fn entry(t: rune::tok::Theme) -> Vec<rune::El> {
         vec![]
     }
 }
+
+#[cfg(target_arch = "wasm32")]
+pub fn register_worker() {
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    if window.location().pathname().ok().as_deref() != Some("/camera")
+        || !window.is_secure_context()
+    {
+        return;
+    }
+    let options = web_sys::RegistrationOptions::new();
+    options.set_scope("/camera");
+    options.set_type("module");
+    let promise = window
+        .navigator()
+        .service_worker()
+        .register_with_options("/camera-worker.js", &options);
+    wasm_bindgen_futures::spawn_local(async move {
+        // Identification remains usable if browser policy disables installation.
+        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+    });
+}

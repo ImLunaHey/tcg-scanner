@@ -90,10 +90,12 @@ jobs:
             ~/.cargo/git
           key: cargo-web-${{ hashFiles('Cargo.lock') }}
           restore-keys: cargo-web-
-      - run: cargo clippy -p scanner-ui --lib --target wasm32-unknown-unknown --locked -- -D warnings
-      - run: cargo build -p scanner-ui --lib --release --target wasm32-unknown-unknown --locked
+      - run: cargo clippy -p scanner-ui -p scanner-worker --lib --target wasm32-unknown-unknown --locked -- -D warnings
+      - run: cargo build -p scanner-ui -p scanner-worker --lib --release --target wasm32-unknown-unknown --locked
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: rune-webassembly
-          path: target/wasm32-unknown-unknown/release/scanner_ui.wasm
+          path: |
+            target/wasm32-unknown-unknown/release/scanner_ui.wasm
+            target/wasm32-unknown-unknown/release/scanner_worker.wasm
           if-no-files-found: error

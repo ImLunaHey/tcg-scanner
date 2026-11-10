@@ -14,6 +14,8 @@ mod view;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen::prelude::wasm_bindgen(start))]
 pub fn start() {
+    #[cfg(target_arch = "wasm32")]
+    camera::register_worker();
     rune::run(rune::AppSpec {
         #[cfg(not(target_arch = "wasm32"))]
         scenes: &[("saved", state::State::saved_scene)],

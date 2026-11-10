@@ -105,7 +105,7 @@ impl WebAssets {
         Ok(response)
     }
 }
-const CSP: &str = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; media-src 'self' blob:; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+const CSP: &str = "default-src 'none'; manifest-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; media-src 'self' blob:; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 fn name(path: &crate::path::Path) -> String {
     if path.parts.is_empty() || path.parts == ["camera"] {
         "index.html".into()
@@ -132,7 +132,15 @@ pub fn file_type(name: &str) -> Result<(&'static str, usize)> {
         Some("ttf") => Ok(("font/ttf", 2 * 1024 * 1024)),
         Some("txt") if name == "Inter-LICENSE.txt" => Ok(("text/plain; charset=utf-8", 65536)),
         Some("css") => Ok(("text/css; charset=utf-8", 65536)),
-        Some("wasm") if name == "scanner_ui_bg.wasm" => Ok(("application/wasm", 64 * 1024 * 1024)),
+        Some("webmanifest") if name == "camera.webmanifest" => {
+            Ok(("application/manifest+json", 8192))
+        }
+        Some("png") if matches!(name, "camera-192.png" | "camera-512.png") => {
+            Ok(("image/png", 1024 * 1024))
+        }
+        Some("wasm") if matches!(name, "scanner_ui_bg.wasm" | "scanner_worker_bg.wasm") => {
+            Ok(("application/wasm", 64 * 1024 * 1024))
+        }
         _ => Err(invalid("Unsupported browser asset type.")),
     }
 }

@@ -41,7 +41,7 @@ js-sys = "0.3"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 gloo-timers = { version = "0.3", features = ["futures"] }
-web-sys = { version = "0.3", features = ["Window", "Location", "Document", "Element", "HtmlAnchorElement", "Blob", "BlobPropertyBag", "Url", "Navigator", "MediaDevices", "MediaStream", "MediaStreamTrack", "MediaStreamConstraints", "MediaTrackConstraints", "MediaTrackCapabilities", "MediaTrackSettings", "MediaStreamTrackState", "HtmlVideoElement", "HtmlMediaElement", "HtmlCanvasElement", "CanvasRenderingContext2d", "ImageData", "Event", "EventTarget", "Node", "HtmlElement"] }
+web-sys = { version = "0.3", features = ["Window", "Location", "Document", "Element", "HtmlAnchorElement", "Blob", "BlobPropertyBag", "Url", "Navigator", "MediaDevices", "ServiceWorkerContainer", "RegistrationOptions", "MediaStream", "MediaStreamTrack", "MediaStreamConstraints", "MediaTrackConstraints", "MediaTrackCapabilities", "MediaTrackSettings", "MediaStreamTrackState", "HtmlVideoElement", "HtmlMediaElement", "HtmlCanvasElement", "CanvasRenderingContext2d", "ImageData", "Event", "EventTarget", "Node", "HtmlElement"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tempfile.workspace = true

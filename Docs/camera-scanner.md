@@ -3,7 +3,8 @@
 The instructions below describe the installed Swift service. The Rust replacement
 now provides the same ephemeral camera API and a Rune `/camera` screen, using
 portable perspective extraction and native Tesseract. Its simulated HTTPS browser
-flow passes; installation support and physical-phone validation are still pending.
+flow, install manifest and offline worker pass desktop Chromium checks; physical
+phone capture and installation validation are still pending.
 See [the migration ledger](rust-migration.md) for current validation boundaries.
 
 Open `/camera` on the scanner's HTTPS address. No login is required. Tap
