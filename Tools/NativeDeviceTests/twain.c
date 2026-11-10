@@ -3,6 +3,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#define FIXTURE_EXPORT __declspec(dllexport)
+#else
+#define FIXTURE_EXPORT
+#endif
 #pragma pack(push, 2)
 typedef struct { uint16_t major, minor, language, country; unsigned char info[34]; } Version;
 typedef struct {
@@ -46,11 +51,11 @@ static uint16_t image_operation(uint16_t dat,void *data) {
     transfer->compression=0;transfer->stride=8;transfer->columns=2;transfer->rows=1;transfer->x=0;transfer->y=(uint32_t)row;transfer->written=8;
     ++row;return row==2?6:0;
 }
-void fixture_configure(int mode) {
+FIXTURE_EXPORT void fixture_configure(int mode) {
     opened = source_opened = allocated = locked = close_dsm_calls = 0;
     scenario = mode; condition = 0; phase=pages=row=invalid_sequence=enables=ends=resets=disables=0;reset_options();
 }
-int fixture_counter(int index) {
+FIXTURE_EXPORT int fixture_counter(int index) {
     switch(index) {
         case 0: return opened;
         case 1: return source_opened;
@@ -71,7 +76,7 @@ static void release(void *handle) { --allocated; free(handle); }
 static void *lock(void *handle) { ++locked; return handle; }
 static void unlock(void *handle) { (void)handle; --locked; }
 static uint16_t fail(uint16_t code) {condition=code; return 1;}
-uint16_t DSM_Entry(Identity *app, Identity *source, uint32_t group, uint16_t dat, uint16_t message, void *data) {
+FIXTURE_EXPORT uint16_t DSM_Entry(Identity *app, Identity *source, uint32_t group, uint16_t dat, uint16_t message, void *data) {
     (void)source;
     if (group==2 && message==1 && source_opened) return image_operation(dat,data);
     if (group != 1) return fail(9);

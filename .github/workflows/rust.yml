@@ -1,0 +1,99 @@
+name: Rust portability
+
+on:
+  pull_request:
+  push:
+    branches: [main, t3/explain-card-detection]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: Native (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: 1.98.0
+          components: clippy,rustfmt
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libxkbcommon-dev libx11-dev libwayland-dev libudev-dev
+      - name: Build Unix device fixtures
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          extension=so
+          flags=(-shared -fPIC)
+          if [[ "$RUNNER_OS" == macOS ]]; then
+            extension=dylib
+            flags=(-dynamiclib)
+          fi
+          for backend in sane twain; do
+            library="$RUNNER_TEMP/scanner-$backend-fixture.$extension"
+            cc -std=c11 -D_POSIX_C_SOURCE=200809L "${flags[@]}" -pthread "Tools/NativeDeviceTests/$backend.c" -o "$library"
+            printf 'SCANNER_%s_TEST_LIBRARY=%s\n' "$(echo "$backend" | tr '[:lower:]' '[:upper:]')" "$library" >> "$GITHUB_ENV"
+          done
+      - name: Build Windows TWAIN fixture
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $installation = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          & "$installation\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          $library = "$env:RUNNER_TEMP\scanner-twain-fixture.dll"
+          cl /nologo /LD /std:c11 Tools/NativeDeviceTests/twain.c "/Fo$env:RUNNER_TEMP\twain.obj" /link "/OUT:$library"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "SCANNER_TWAIN_TEST_LIBRARY=$library" >> $env:GITHUB_ENV
+      - run: cargo fmt --all --check
+      - run: cargo test --workspace --locked
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo build --workspace --bins --locked
+
+  browser:
+    name: Browser WebAssembly
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: 1.98.0
+          components: clippy
+          targets: wasm32-unknown-unknown
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-web-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-web-
+      - run: cargo clippy -p scanner-ui --lib --target wasm32-unknown-unknown --locked -- -D warnings
+      - run: cargo build -p scanner-ui --lib --release --target wasm32-unknown-unknown --locked
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: rune-webassembly
+          path: target/wasm32-unknown-unknown/release/scanner_ui.wasm
+          if-no-files-found: error
