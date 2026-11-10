@@ -2145,7 +2145,7 @@
 .camera-diagnostics small { font-size: inherit; }
 .camera-status { min-width: 0; max-width: 100%; }
 .camera-status > span { min-width: 0; }
-.camera-status { padding: 6px 10px; gap: 8px; }
+.camera-status { padding: 4px 10px; gap: 8px; }
 .camera-status > span { gap: 2px; overflow: hidden; }
 .camera-status strong { font-size: .85rem; line-height: 1.2; }
 .camera-status small { font-size: .7rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
