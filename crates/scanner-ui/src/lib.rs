@@ -9,6 +9,7 @@ mod operations;
 mod reference_preview;
 mod state;
 mod task;
+mod valuation;
 mod view;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen::prelude::wasm_bindgen(start))]

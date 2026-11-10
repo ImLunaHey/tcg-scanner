@@ -107,6 +107,7 @@ impl State {
         if self.ops.busy() || self.client.is_none() || self.fixture {
             return;
         }
+        self.valuation.clear();
         self.ops.pending = Some(command);
         self.retry_command();
     }

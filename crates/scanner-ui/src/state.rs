@@ -22,6 +22,7 @@ pub enum Page {
 
 pub struct State {
     pub page: Page,
+    pub valuation: crate::valuation::Valuation,
     pub collection: crate::collection::Collection,
     pub batches: Vec<JobSummary>,
     pub batch: usize,
@@ -53,6 +54,7 @@ impl Default for State {
     fn default() -> Self {
         Self {
             page: Page::Library,
+            valuation: Default::default(),
             collection: Default::default(),
             batches: vec![],
             batch: 0,
@@ -86,6 +88,7 @@ impl State {
     pub fn setup(&mut self, waker: Waker) {
         self.collection.set_waker(waker.clone());
         self.ops.set_waker(waker.clone());
+        self.valuation.task.set_waker(waker.clone());
         self.connecting.set_waker(waker.clone());
         self.listing.set_waker(waker.clone());
         self.details.set_waker(waker.clone());
@@ -136,6 +139,7 @@ impl State {
             return;
         }
         self.ops.disconnect();
+        self.valuation.clear();
         self.collection.clear();
         self.page = Page::Library;
         self.connecting.cancel();
@@ -169,6 +173,7 @@ impl State {
         let mut changed = self.poll_operations();
         changed |= self.poll_collection();
         changed |= self.poll_settings();
+        changed |= self.poll_valuation();
         if let Some(result) = self.connecting.take() {
             match result {
                 Ok(connected) => {
@@ -224,6 +229,7 @@ impl State {
         }
         self.cards = library::cards(&record);
         self.record = Some(record);
+        self.update_valuation();
         let selected = if same_batch {
             self.cards
                 .iter()
@@ -247,6 +253,7 @@ impl State {
         }
     }
     pub fn select_batch(&mut self, index: usize) {
+        self.valuation.clear();
         self.ops.editor = None;
         self.details.cancel();
         self.preview.cancel();

@@ -478,3 +478,9 @@ reads serialize with completion bookkeeping to prevent duplicate refreshes durin
 publication. Shutdown drains active cache writes; unsupported languages never
 request substituted English quotes. Integration tests cover the two-fetch bound,
 non-blocking reads, persistence, unsupported pairs and REST authentication.
+
+Rune displays the batch guide and selected-card reason in a scrollable review
+panel. It refreshes pending prices, cancels stale requests when selection or
+review changes, and renders missing prices as unavailable. Native and WebAssembly
+Clippy pass; the browser flow verifies an unpriced synthetic card remains
+unpriced after review, alongside editing, inventory and profile operations.

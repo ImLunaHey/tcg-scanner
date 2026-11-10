@@ -267,16 +267,27 @@ fn detail(s: &State, t: tok::Theme) -> El {
             .child(preview)
             .child(crate::operations::editing_panel(s, t));
     }
-    pane.child(preview)
-        .child(crate::operations::review_panel(s, t))
-        .child(
-            col().gap(6.).children(
-                card.evidence
-                    .iter()
-                    .take(6)
-                    .map(|line| text(line).font(type_::BODY).color(t.text_secondary).wrap()),
+    pane.child(preview).child(
+        col()
+            .key("review-scroll")
+            .h(340.)
+            .min_h(0.)
+            .w_full()
+            .gap(12.)
+            .scroll(ScrollSpec {
+                stick_bottom: false,
+            })
+            .child(crate::operations::review_panel(s, t))
+            .child(crate::valuation::panel(s, t))
+            .child(
+                col().gap(6.).children(
+                    card.evidence
+                        .iter()
+                        .take(6)
+                        .map(|line| text(line).font(type_::BODY).color(t.text_secondary).wrap()),
+                ),
             ),
-        )
+    )
 }
 
 fn batch_label(batch: &scanner_types::service::JobSummary) -> String {

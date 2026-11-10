@@ -30,6 +30,7 @@ try {
     await page.getByRole('button', { name: 'Finish unverified', exact: true }).dispatchEvent('click');
   if (await page.getByRole('button', { name: 'Condition unassessed', exact: true }).count())
     await page.getByRole('button', { name: 'Condition unassessed', exact: true }).dispatchEvent('click');
+  const guideResponse = response(page, 'v1.batches.valuation');
   const reviewed = await Promise.all([
     response(page, 'v1.images.review'),
     page.getByRole('button', { name: 'Confirm card', exact: true }).dispatchEvent('click'),
@@ -37,6 +38,17 @@ try {
   const result = reviewed.result;
   if (result?.state !== 'confirmed' || result.selectedCardID !== 'fixture-1' || result.finish !== 'normal' || result.condition !== 'nearMint')
     throw new Error('The browser did not save the explicit fixture review');
+  const guide = await (await guideResponse).json();
+  if (guide.result?.currency !== 'GBP' || guide.result?.pricedCount !== 0 || guide.result?.lowPence != null)
+    throw new Error('An unrecognized synthetic pair must not receive a market price');
+  await page.getByText('Saved batch market guide', { exact: true }).waitFor({ state: 'attached' });
+  if (screenshots) {
+    await mkdir(screenshots, { recursive: true });
+    await page.mouse.move(1050, 740);
+    await page.mouse.wheel(0, 550);
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await page.screenshot({ path: join(screenshots, 'valuation.png') });
+  }
   const inventory = await Promise.all([
     response(page, 'v1.inventory.list'),
     page.getByRole('button', { name: 'Inventory', exact: true }).dispatchEvent('click'),
