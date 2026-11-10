@@ -1,15 +1,22 @@
-//! Native HTTP client for CLI, MCP and Rune consumers. Credentials are never
+//! Portable HTTP client for CLI, MCP and Rune consumers. Credentials are never
 //! sent through URLs or redirects. This crate neither opens files nor runs helpers.
 use scanner_types::error::{Result, ScannerError};
 use serde_json::{Value, json};
-use std::time::Duration;
+#[cfg(target_arch = "wasm32")]
+mod browser;
+#[cfg(not(target_arch = "wasm32"))]
+mod native;
+#[cfg(target_arch = "wasm32")]
+use browser::Transport;
+#[cfg(not(target_arch = "wasm32"))]
+use native::Transport;
 use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct Client {
-    http: reqwest::Client,
+    http: Transport,
     endpoint: url::Url,
-    authorization: reqwest::header::HeaderValue,
+    authorization: String,
 }
 impl Client {
     pub fn new(origin: &str, token: &str) -> Result<Self> {
@@ -40,16 +47,8 @@ impl Client {
             return Err(invalid("Invalid service credential."));
         }
         endpoint.set_path("/rpc");
-        let mut authorization = reqwest::header::HeaderValue::from_str(&format!("Bearer {token}"))
-            .map_err(|_| invalid("Invalid service credential."))?;
-        authorization.set_sensitive(true);
-        let http = reqwest::Client::builder()
-            .redirect(reqwest::redirect::Policy::none())
-            .no_proxy()
-            .connect_timeout(Duration::from_secs(5))
-            .timeout(Duration::from_secs(120))
-            .build()
-            .map_err(transport)?;
+        let authorization = format!("Bearer {token}");
+        let http = Transport::new()?;
         Ok(Self {
             http,
             endpoint,
@@ -78,25 +77,10 @@ impl Client {
                 "RPC request exceeds 64 KiB.",
             ));
         }
-        let response = self
+        let bytes = self
             .http
-            .post(self.endpoint.clone())
-            .header(reqwest::header::AUTHORIZATION, self.authorization.clone())
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .body(bytes)
-            .send()
-            .await
-            .map_err(transport)?;
-        if !response.status().is_success() {
-            return Err(ScannerError::new(
-                "transport",
-                format!(
-                    "Scanner HTTP request failed with status {}.",
-                    response.status().as_u16()
-                ),
-            ));
-        }
-        let bytes = collect(response).await?;
+            .post(&self.endpoint, &self.authorization, bytes)
+            .await?;
         let response: Value =
             serde_json::from_slice(&bytes).map_err(|_| transport("Invalid service JSON."))?;
         if response["jsonrpc"] != "2.0"
@@ -119,28 +103,6 @@ impl Client {
         }
         Ok(response["result"].clone())
     }
-}
-async fn collect(mut response: reqwest::Response) -> Result<Vec<u8>> {
-    if response
-        .content_length()
-        .is_some_and(|n| n > 16 * 1024 * 1024)
-    {
-        return Err(ScannerError::new(
-            "resourceLimit",
-            "Service response exceeds 16 MiB.",
-        ));
-    }
-    let mut bytes = Vec::new();
-    while let Some(chunk) = response.chunk().await.map_err(transport)? {
-        if bytes.len() + chunk.len() > 16 * 1024 * 1024 {
-            return Err(ScannerError::new(
-                "resourceLimit",
-                "Service response exceeds 16 MiB.",
-            ));
-        }
-        bytes.extend_from_slice(&chunk);
-    }
-    Ok(bytes)
 }
 fn private_host(url: &url::Url) -> bool {
     match url.host() {

@@ -327,3 +327,10 @@ printing matches and twelve unresolved out of sixteen, with no wrong printing
 selected. Threshold/segmentation probes did not establish a safe printing-code
 improvement. This is not recognition parity with Apple Vision; manual review and
 further portable recognition improvements remain necessary before cutover.
+
+The shared authenticated client now compiles for wasm32 as well as native targets.
+Browser Fetch explicitly refuses redirects, omits cookies/referrers, disables
+caching, aborts cancelled/timed-out work and reads response streams with the same
+16 MiB bound. Native TCP gateway tests continue to pass. Browser execution and the
+Rune web application remain to be validated; a successful wasm check alone does
+not establish browser runtime parity.
