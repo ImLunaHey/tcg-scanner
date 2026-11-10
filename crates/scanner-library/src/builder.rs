@@ -19,6 +19,11 @@ impl Inventory {
     /// Add one persisted job once, in newest-first ledger order. Rescans in
     /// distinct batches remain additional copies; edits and retries do not.
     pub fn add(&mut self, record: &ScanRecord) -> Result<()> {
+        if record.request.extensions.contains_key("cameraImportSHA256")
+            && record.state != scanner_types::scan::ScanState::Completed
+        {
+            return Ok(());
+        }
         if !record.state.terminal()
             || !(record.request.prepare_cards == Some(true)
                 || record
@@ -50,7 +55,9 @@ impl Inventory {
                     "Inventory exceeds 100,000 physical copies.",
                 ));
             }
-            let detection = if record.request.duplex {
+            let detection = if record.request.duplex
+                || record.request.extensions.contains_key("cameraImportSHA256")
+            {
                 detections.iter().find(|d| d.number == number)
             } else {
                 None

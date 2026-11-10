@@ -24,6 +24,9 @@ pub struct CardGameDetection {
 }
 impl CardGameDetection {
     pub fn resolve(record: &ScanRecord) -> Vec<Self> {
+        if !record.request.duplex && record.request.extensions.contains_key("cameraImportSHA256") {
+            return camera_fronts(record);
+        }
         let mut groups: BTreeMap<u32, Vec<&OriginalImage>> = BTreeMap::new();
         for image in &record.images {
             groups
@@ -37,6 +40,17 @@ impl CardGameDetection {
             .collect()
     }
 }
+fn camera_fronts(record: &ScanRecord) -> Vec<CardGameDetection> {
+    record.images.iter().map(|image| CardGameDetection {
+        number: image.sequence,
+        game: image.extensions.get("reviewedCameraGame").cloned()
+            .and_then(|v| serde_json::from_value(v).ok()).unwrap_or_default(),
+        content_kind: None, front_sequence: Some(image.sequence), back_sequence: None,
+        back_sha256: None, method: Some("reviewed-camera-front".into()),
+        reason: "Single-sided camera capture; catalogue identity reviewed on import. No back captured.".into(),
+    }).collect()
+}
+
 fn classify(record: &ScanRecord, number: u32, images: &[&OriginalImage]) -> CardGameDetection {
     let mut result = CardGameDetection {
         number,

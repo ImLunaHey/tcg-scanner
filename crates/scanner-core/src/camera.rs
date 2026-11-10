@@ -61,7 +61,7 @@ impl Engine {
             .map_err(crate::image_access::worker)?
     }
 }
-fn decode(value: &str) -> Result<Vec<u8>> {
+pub(crate) fn decode(value: &str) -> Result<Vec<u8>> {
     let invalid = || {
         ScannerError::new(
             "invalidParams",

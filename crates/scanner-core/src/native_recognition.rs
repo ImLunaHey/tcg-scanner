@@ -60,7 +60,9 @@ impl CardRecognizer for NativeCardRecognizer {
     fn method(&self, record: &ScanRecord, image: &OriginalImage) -> &'static str {
         match CardGameDetection::resolve(record)
             .into_iter()
-            .find(|p| p.number == image.sequence.div_ceil(2))
+            .find(|p| {
+                p.front_sequence == Some(image.sequence) || p.back_sequence == Some(image.sequence)
+            })
             .map(|p| p.game)
             .unwrap_or_default()
         {
@@ -99,9 +101,9 @@ impl CardRecognizer for NativeCardRecognizer {
         record: &ScanRecord,
         image: &OriginalImage,
     ) -> Result<RecognitionEvidence> {
-        let pair = CardGameDetection::resolve(record)
-            .into_iter()
-            .find(|p| p.number == image.sequence.div_ceil(2));
+        let pair = CardGameDetection::resolve(record).into_iter().find(|p| {
+            p.front_sequence == Some(image.sequence) || p.back_sequence == Some(image.sequence)
+        });
         let game = pair.as_ref().map(|p| p.game).unwrap_or_default();
         let warning = if game == CardGame::Unknown {
             Some(

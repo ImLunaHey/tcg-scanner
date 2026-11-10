@@ -90,7 +90,7 @@ impl Gateway {
         };
         let permits = self.request_permits(&path, public_image, public_web)?;
         let rpc = path.parts == ["rpc"];
-        let limit = if camera || rpc {
+        let limit = if camera || rpc || path.parts == ["api", "v1", "camera", "import"] {
             scanner_types::camera::MAX_REQUEST_BYTES
         } else {
             60 * 1024

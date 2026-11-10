@@ -33,6 +33,7 @@ mod pricing;
 mod staging;
 
 mod camera;
+mod camera_import;
 
 mod lifecycle;
 

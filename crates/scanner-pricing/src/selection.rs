@@ -37,9 +37,10 @@ pub fn select(record: &ScanRecord) -> Result<Vec<Selection>> {
         .into_iter()
         .map(|(number, images)| {
             let pokemon = images.first().is_some_and(|sequence| {
-                games
-                    .iter()
-                    .any(|g| g.number == sequence.div_ceil(2) && g.game == CardGame::Pokemon)
+                games.iter().any(|g| {
+                    (g.front_sequence == Some(*sequence) || g.back_sequence == Some(*sequence))
+                        && g.game == CardGame::Pokemon
+                })
             });
             let matches: Vec<_> = identities
                 .iter()

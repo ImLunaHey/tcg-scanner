@@ -29,6 +29,12 @@ impl Gateway {
                 "Use POST for camera lookup.",
             ));
         }
+        if path.parts.last().is_some_and(|p| p == "import") {
+            let capture = serde_json::from_value(Value::Object(body)).map_err(|_| {
+                Error::params("Provide a capture ID, selected card, JPEG and quantity.")
+            })?;
+            return Ok(Json(self.engine.import_camera(capture).await?).into_response());
+        }
         if path.parts.last().is_some_and(|p| p == "price") {
             let selection = serde_json::from_value(Value::Object(body)).map_err(|_| {
                 Error::params("Provide a selected card, game, language and finish.")

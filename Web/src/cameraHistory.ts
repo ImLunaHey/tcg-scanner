@@ -6,6 +6,7 @@ export type RecentCard = {
   base64: string;
   quantity: number;
   savedBatchID?: string;
+  importStarted?: boolean;
 };
 const LIMIT = 100;
 function database(): Promise<IDBDatabase> {
