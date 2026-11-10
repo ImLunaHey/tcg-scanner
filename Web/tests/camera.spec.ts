@@ -438,7 +438,7 @@ for (const behavior of ["reject", "ignored"] as const) {
   });
 }
 
-test("sampling continues during a slow lookup and stale matches are discarded", async ({
+test("sampling continues and completed captures survive a changed live view", async ({
   page,
 }) => {
   await setup(page);
@@ -480,7 +480,7 @@ test("sampling continues during a slow lookup and stale matches are discarded", 
   await expect.poll(() => requests).toBeGreaterThanOrEqual(2);
   await expect(
     page.getByRole("button", { name: "View Old card details" }),
-  ).toHaveCount(0);
+  ).toBeVisible();
   await page.getByRole("button", { name: "Stop camera", exact: true }).click();
 });
 
@@ -524,5 +524,19 @@ test("recognition starts and retries even when every video frame moves", async (
   await expect.poll(() => requests, { timeout: 2000 }).toBe(1);
   await expect.poll(() => requests, { timeout: 7000 }).toBeGreaterThanOrEqual(3);
   expect(maximumConcurrent).toBe(1);
+  await page.getByRole("button", { name: "Stop camera", exact: true }).click();
+});
+
+test("camera feedback leaves the card guide unobstructed", async ({ page }) => {
+  await setup(page);
+  await page.route("**/api/v1/camera/identify", route => route.fulfill({ json: { state: "noMatch", candidates: [] } }));
+  await page.goto("/camera");
+  await page.getByRole("button", { name: "Start camera", exact: true }).click();
+  await expect(page.getByTestId("camera-last-lookup")).toBeVisible();
+  const guide = await page.locator(".camera-guide").boundingBox();
+  const status = await page.getByRole("status").boundingBox();
+  const diagnostics = await page.locator(".camera-diagnostics").boundingBox();
+  expect(status!.y + status!.height).toBeLessThanOrEqual(guide!.y);
+  expect(diagnostics!.y).toBeGreaterThanOrEqual(guide!.y + guide!.height);
   await page.getByRole("button", { name: "Stop camera", exact: true }).click();
 });

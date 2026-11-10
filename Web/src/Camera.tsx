@@ -159,13 +159,7 @@ export function Camera() {
         );
         const value: CameraResult = await response.json();
         if (!alive || detailsOpen.current || version !== generation) return;
-        if (latest && difference(submitted, latest) >= 12) {
-          gate.submitted = undefined;
-          gate.lastAttempt = Math.max(gate.lastAttempt, Date.now() - 500);
-          setPhase("steady");
-          setStatus("View changed · checking the newest frame next");
-          return;
-        }
+        const viewChanged = !!latest && difference(submitted, latest) >= 12;
         setLastLookup(
           value.state === "matched"
             ? `Last lookup: ${value.candidates[0]?.name || "card matched"}`
@@ -174,10 +168,10 @@ export function Camera() {
                 cardBack: "Last lookup: card back found",
                 codeCard: "Last lookup: Pokémon LIVE code card found",
                 ambiguous: "Last lookup: several possible matches",
-                noMatch: "Last lookup: card found, no catalogue match",
+                noMatch: "Last lookup: no catalogue match from this frame",
               }[value.state],
         );
-        gate.matched = value.state === "matched" || value.state === "codeCard";
+        gate.matched = !viewChanged && (value.state === "matched" || value.state === "codeCard");
         if (!gate.matched)
           gate.lastAttempt = Math.max(gate.lastAttempt, Date.now() - 500);
         if (
@@ -196,7 +190,9 @@ export function Camera() {
         setPhase(gate.matched ? "detected" : "retry");
         setStatus(
           value.state === "matched"
-            ? `${value.candidates[0]?.name || "Card found"} · ready for the next card`
+            ? viewChanged
+              ? `${value.candidates[0]?.name || "Card found"} captured · checking the new view`
+              : `${value.candidates[0]?.name || "Card found"} · ready for the next card`
             : value.state === "noCard"
               ? "Keep all four corners inside the guide"
               : value.state === "cardBack"
@@ -401,13 +397,21 @@ export function Camera() {
             muted
             aria-label="Live camera preview"
           />
-          <div ref={frame} className="camera-capture-area" aria-hidden="true">
-            <div className="camera-guide" data-phase={phase}>
+          <div ref={frame} className="camera-capture-area">
+            <div className="camera-guide" data-phase={phase} aria-hidden="true">
               <span />
               <span />
               <span />
               <span />
             </div>
+            {active && <div className="camera-diagnostics" aria-live="off">
+                  {lastLookup && (
+                    <small data-testid="camera-last-lookup">{lastLookup}</small>
+                  )}
+                  <small aria-live="off" data-testid="camera-activity">
+                    {activity}
+                  </small>
+            </div>}
           </div>
           {!active && (
             <div className="camera-placeholder">
@@ -500,12 +504,7 @@ export function Camera() {
                     }
                   </strong>
                   <small>{status}</small>
-                  {lastLookup && (
-                    <small data-testid="camera-last-lookup">{lastLookup}</small>
-                  )}
-                  <small aria-live="off" data-testid="camera-activity">
-                    {activity}
-                  </small>
+
                 </span>
               </div>
             )
