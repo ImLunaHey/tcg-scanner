@@ -75,5 +75,5 @@ pub(super) fn panel(s: &State, t: tok::Theme) -> El {
             );
         }
     }
-    panel
+    panel.child(crate::image_review::controls(s, t))
 }

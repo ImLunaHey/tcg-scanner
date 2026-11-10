@@ -679,3 +679,10 @@ These are review-assistance results, not automatic identity accuracy. See
 [visual recognition](visual-recognition.md) for configuration and limitations.
 HTTPS browser tests pass explicit visual selection/confirmation, existing reviews,
 inventory, profiles, edits, exports and camera lifecycle with no console errors.
+
+Rune review now shows source-bound condition boxes with a clipped region preview
+and a whole-image reset. Stale checks never overlay a different edit or checksum.
+A separately loaded comparison shows only the other image in the same duplex
+pair and invalidates on a source change. These are verified thumbnails, not
+full-resolution forensic views. Geometry/source tests, strict native/WASM Clippy
+and the HTTPS review/edit/export flow pass; both views were visually inspected.

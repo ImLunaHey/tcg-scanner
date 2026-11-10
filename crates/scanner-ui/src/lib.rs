@@ -30,3 +30,5 @@ mod review_link;
 mod exports;
 
 mod camera;
+mod comparison;
+mod image_review;

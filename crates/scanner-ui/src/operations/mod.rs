@@ -27,6 +27,7 @@ use uuid::Uuid;
 pub use view::{controls, review_panel};
 
 pub struct Operations {
+    pub image_review: crate::image_review::ImageReview,
     pub storage: storage::Storage,
     pub transfer: staging::Transfer,
     pub editor: Option<editing::Editor>,
@@ -61,6 +62,7 @@ pub struct Command {
 impl Default for Operations {
     fn default() -> Self {
         Self {
+            image_review: Default::default(),
             storage: Default::default(),
             transfer: Default::default(),
             editor: None,

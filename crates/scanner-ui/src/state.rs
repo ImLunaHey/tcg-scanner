@@ -21,6 +21,7 @@ pub enum Page {
 }
 
 pub struct State {
+    pub comparison: crate::comparison::Comparison,
     #[cfg(target_arch = "wasm32")]
     pub camera: crate::camera::Camera,
     pub exports: crate::exports::Exports,
@@ -56,6 +57,7 @@ pub struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
+            comparison: Default::default(),
             #[cfg(target_arch = "wasm32")]
             camera: Default::default(),
             exports: Default::default(),
@@ -92,6 +94,7 @@ impl Default for State {
 }
 impl State {
     pub fn setup(&mut self, waker: Waker) {
+        self.comparison.setup(waker.clone());
         #[cfg(target_arch = "wasm32")]
         self.camera.setup(waker.clone());
         self.exports.task.set_waker(waker.clone());
@@ -147,6 +150,7 @@ impl State {
         if self.ops.mutation.pending() {
             return;
         }
+        self.comparison.clear();
         self.exports.clear();
         self.ops.disconnect();
         self.valuation.clear();
@@ -182,6 +186,7 @@ impl State {
     }
     pub fn poll(&mut self, _: f64, _: &mut Tx) -> bool {
         let mut changed = self.poll_operations();
+        changed |= self.comparison.poll();
         changed |= self.poll_collection();
         changed |= self.poll_settings();
         changed |= self.poll_storage();
@@ -263,6 +268,7 @@ impl State {
         } else {
             self.select_card(selected);
         }
+        crate::comparison::sync(self);
     }
     fn receive_preview(&mut self, result: Result<Vec<u8>>) {
         self.loading_image = false;
@@ -272,6 +278,7 @@ impl State {
         }
     }
     pub fn select_batch(&mut self, index: usize) {
+        self.comparison.clear();
         self.valuation.clear();
         self.ops.transfer.clear();
         self.ops.editor = None;
@@ -301,6 +308,8 @@ impl State {
         }
     }
     pub fn select_card(&mut self, index: usize) {
+        self.comparison.clear();
+        self.ops.image_review.zoom = None;
         self.ops.editor = None;
         self.selected = index;
         self.update_review();

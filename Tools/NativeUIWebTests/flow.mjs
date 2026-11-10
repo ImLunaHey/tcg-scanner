@@ -27,6 +27,21 @@ try {
   ]).then(([response]) => response.json());
   if (!thumbnail.result?.sha256) throw new Error('The service did not return a verified thumbnail');
   await page.getByText('Browser test card', { exact: true }).first().waitFor();
+  const mark = page.getByRole('button', { name: 'Inspect possible mark 1', exact: true });
+  await mark.first().dispatchEvent('click');
+  await page.getByRole('button', { name: 'Show whole image', exact: true }).waitFor();
+  if (screenshots) {
+    await mkdir(screenshots, { recursive: true });
+    await page.screenshot({ path: join(screenshots, 'condition-region.png') });
+  }
+  await page.getByRole('button', { name: 'Show whole image', exact: true }).dispatchEvent('click');
+  await Promise.all([
+    response(page, 'v1.images.thumbnail'),
+    page.getByRole('button', { name: 'Compare other side', exact: true }).dispatchEvent('click'),
+  ]);
+  await page.getByText('Other side · same physical card', { exact: true }).waitFor();
+  if (screenshots) await page.screenshot({ path: join(screenshots, 'paired-sides.png') });
+  await page.getByRole('button', { name: 'Hide other side', exact: true }).dispatchEvent('click');
   for (const [label, method, paused] of [
     ['Pause and cancel scans', 'v1.service.pause', true],
     ['Resume service', 'v1.service.resume', false],

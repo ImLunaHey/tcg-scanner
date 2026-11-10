@@ -29,6 +29,7 @@ impl State {
                 .as_ref()
                 .map(|r| (r.request.id, r.reviewed_at, r.completed_at));
         if changed {
+            self.ops.image_review.zoom = None;
             self.ops.candidate = review.as_ref().and_then(|r| {
                 r.selected_card_id.clone().or_else(|| {
                     r.evidence

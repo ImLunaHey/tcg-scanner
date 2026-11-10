@@ -16,6 +16,7 @@ pub fn seed(root: &StorageRoot, database: &Database) -> Result<(), Box<dyn Error
             ..Device::default()
         },
         ScanRequest {
+            duplex: true,
             prepare_cards: Some(true),
             ..ScanRequest::default()
         },
@@ -27,6 +28,13 @@ pub fn seed(root: &StorageRoot, database: &Database) -> Result<(), Box<dyn Error
     let image = scanner_images::encode_png(pixels)?;
     std::fs::write(batch.incoming_path().join("fixture.png"), image.bytes)?;
     let image = batch.preserve("fixture.png", 1)?;
+    let back = scanner_images::encode_png(image::RgbaImage::from_pixel(
+        200,
+        300,
+        image::Rgba([40, 90, 150, 255]),
+    ))?;
+    std::fs::write(batch.incoming_path().join("fixture-back.png"), back.bytes)?;
+    batch.preserve("fixture-back.png", 2)?;
     let mut identification = CardIdentification::pending(
         IdentificationRequest {
             id: uuid::Uuid::new_v4(),
@@ -45,6 +53,7 @@ pub fn seed(root: &StorageRoot, database: &Database) -> Result<(), Box<dyn Error
     identification.evidence.as_mut().unwrap().extensions.insert("visualMatches".into(),json!([{
         "similarity":0.9,"candidate":{"id":"fixture-visual","name":"Browser visual card","localID":"002","setID":"fixture","setName":"Browser fixture","evidence":["Similar artwork; verify the printed set and number."]}
     }]));
+    identification.extensions.insert("conditionCheck".into(),json!({"method":"synthetic-browser-fixture","state":"checked","limitations":["Synthetic mark; not measured wear."],"findings":[{"kind":"edgeWhitening","explanation":"Synthetic border mark for UI testing.","region":{"x":0.04,"y":0.4,"width":0.05,"height":0.06}}]}));
     let mut record = batch.record().clone();
     record.replace_identification(&identification)?;
     batch.update(|r| *r = record)?;

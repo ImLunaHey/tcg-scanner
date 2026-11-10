@@ -1,6 +1,6 @@
 use crate::state::State;
 use rune::{
-    Cx, El, ScrollSpec, SurfaceFit, col, el, row, text, text_input,
+    Cx, El, ScrollSpec, col, el, row, text, text_input,
     tok::{self, type_},
 };
 
@@ -242,59 +242,39 @@ fn detail(s: &State, t: tok::Theme) -> El {
                 .color(t.text_secondary)
                 .wrap(),
         );
-    let mut preview = el()
-        .key("preview")
-        .grow(1.)
-        .min_h(120.)
-        .w_full()
-        .radius(12.)
-        .fill(t.card);
-    if let Some(image) = &s.image {
-        preview = preview.pixels_fit(image.pixels(), SurfaceFit::Fit);
-        if image.error().is_some() {
-            preview = preview
-                .center()
-                .child(text("Image could not be opened").color(t.text_secondary));
-        }
-    } else {
-        let message = if s.loading_image {
-            "Loading image…"
-        } else {
-            s.image_error
-                .as_deref()
-                .unwrap_or("Saved image unavailable")
-        };
-        preview = preview
-            .center()
-            .child(text(message).color(t.text_secondary).wrap());
-    }
+    let preview = crate::image_review::preview(s, t);
     if s.ops.editor.is_some() {
         return pane
             .child(preview)
             .child(crate::operations::editing_panel(s, t));
     }
-    pane.child(preview).child(
-        col()
-            .key("review-scroll")
-            .h(340.)
-            .min_h(0.)
-            .w_full()
-            .gap(12.)
-            .scroll(ScrollSpec {
-                stick_bottom: false,
-            })
-            .child(crate::operations::review_panel(s, t))
-            .child(crate::valuation::panel(s, t))
-            .child(crate::operations::staging_panel(s, t))
-            .child(
-                col().gap(6.).children(
-                    card.evidence
-                        .iter()
-                        .take(6)
-                        .map(|line| text(line).font(type_::BODY).color(t.text_secondary).wrap()),
+    let mut images = row().grow(1.).min_h(120.).gap(12.).child(preview);
+    if s.comparison.active() {
+        images = images.child(crate::comparison::view(s, t));
+    }
+    pane.child(crate::comparison::control(s, t))
+        .child(images)
+        .child(
+            col()
+                .key("review-scroll")
+                .h(340.)
+                .min_h(0.)
+                .w_full()
+                .gap(12.)
+                .scroll(ScrollSpec {
+                    stick_bottom: false,
+                })
+                .child(crate::operations::review_panel(s, t))
+                .child(crate::valuation::panel(s, t))
+                .child(crate::operations::staging_panel(s, t))
+                .child(
+                    col().gap(6.).children(
+                        card.evidence.iter().take(6).map(|line| {
+                            text(line).font(type_::BODY).color(t.text_secondary).wrap()
+                        }),
+                    ),
                 ),
-            ),
-    )
+        )
 }
 
 fn batch_label(batch: &scanner_types::service::JobSummary) -> String {
