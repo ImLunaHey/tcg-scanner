@@ -1,0 +1,2 @@
+# Preserve the pinned upstream dependency byte-for-byte, including its whitespace.
+vendor/rune/** -text -whitespace
