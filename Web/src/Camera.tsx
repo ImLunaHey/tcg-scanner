@@ -13,6 +13,7 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { Link } from "wouter";
+import { hasCameraCard } from "./cameraPresence";
 import { CameraTorch } from "./CameraTorch";
 import { CameraFinish } from "./CameraFinish";
 import { CameraBinder } from "./CameraBinder";
@@ -127,6 +128,8 @@ export function Camera() {
       timer: ReturnType<typeof setTimeout> | undefined;
     const controller = new AbortController();
     const gate = new SteadyCard();
+    let checkingPresence = false, noCard = true, forceFrame = false;
+    let checks = 0;
     let inFlight = false,
       started = 0,
       frames = 0,
@@ -137,6 +140,7 @@ export function Camera() {
     let lastDuration = "";
     reset.current = () => {
       generation++;
+      forceFrame = true;
       setLastLookup("");
       gate.submitted = undefined;
       gate.matched = false;
@@ -159,10 +163,36 @@ export function Camera() {
       submitted: Uint8Array,
       version: number,
     ) {
+      let recognized = false;
       try {
         const base64 = await cameraJPEG(captured);
+        if (!alive || detailsOpen.current || version !== generation) return;
+        if (!forceFrame) {
+          checks++;
+          const presence = await cameraAPI.response("camera/detect-page", {
+            method: "POST", signal: controller.signal,
+            body: JSON.stringify({ base64, language }),
+          }, false, 10_000);
+          const detection = await presence.json();
+          if (!alive || detailsOpen.current || version !== generation) return;
+          noCard = !hasCameraCard(detection.cards);
+          if (noCard) {
+            gate.lastAttempt = Date.now() - 600;
+            setPhase("searching");
+            setStatus("No card in view · watching for one");
+            return;
+          }
+        }
+        forceFrame = false;
+        noCard = false;
+        checkingPresence = false;
+        recognized = true;
+        attempts++;
+        started = Date.now();
+        setPhase("identifying");
+        setStatus("Card found · reading this frame");
         const snapshot = await cameraSnapshot(captured);
-        if (!alive) return;
+        if (!alive || detailsOpen.current || version !== generation) return;
         const response = await cameraAPI.response(
           "camera/identify",
           {
@@ -180,7 +210,7 @@ export function Camera() {
           value.state === "matched"
             ? `Last lookup: ${value.candidates[0]?.name || "card matched"}`
             : {
-                noCard: "Last lookup: no complete card outline found",
+                noCard: "Last lookup: no readable card found",
                 cardBack: "Last lookup: card back found",
                 codeCard: "Last lookup: Pokémon LIVE code card found",
                 ambiguous: "Last lookup: several possible matches",
@@ -212,7 +242,7 @@ export function Camera() {
               ? `${value.candidates[0]?.name || "Card found"} captured · checking the new view`
               : `${value.candidates[0]?.name || "Card found"} · ready for the next card`
             : value.state === "noCard"
-              ? "Keep all four corners inside the guide"
+              ? "Try closer, with the card in view"
               : value.state === "cardBack"
                 ? "Turn the card over to show its front"
                 : value.state === "codeCard"
@@ -223,18 +253,22 @@ export function Camera() {
         );
       } catch (e) {
         if (!alive || version !== generation || detailsOpen.current) return;
+        const detectorUnavailable = checkingPresence && e instanceof ApiError && e.kind === "configuration";
         setError(
-          e instanceof ApiError && e.kind === "busy"
-            ? "Recognition is busy. Still watching; will retry automatically."
-            : cameraMessage(e),
+          detectorUnavailable
+            ? "Automatic card detection is unavailable. Tap the circular arrow to scan this frame."
+            : e instanceof ApiError && e.kind === "busy"
+              ? "Recognition is busy. Still watching; will retry automatically."
+              : cameraMessage(e),
         );
         gate.lastAttempt =
-          Date.now() + (e instanceof ApiError && e.status === 429 ? 60_000 : 0);
+          Date.now() + (detectorUnavailable || (e instanceof ApiError && e.status === 429) ? 60_000 : 0);
         setPhase("retry");
         setStatus("Try closer, with more light and less glare");
       } finally {
         inFlight = false;
-        lastDuration = `${((Date.now() - started) / 1000).toFixed(1)}s last lookup`;
+        checkingPresence = false;
+        if (recognized) lastDuration = `${((Date.now() - started) / 1000).toFixed(1)}s last lookup`;
         if (alive) setBusy(false);
       }
     }
@@ -278,10 +312,13 @@ export function Camera() {
           if (now - lastProgress >= 500) {
             lastProgress = now;
             setActivity(
-              `${frames} frames checked · ${attempts} lookups${inFlight ? ` · ${((now - started) / 1000).toFixed(1)}s waiting for recognition` : lastDuration ? ` · ${lastDuration}` : ""}`,
+              `${frames} frames sampled · ${checks} card checks · ${attempts} lookups${inFlight && !checkingPresence ? ` · ${((now - started) / 1000).toFixed(1)}s waiting for recognition` : lastDuration ? ` · ${lastDuration}` : ""}`,
             );
           }
-          if (inFlight) {
+          if (inFlight && checkingPresence) {
+            setPhase("searching");
+            setStatus("Watching for a card · quick presence check");
+          } else if (inFlight) {
             setPhase("identifying");
             setStatus(
               gate.observation === "moving"
@@ -296,16 +333,18 @@ export function Camera() {
             gate.accept(sample, Date.now());
             setBusy(true);
             setError(undefined);
-            setPhase("identifying");
-            setStatus("Sending a clear frame for recognition");
+            checkingPresence = !forceFrame;
+            setPhase(checkingPresence ? "searching" : "identifying");
+            setStatus(checkingPresence ? "Watching for a card · quick presence check" : "Reading this frame");
             inFlight = true;
-            started = Date.now();
-            attempts++;
             const captured = document.createElement("canvas");
             captured.width = canvas.width;
             captured.height = canvas.height;
             captured.getContext("2d")!.drawImage(canvas, 0, 0);
             void identify(captured, sample, generation);
+          } else if (noCard) {
+            setPhase("searching");
+            setStatus("No card in view · watching for one");
           } else if (gate.observation === "searching") {
             setPhase("searching");
             setStatus("Place one card inside the guide");
@@ -555,10 +594,12 @@ export function Camera() {
             <ChevronRight size={16} />
           </button>
         )}
-        {result && active && (
+        {active && (
           <button
             className="camera-icon-button camera-retry"
-            aria-label="Check again"
+            aria-label={result ? "Check again" : "Scan this frame"}
+            title="Scan this frame even if automatic card detection misses it"
+            disabled={busy}
             onClick={() => reset.current()}
           >
             <RotateCcw size={20} />

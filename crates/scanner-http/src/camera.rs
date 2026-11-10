@@ -16,6 +16,15 @@ pub(crate) fn is_route(path: &Path) -> bool {
         || path.parts == ["api", "v1", "camera", "detect-page"]
 }
 impl Gateway {
+    pub(crate) fn camera_principal(&self, path: &Path) -> Result<crate::access::Principal> {
+        let mut access = self.access.lock().map_err(|_| Error::internal())?;
+        match path.parts.last().map(String::as_str) {
+            Some("price") => access.price(),
+            Some("detect-page") => access.detection(),
+            _ => access.camera(),
+        }
+    }
+
     pub(crate) async fn camera_route(
         self: &Arc<Self>,
         head: &Parts,

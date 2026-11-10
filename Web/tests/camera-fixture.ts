@@ -97,6 +97,9 @@ export async function setup(
     },
     { deny, torch, moving },
   );
+  await page.route("**/api/v1/camera/detect-page", route => route.fulfill({ json: {
+    schemaVersion: 1, method: "fixture", cards: [{ x: .1, y: .1, width: .8, height: .8, confidence: .9 }],
+  } }));
   await page.route("**/api/v1/camera/price", route => route.fulfill({ json: { number: 1, cardID: route.request().postDataJSON().card.id, state: "priced", lowPence: 125, highPence: 125, stale: false, reason: "Fixture guide price", quotes: [{ updated: "2026-11-10" }] } }));
   await page.route("**/api/v1/events?**", (route) =>
     route.fulfill({

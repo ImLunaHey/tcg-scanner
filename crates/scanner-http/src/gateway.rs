@@ -79,12 +79,7 @@ impl Gateway {
             && self.web.get().is_some_and(|w| w.contains(&path));
         let camera = head.method == "POST" && crate::camera::is_route(&path);
         let principal = if camera {
-            let mut access = self.access.lock().map_err(|_| Error::internal())?;
-            if path.parts.last().is_some_and(|p| p == "price") {
-                access.price()?
-            } else {
-                access.camera()?
-            }
+            self.camera_principal(&path)?
         } else {
             self.principal(&head, public_image, public_web)?
         };

@@ -98,7 +98,7 @@ test("camera identifies automatically without saving and stops on exit", async (
   await expect(tile).toBeFocused();
   await page.waitForTimeout(5000);
   expect(requests).toBe(1);
-  expect(mutations.filter(path => path !== "/api/v1/camera/price")).toEqual(["/api/v1/camera/identify"]);
+  expect(mutations.filter(path => path !== "/api/v1/camera/price" && path !== "/api/v1/camera/detect-page")).toEqual(["/api/v1/camera/identify"]);
   await page.getByRole("button", { name: "Stop camera" }).click();
   await expect(
     page.getByRole("button", { name: "Start camera" }),
@@ -396,7 +396,7 @@ test("last outline rejection stays visible during the next lookup", async ({ pag
   await page.goto("/camera");
   await page.getByRole("button", { name: "Start camera", exact: true }).click();
   const last = page.getByTestId("camera-last-lookup");
-  await expect(last).toHaveText("Last lookup: no complete card outline found");
+  await expect(last).toHaveText("Last lookup: no readable card found");
   await expect.poll(() => requests).toBe(2);
   await expect(page.getByTestId("camera-activity")).toContainText("waiting for recognition");
   await expect(last).toBeVisible();

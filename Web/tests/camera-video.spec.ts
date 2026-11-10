@@ -28,6 +28,9 @@ test("recognition updates preserve a continuously playing fullscreen video", asy
       },
     } });
   });
+  await page.route("**/api/v1/camera/detect-page", route => route.fulfill({ json: {
+    cards: [{ x: .1, y: .1, width: .8, height: .8, confidence: .9 }],
+  } }));
   let lookups = 0;
   await page.route("**/api/v1/camera/identify", async route => {
     lookups++;

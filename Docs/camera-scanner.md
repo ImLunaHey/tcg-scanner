@@ -9,12 +9,19 @@ implementation where explicitly stated.
 
 Open `/camera` on the scanner's HTTPS address. No login is required. Tap
 **Start camera**, and allow camera access. Hold one card front
-inside the guide, with all four corners visible against a contrasting background.
-The camera fills the viewport and starts lookup without waiting for stillness.
-The page sends a bounded JPEG to the Rust scanner service. The last identified card
+inside the guide. The camera fills the viewport and samples without waiting for
+stillness or perfect alignment. A bounded JPEG first goes to the Rust ONNX card
+detector; only a plausible card proceeds to OCR/catalogue recognition. Empty
+scenes keep the **Looking for a card** status without the recognition spinner.
+Presence checks repeat about every 600 ms after an empty result. The detector
+uses confidence >= 0.5 and a minimum 5% frame area, not a complete-outline test.
+Its Pokémon-trained model may miss other games, backs, small or unusual cards.
+Tap the circular arrow (**Scan this frame** / **Check again**) for one manual
+lookup that bypasses presence. This also works if no detector is configured.
+The page sends the same captured frame to recognition after a positive check. The last identified card
 appears in a compact bottom-left tile. Tap it for a full-screen image and catalogue
 details; lookups pause until the details close. Sampling continues every 100 ms while a lookup runs. The status shows frames
-checked, lookup count and elapsed recognition time; it does not invent server
+sampled, card-presence checks, lookup count and elapsed recognition time; it does not invent server
 processing stages. Only one lookup is active. A completed match stays associated
 with its captured frame even after the live view changes; the newest view is
 submitted next. Stopped/reset sessions still discard late results.
@@ -24,7 +31,7 @@ The preview uses the captured camera image. Successful matches also appear in
 them before explicitly adding them to inventory. Move to the next card or tap
 **Check again** to repeat a lookup. The grid button opens binder-page scanning.
 
-A persistent badge above the guide shows **Looking for a card**, **Hold steady**,
+A persistent badge above the guide shows **Looking for a card**, **Watching camera**,
 **Identifying card**, **Card detected**, or guidance for another view. Identification
 has a spinning indicator; detection turns the badge and guide corners green.
 The toolbar's **Flash** button toggles the active camera's continuous light and
@@ -42,6 +49,17 @@ storage is offline at service startup, interrupted work is marked failed in the
 local database without reading or writing the unavailable volume. Physical scans
 remain blocked until storage validation passes; there is no local fallback.
 
+## Presence-gate validation (2026-11-10)
+
+The reported room screenshot produced only a weak 0.399 detector box, rejected
+before OCR. All seven saved front-card fixtures passed the presence gate, as did
+14 additional versions rotated by ±15 degrees on a neutral background. This
+checks whether recognition is allowed to start, not whether identity is correct.
+Native detection took approximately 23–30 ms on the development Mac; that excludes
+JPEG transfer and the later recognition request. The model is not infallible:
+background false positives and missed cards remain possible. Private screenshots,
+fixtures and detailed measurements are retained outside Git.
+
 ## Behavior and privacy
 
 - Live recognition requests do not write images to scan storage or the ledger.
@@ -49,8 +67,10 @@ remain blocked until storage validation passes; there is no local fallback.
   Explicitly adding reviewed entries to inventory saves single-sided batches.
   Blob preview URLs are revoked when replaced or when the page closes.
 - Native Rust image processing finds outlines and corrects perspective; detailed
-  guide frames can still reach OCR if outline extraction fails. Binder pages use
-  optional ONNX detection. Images stay between the browser and your service.
+  guide frames can still reach OCR if outline extraction fails, after the presence
+  gate (or an explicit manual scan). Camera presence and binder pages share the
+  optional ONNX detector. Detection has its own 120/minute budget, separate from
+  the 60/minute recognition budget. Images stay between the browser and your service.
   Catalogue requests send text/identifiers, not images.
 - The page uses the rear camera where available. It stops camera tracks on Stop,
   navigation, loss of connectivity or backgrounding. Returning to the page
