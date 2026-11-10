@@ -9,6 +9,7 @@ mod recovery;
 mod schema;
 
 pub use events::{EventPage, ServiceEvent};
+pub use recovery::mark_interrupted;
 use rusqlite::{Connection, OpenFlags, Transaction};
 use scanner_types::error::{Result, ScannerError};
 use std::{path::Path, sync::Mutex};

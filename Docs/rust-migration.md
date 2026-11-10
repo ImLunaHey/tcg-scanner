@@ -46,7 +46,7 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   Tests cover restart, rollback, event resets and Unix sidecar symlink rejection.
   Local database/sidecar creation now uses the shared native private-state
   boundary, including Windows owner/DACL validation. Windows execution and
-  disk-manifest reconciliation remain outstanding.
+  platform execution remains outstanding.
 
 - `scanner-core`: driver-independent queue ownership, idempotent submissions,
   profile/default resolution, ordered acquisition, cooperative cancellation,
@@ -212,7 +212,13 @@ global hardware ownership, platform scanner hosts and signal-driven shutdown.
 The CLI provides scan/status/job/profile commands and generic v1 calls using the
 bounded native `scanner-client`. Both binaries build; an isolated startup attempt
 correctly refused the installed Swift service's hardware lock before creating a
-database. Startup currently refuses unfinished jobs pending disk reconciliation.
+database. Startup now reconciles interrupted jobs under the global owner lock before
+constructing the coordinator. Newer manifests must match job/request/continuation
+identity, retain immutable history and reviews, and pass streaming image checksum
+checks. Mismatched, linked or corrupt manifests remain untouched for inspection.
+Unfinished scans and OCR fail explicitly; feeding never resumes. Tests cover
+newer/completed manifests, continuations, review preservation, corrupt files,
+links and offline storage.
 Service installation, sleep/wake handling and full friendly CLI parity remain open.
 
 `scanner-mcp` implements MCP 2025-06-18 over bounded stdio JSON frames, with

@@ -12,3 +12,6 @@ mod submission;
 pub use engine::Engine;
 mod editing;
 mod image_access;
+
+mod recovery;
+pub use recovery::recover_before_start;

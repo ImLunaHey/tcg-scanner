@@ -35,8 +35,8 @@ Use absolute paths, including drive-qualified paths on Windows. Local state and
 credential directories must satisfy the platform's private ownership checks.
 
 SIGINT/SIGTERM stop acceptance and wait for owned writes and scanner session
-closure. Interrupted jobs currently stop startup with `recoveryRequired`; disk
-reconciliation must be completed before production cutover. Installers, platform
+closure. Interrupted jobs reconcile verified manifests before accepting clients; incomplete
+work fails explicitly and physical feeding never resumes automatically. Installers, platform
 sleep/wake handling and the rest of the friendly CLI command tree remain pending.
 The generic `call` command exposes every currently implemented v1 RPC method.
 Physical scan commands require an explicit request UUID for safe retries.

@@ -35,12 +35,14 @@ pub(crate) async fn run(
     let token = scanner_platform::load_credential(&configuration.token_file)?;
     let root = Arc::new(StorageRoot::open_configured(configuration.storage)?);
     let database = Arc::new(Database::open(&configuration.database)?);
-    if !database.unfinished()?.is_empty() {
-        return Err(ScannerError::new(
-            "recoveryRequired",
-            "Interrupted jobs require manifest reconciliation before this service can start; no feeding or recovery writes were performed.",
-        ));
-    }
+    let recovery_database = database.clone();
+    let recovery_root = root.clone();
+    let recovered = tokio::task::spawn_blocking(move || {
+        scanner_core::recover_before_start(&recovery_database, Some(&recovery_root))
+    })
+    .await
+    .map_err(config)??;
+    eprintln!("Recovered {recovered} interrupted job(s); physical scans were not resumed.");
     let processor: Arc<dyn CardProcessor> =
         match (configuration.tesseract_library, configuration.trained_data) {
             (Some(library), Some(data)) => {

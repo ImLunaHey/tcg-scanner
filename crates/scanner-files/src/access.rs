@@ -14,6 +14,30 @@ pub struct ImageChunk {
 }
 
 impl StorageRoot {
+    /// Verify recorded bytes without allocating the whole image.
+    pub fn verify_image(&self, record: &ScanRecord, image: &OriginalImage) -> Result<()> {
+        let mut file = self.open_image(record, image)?;
+        let mut hash = Sha256::new();
+        let mut count = 0u64;
+        let mut buffer = [0; 65536];
+        loop {
+            let n = file.read(&mut buffer).map_err(storage)?;
+            if n == 0 {
+                break;
+            }
+            count += n as u64;
+            if count > image.bytes {
+                return Err(storage("Saved image grew during verification."));
+            }
+            hash.update(&buffer[..n]);
+        }
+        if count != image.bytes || format!("{:x}", hash.finalize()) != image.sha256 {
+            return Err(storage(
+                "Saved image checksum or byte count does not match its record.",
+            ));
+        }
+        Ok(())
+    }
     pub fn read_image(
         &self,
         record: &ScanRecord,

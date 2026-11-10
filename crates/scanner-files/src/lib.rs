@@ -2,6 +2,7 @@ mod access;
 mod batch;
 pub mod configuration;
 mod derived;
+mod manifest;
 mod metadata;
 mod paths;
 pub use access::ImageChunk;
