@@ -161,7 +161,7 @@ export function Camera() {
         if (!alive || detailsOpen.current || version !== generation) return;
         if (latest && difference(submitted, latest) >= 12) {
           gate.submitted = undefined;
-          gate.lastAttempt = -Infinity;
+          gate.lastAttempt = Math.max(gate.lastAttempt, Date.now() - 500);
           setPhase("steady");
           setStatus("View changed · checking the newest frame next");
           return;
@@ -297,7 +297,7 @@ export function Camera() {
             setStatus("Place one card inside the guide");
           } else if (gate.observation === "moving") {
             setPhase("steady");
-            setStatus("Keep the card still with all four corners visible");
+            setStatus("Keep the card in view · trying frames automatically");
           } else if (gate.observation === "unchanged") {
             setPhase("detected");
             setStatus("Card already checked · move to the next card");
@@ -492,7 +492,7 @@ export function Camera() {
                       {
                         opening: "Opening camera",
                         searching: "Looking for a card",
-                        steady: "Hold steady",
+                        steady: "Watching camera",
                         identifying: "Identifying card…",
                         detected: "Card detected",
                         retry: "Try another view",

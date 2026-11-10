@@ -3,9 +3,10 @@ async function setup(
   page: Page,
   deny = false,
   torch: "supported" | "unsupported" | "reject" | "ignored" = "unsupported",
+  moving = false,
 ) {
   await page.addInitScript(
-    ({ deny, torch }) => {
+    ({ deny, torch, moving }) => {
       Object.defineProperty(window, "isSecureContext", { value: true });
       const state = window as unknown as {
         cameraStops: number;
@@ -81,6 +82,7 @@ async function setup(
         ...args: unknown[]
       ) {
         if (args[0] instanceof HTMLVideoElement) {
+          if (moving) state.cameraVariant = 1 - state.cameraVariant;
           this.fillStyle = "#111";
           this.fillRect(0, 0, 1000, 1333);
           if (state.cameraVariant === 2) return;
@@ -93,7 +95,7 @@ async function setup(
         }
       } as typeof original;
     },
-    { deny, torch },
+    { deny, torch, moving },
   );
   await page.route("**/api/v1/events?**", (route) =>
     route.fulfill({
@@ -339,7 +341,7 @@ test("details keep their card stable while the camera sees another card", async 
   ).toBe(1);
 });
 
-test("camera shows searching, identifying and retry feedback over the preview", async ({
+test("camera tries low-detail frames and shows identifying and retry feedback", async ({
   page,
 }) => {
   await setup(page);
@@ -357,7 +359,7 @@ test("camera shows searching, identifying and retry feedback over the preview", 
   });
   await page.getByRole("button", { name: "Start camera" }).click();
   const status = page.getByRole("status");
-  await expect(status).toContainText("Looking for a card");
+  await expect(status).toContainText("Low detail in view");
   await expect(status).toBeInViewport();
   await page.evaluate(() => {
     (window as unknown as { cameraVariant: number }).cameraVariant = 0;
@@ -502,4 +504,25 @@ test("last outline rejection stays visible during the next lookup", async ({ pag
   await page.getByRole("button", { name: "Stop camera", exact: true }).click();
   await page.getByRole("button", { name: "Start camera", exact: true }).click();
   await expect(last).toHaveCount(0);
+});
+
+
+test("recognition starts and retries even when every video frame moves", async ({ page }) => {
+  await setup(page, false, "unsupported", true);
+  let requests = 0;
+  let concurrent = 0;
+  let maximumConcurrent = 0;
+  await page.route("**/api/v1/camera/identify", async (route) => {
+    requests++;
+    maximumConcurrent = Math.max(maximumConcurrent, ++concurrent);
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    concurrent--;
+    await route.fulfill({ json: { state: "noCard", candidates: [] } });
+  });
+  await page.goto("/camera");
+  await page.getByRole("button", { name: "Start camera", exact: true }).click();
+  await expect.poll(() => requests, { timeout: 2000 }).toBe(1);
+  await expect.poll(() => requests, { timeout: 7000 }).toBeGreaterThanOrEqual(3);
+  expect(maximumConcurrent).toBe(1);
+  await page.getByRole("button", { name: "Stop camera", exact: true }).click();
 });

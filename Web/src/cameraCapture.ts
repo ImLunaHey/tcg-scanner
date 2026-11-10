@@ -50,23 +50,21 @@ export class SteadyCard {
         ? this.stable + 1
         : 0;
     this.previous = frame;
-    // New matched cards can advance quickly; unclear frames retry more gently.
-    const interval = 1200;
+    // Movement/detail are feedback, never prerequisites for recognition.
+    // The caller keeps one request in flight; this limits fast unsuccessful retries.
+    if (this.matched && this.submitted && difference(frame, this.submitted) < 12) {
+      this.observation = "unchanged";
+      return false;
+    }
+    if (now - this.lastAttempt >= 1200) {
+      this.observation = "ready";
+      return true;
+    }
     this.observation =
-      variance < 180
-        ? "searching"
-        : this.matched &&
-            this.submitted &&
-            difference(frame, this.submitted) < 12
-          ? "unchanged"
-          : this.stable < 2
-            ? "moving"
-            : now - this.lastAttempt < interval
-              ? "waiting"
-              : "ready";
-    if (this.observation !== "ready") return false;
-    return true;
+      variance < 180 ? "searching" : this.stable < 2 ? "moving" : "waiting";
+    return false;
   }
+
   accept(frame: Uint8Array, now: number) {
     this.submitted = frame;
     this.lastAttempt = now;

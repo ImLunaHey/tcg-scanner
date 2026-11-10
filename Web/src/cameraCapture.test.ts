@@ -2,51 +2,45 @@ import { describe, expect, it } from "vitest";
 import { cameraViewport, SteadyCard } from "./cameraCapture";
 const card = Uint8Array.from({ length: 64 }, (_, i) => (i % 2 ? 220 : 20));
 describe("camera capture", () => {
-  it("waits for steady textured frames and throttles retries", () => {
+  it("starts on the first frame and throttles retries", () => {
     const gate = new SteadyCard();
-    expect(gate.ready(card, 0)).toBe(false);
-    expect(gate.observation).toBe("moving");
-    expect(gate.ready(card, 500)).toBe(false);
-    expect(gate.ready(card, 1000)).toBe(true);
-    expect(gate.observation).toBe("ready");
-    gate.accept(card, 1000);
-    expect(gate.ready(card, 2100)).toBe(false);
-    expect(gate.observation).toBe("waiting");
-    expect(gate.ready(card, 2200)).toBe(true);
+    expect(gate.ready(card, 0)).toBe(true);
+    gate.accept(card, 0);
+    expect(gate.ready(card, 1100)).toBe(false);
+    expect(gate.ready(card, 1200)).toBe(true);
   });
-  it("does not keep submitting a matched card, but detects a replacement", () => {
+  it("does not require stillness, contrast or a previous frame", () => {
+    for (const frames of [
+      [card, card.map((x) => 255 - x)],
+      [new Uint8Array(64).fill(100), new Uint8Array(64).fill(120)],
+    ]) {
+      const gate = new SteadyCard();
+      const submissions: number[] = [];
+      for (let now = 0; now <= 3600; now += 100) {
+        const frame = frames[(now / 100) % 2];
+        if (gate.ready(frame, now)) {
+          submissions.push(now);
+          gate.accept(frame, now);
+        }
+      }
+      expect(submissions).toEqual([0, 1200, 2400, 3600]);
+    }
+  });
+  it("suppresses an unchanged match and immediately tries a replacement when due", () => {
     const gate = new SteadyCard();
     gate.accept(card, 0);
     gate.matched = true;
-    for (let i = 0; i < 10; i++)
-      expect(gate.ready(card, 10000 + i * 500)).toBe(false);
+    expect(gate.ready(card, 2000)).toBe(false);
     expect(gate.observation).toBe("unchanged");
-    const next = card.map((x) => 255 - x);
-    expect(gate.ready(next, 20000)).toBe(false);
-    expect(gate.ready(next, 20500)).toBe(false);
-    expect(gate.ready(next, 21000)).toBe(true);
+    expect(gate.ready(card.map((x) => 255 - x), 2100)).toBe(true);
   });
-  it("accepts a changed matched card without waiting for the unclear-frame retry", () => {
+  it("keeps the retry limit when a matched card changes", () => {
     const gate = new SteadyCard();
     gate.accept(card, 0);
     gate.matched = true;
     const next = card.map((x) => 255 - x);
     expect(gate.ready(next, 800)).toBe(false);
-    expect(gate.ready(next, 1000)).toBe(false);
     expect(gate.ready(next, 1200)).toBe(true);
-  });
-  it("ignores uniform backgrounds and movement", () => {
-    const gate = new SteadyCard();
-    for (let i = 0; i < 8; i++)
-      expect(gate.ready(new Uint8Array(64).fill(100), i * 5000)).toBe(false);
-    expect(gate.observation).toBe("searching");
-    for (let i = 0; i < 8; i++)
-      expect(
-        gate.ready(
-          card.map((x) => (i % 2 ? 255 - x : x)),
-          50000 + i * 5000,
-        ),
-      ).toBe(false);
   });
   it("maps a centered region through landscape video cover scaling", () => {
     const area = cameraViewport(
