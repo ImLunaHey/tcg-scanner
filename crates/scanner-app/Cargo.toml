@@ -25,7 +25,7 @@ scanner-device.workspace = true
 scanner-store.workspace = true
 scanner-files.workspace = true
 scanner-types.workspace = true
-scanner-platform.workspace = true
+scanner-platform = { workspace = true, features = ["power"] }
 scanner-http.workspace = true
 scanner-client.workspace = true
 clap = { version = "4.6.7", features = ["derive"] }

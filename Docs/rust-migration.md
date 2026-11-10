@@ -578,3 +578,12 @@ cancelled and hardware/storage quarantine remains. Integration tests cover queue
 cancellation, an in-flight submission, unknown inspection closure, shutdown and
 authentication. Focused suites and strict native/WebAssembly Clippy pass. Native
 sleep/wake event integration follows this coordinator slice.
+
+Native sleep/wake is now wired through `scanner-platform` IOKit, PowrProf and
+logind adapters. Hardware-service startup requires notification registration;
+monitor loss closes the service. The coordinator separates manual and system
+pause, preserves quarantine on wake, and never restarts cancelled feeds. Native
+macOS registration/cleanup succeeds without a power-state change; synthetic
+callbacks, lifecycle tests and Windows/Linux cross-target strict Clippy pass.
+See [native power lifecycle](native-power.md) for OS deadline limitations and the
+remaining physical suspend/resume checks.

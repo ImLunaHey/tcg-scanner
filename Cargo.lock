@@ -4265,10 +4265,14 @@ dependencies = [
  "cap-fs-ext",
  "cap-std",
  "dirs",
+ "futures-util",
  "libc",
  "scanner-types",
  "tempfile",
+ "tokio",
+ "tokio-util",
  "windows-sys 0.61.2",
+ "zbus 6.2.1",
 ]
 
 [[package]]

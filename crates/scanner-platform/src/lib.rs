@@ -25,3 +25,6 @@ pub fn application_data() -> Result<PathBuf> {
 fn error(message: impl std::fmt::Display) -> ScannerError {
     ScannerError::new("accessDenied", message.to_string())
 }
+
+#[cfg(feature = "power")]
+pub mod power;

@@ -10,3 +10,5 @@ mod signals;
 mod processing;
 
 mod staging;
+
+mod power;

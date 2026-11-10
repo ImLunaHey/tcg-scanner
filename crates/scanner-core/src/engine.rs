@@ -46,6 +46,8 @@ pub(crate) struct State {
     pub active: Option<(Uuid, CancellationToken)>,
     pub inspecting: bool,
     pub paused: bool,
+    pub manual_pause: bool,
+    pub sleeping: bool,
     pub stopping: bool,
     pub quarantined: bool,
     pub persistence_error: Option<ScannerError>,

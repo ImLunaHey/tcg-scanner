@@ -87,3 +87,16 @@ async fn pause_during_submission_discovery_never_feeds_after_wake() {
     assert_eq!(h.engine.database().jobs(50, 0).unwrap().len(), 0);
     h.engine.shutdown().await;
 }
+
+#[tokio::test]
+async fn wake_preserves_manual_pause_and_resume_cannot_override_sleep() {
+    let h = Harness::new();
+    h.engine.pause().await.unwrap();
+    h.engine.prepare_for_sleep().await.unwrap();
+    assert!(h.engine.resume_after_wake().await.unwrap().paused);
+    assert!(!h.engine.resume().await.unwrap().paused);
+    h.engine.prepare_for_sleep().await.unwrap();
+    assert!(h.engine.resume().await.unwrap().paused);
+    assert!(!h.engine.resume_after_wake().await.unwrap().paused);
+    h.engine.shutdown().await;
+}

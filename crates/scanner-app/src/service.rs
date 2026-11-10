@@ -67,16 +67,50 @@ pub(crate) async fn run(
         return Err(error);
     }
     eprintln!("Rust scanner service listening on {}", gateway.address());
+    let monitor = if matches!(configuration.backend, crate::configuration::Backend::Native) {
+        match scanner_platform::power::Monitor::start().await {
+            Ok(monitor) => Some(monitor),
+            Err(error) => {
+                engine.shutdown().await;
+                return Err(error);
+            }
+        }
+    } else {
+        None
+    };
+    serve(engine, gateway, listener, monitor).await
+}
+
+async fn serve(
+    engine: Arc<Engine>,
+    gateway: Arc<Gateway>,
+    listener: tokio::net::TcpListener,
+    monitor: Option<scanner_platform::power::Monitor>,
+) -> Result<()> {
     let stop = CancellationToken::new();
+    let power = crate::power::run(engine.clone(), monitor, stop.clone());
+    tokio::pin!(power);
     let server = gateway.serve(listener, stop.clone());
     tokio::pin!(server);
     let result = tokio::select! {
-        result=&mut server=>result,
+        result=&mut server=>{
+            stop.cancel();
+            engine.shutdown().await;
+            let monitored = power.await;
+            result.and(monitored)
+        },
+        monitored=&mut power=>{
+            stop.cancel();
+            engine.shutdown().await;
+            let served = server.await;
+            monitored.and(served)
+        },
         signal=crate::signals::shutdown()=>{
             stop.cancel();
             engine.shutdown().await;
             let served=server.await;
-            signal.and(served)
+            let monitored = power.await;
+            signal.and(served).and(monitored)
         },
     };
     stop.cancel();
