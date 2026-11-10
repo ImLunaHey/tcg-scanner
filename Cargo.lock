@@ -4067,12 +4067,14 @@ dependencies = [
 name = "scanner-client"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "futures-util",
  "gloo-timers",
  "js-sys",
  "reqwest",
  "scanner-types",
  "serde_json",
+ "sha2",
  "url",
  "uuid",
  "wasm-bindgen",

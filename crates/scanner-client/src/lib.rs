@@ -11,6 +11,8 @@ use browser::Transport;
 #[cfg(not(target_arch = "wasm32"))]
 use native::Transport;
 use uuid::Uuid;
+mod download;
+pub use download::Download;
 
 #[derive(Clone)]
 pub struct Client {
