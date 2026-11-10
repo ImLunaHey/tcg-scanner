@@ -51,6 +51,7 @@ try {
     response(page, 'v1.jobs.get'),
     page.getByRole('button', { name: /^Open batch / }).first().dispatchEvent('click'),
   ]);
+  await editImage(page, screenshots);
   await Promise.all([
     response(page, 'v1.profiles.list'),
     page.getByRole('button', { name: 'Settings', exact: true }).dispatchEvent('click'),
@@ -91,11 +92,37 @@ function response(page, method) {
   return page.waitForResponse(response => response.url() === `${origin}/rpc` && response.request().postDataJSON().method === method, { timeout: 15000 });
 }
 
-async function enter(page, name, value) {
+async function enter(page, name, value, offset = 40) {
   const label = await page.getByText(name, { exact: true }).boundingBox();
   if (!label) throw new Error(`Missing ${name} field`);
-  await page.mouse.click(label.x + 80, label.y + label.height + 40);
+  await page.mouse.click(label.x + 30, label.y + label.height + offset);
   await page.waitForFunction(() => document.activeElement.tagName === 'TEXTAREA', {}, { timeout: 3000 });
   await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.insertText(value);
+}
+
+async function editImage(page, screenshots) {
+  await Promise.all([
+    response(page, 'v1.images.thumbnail'),
+    page.getByRole('button', { name: 'Edit image', exact: true }).dispatchEvent('click'),
+  ]);
+  await page.getByRole('button', { name: 'Reset to original', exact: true }).dispatchEvent('click');
+  for (const [name, value] of [['Left %', '10'], ['Top %', '20'], ['Width %', '80'], ['Height %', '60']])
+    await enter(page, name, value, 22);
+  await page.getByRole('button', { name: 'Rotation 0°', exact: true }).dispatchEvent('click');
+  if (screenshots) await page.screenshot({ path: join(screenshots, 'editing.png') });
+  const saved = await Promise.all([
+    response(page, 'v1.images.edit'),
+    page.getByRole('button', { name: 'Save edited copy', exact: true }).dispatchEvent('click'),
+  ]).then(([response]) => response.json());
+  if (saved.result?.image.width !== 180 || saved.result?.image.height !== 160 || saved.result?.request.quarterTurns !== 1)
+    throw new Error('The image edit did not apply the requested crop then rotation');
+  await page.getByRole('button', { name: 'Edit image', exact: true }).waitFor();
+  const original = await Promise.all([
+    response(page, 'v1.images.thumbnail'),
+    page.getByRole('button', { name: 'Edit image', exact: true }).dispatchEvent('click'),
+  ]).then(([response]) => response.json());
+  if (original.result?.width !== 200 || original.result?.height !== 300)
+    throw new Error('Opening the editor must reload the original image');
+  await page.getByRole('button', { name: 'Close editor', exact: true }).dispatchEvent('click');
 }

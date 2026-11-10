@@ -118,6 +118,20 @@ pub struct ImageSource {
 }
 
 impl ImageSource {
+    pub fn original(&self) -> Self {
+        let image = self
+            .record
+            .images
+            .iter()
+            .find(|i| i.sequence == self.image.sequence)
+            .unwrap_or(&self.image)
+            .clone();
+        Self {
+            record: self.record.clone(),
+            image,
+            edit: None,
+        }
+    }
     pub fn key(&self) -> (uuid::Uuid, u32, Option<uuid::Uuid>, String) {
         (
             self.record.id,

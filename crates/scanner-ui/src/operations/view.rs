@@ -198,6 +198,13 @@ pub fn review_panel(s: &State, t: tok::Theme) -> El {
                 idle,
                 t,
                 State::identify_card,
+            ))
+            .child(button(
+                "Edit image",
+                "edit-image",
+                idle,
+                t,
+                State::begin_edit,
             )),
     );
     let Some(review) = &s.ops.review else {

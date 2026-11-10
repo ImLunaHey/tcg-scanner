@@ -247,6 +247,7 @@ impl State {
         }
     }
     pub fn select_batch(&mut self, index: usize) {
+        self.ops.editor = None;
         self.details.cancel();
         self.preview.cancel();
         self.cards.clear();
@@ -273,24 +274,32 @@ impl State {
         }
     }
     pub fn select_card(&mut self, index: usize) {
+        self.ops.editor = None;
         self.selected = index;
         self.update_review();
+        self.load_selected_preview(false);
+    }
+    pub(crate) fn load_selected_preview(&mut self, original: bool) {
         self.image = None;
         self.image_error = None;
         self.preview.cancel();
         self.loading_image = false;
-        let Some(card) = self.cards.get(index) else {
+        let Some(card) = self.cards.get(self.selected) else {
             return;
         };
         self.loading_image = true;
-        let source = card.source.clone();
+        let source = if original {
+            card.source.original()
+        } else {
+            card.source.clone()
+        };
         if let Some(client) = self.client.clone() {
+            let source = source.clone();
             self.preview
                 .request(async move { api::thumbnail(&client, &source).await });
         }
         #[cfg(not(target_arch = "wasm32"))]
         if self.fixture {
-            let source = card.source.clone();
             self.preview.request(async move {
                 tokio::task::spawn_blocking(move || source.thumbnail())
                     .await

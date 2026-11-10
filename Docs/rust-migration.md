@@ -384,3 +384,14 @@ profile; selecting a profile clears the defaults mode. Device/profile discovery
 preserves selections by ID. A real browser fixture created a 300-DPI profile,
 updated it to 600 DPI without changing its ID and deleted it through the service.
 The ten native UI tests, native/wasm strict Clippy and structure audit pass.
+
+Rune image editing now exposes crop percentages, deskew and clockwise rotation.
+The editor shows the original and initializes from the latest saved edit's original
+coordinates; every save uses the existing immutable, idempotent edit operation.
+The browser fixture verified a 200×300 original becomes a separate 180×160 cropped,
+rotated copy and reopening the editor still loads the original dimensions.
+Eleven UI tests, native/wasm strict Clippy and the structure audit pass.
+
+The PR now runs pinned Rust 1.98.0 CI on macOS, Linux and Windows and builds the
+Rune browser WebAssembly target. Native jobs load simulated SANE/TWAIN libraries;
+these exercise driver contracts without implying physical scanner validation.

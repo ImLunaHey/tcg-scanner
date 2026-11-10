@@ -262,6 +262,11 @@ fn detail(s: &State, t: tok::Theme) -> El {
             .center()
             .child(text(message).color(t.text_secondary).wrap());
     }
+    if s.ops.editor.is_some() {
+        return pane
+            .child(preview)
+            .child(crate::operations::editing_panel(s, t));
+    }
     pane.child(preview)
         .child(crate::operations::review_panel(s, t))
         .child(

@@ -1,4 +1,7 @@
 mod commands;
+mod editing;
+mod editing_view;
+pub use editing_view::panel as editing_panel;
 mod review;
 mod settings;
 mod settings_view;
@@ -18,6 +21,7 @@ use uuid::Uuid;
 pub use view::{controls, review_panel};
 
 pub struct Operations {
+    pub editor: Option<editing::Editor>,
     pub devices: Vec<Device>,
     pub device: usize,
     pub profiles: Vec<ScanProfile>,
@@ -49,6 +53,7 @@ pub struct Command {
 impl Default for Operations {
     fn default() -> Self {
         Self {
+            editor: None,
             devices: vec![],
             device: 0,
             profiles: vec![],
@@ -79,6 +84,7 @@ impl Operations {
         self.watch.set_waker(waker);
     }
     pub fn disconnect(&mut self) {
+        self.editor = None;
         self.settings.inspection.cancel();
         self.settings.report = None;
         self.settings.load(None);
