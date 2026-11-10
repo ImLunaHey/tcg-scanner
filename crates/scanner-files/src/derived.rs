@@ -63,20 +63,9 @@ impl StorageRoot {
         request: &ImageEditRequest,
     ) -> Result<Option<ProcessedImage>> {
         request.validate()?;
-        let directory = self.batch_dir(record)?;
-        let name = format!(".edit-{}.json", request.id);
-        match directory.symlink_metadata(&name) {
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(e) => return Err(storage(e)),
-            Ok(_) => (),
-        }
-        let file = paths::read_file(&directory, Path::new(&name))?;
-        let mut bytes = Vec::new();
-        file.take(65537).read_to_end(&mut bytes).map_err(storage)?;
-        if bytes.len() > 65536 {
-            return Err(storage("Retained edit metadata exceeds 64 KiB."));
-        }
-        let edit: ProcessedImage = serde_json::from_slice(&bytes).map_err(storage)?;
+        let Some(edit) = self.retained_edit(record, request.id)? else {
+            return Ok(None);
+        };
         let original = record
             .images
             .iter()
@@ -102,6 +91,47 @@ impl StorageRoot {
             .get_or_insert_with(Vec::new)
             .push(edit.clone());
         self.read_image(&snapshot, &edit.image, 64 * 1024 * 1024)?;
+        Ok(Some(edit))
+    }
+    /// Recover an automatically prepared image by its stable operation ID before
+    /// rerunning crop/OCR. The original must still be verified by the caller.
+    pub fn recover_preparation(
+        &self,
+        record: &ScanRecord,
+        id: uuid::Uuid,
+        sequence: u32,
+    ) -> Result<Option<ProcessedImage>> {
+        let Some(edit) = self.retained_edit(record, id)? else {
+            return Ok(None);
+        };
+        if edit.request.id != id
+            || edit.request.job_id != record.id
+            || edit.request.sequence != sequence
+            || edit.card_preparation.is_none()
+        {
+            return Err(ScannerError::new(
+                "conflict",
+                "Retained preparation has different inputs.",
+            ));
+        }
+        self.recover_edit(record, &edit.request)
+    }
+    fn retained_edit(&self, record: &ScanRecord, id: uuid::Uuid) -> Result<Option<ProcessedImage>> {
+        self.validate()?;
+        let directory = self.batch_dir(record)?;
+        let name = format!(".edit-{}.json", id);
+        match directory.symlink_metadata(&name) {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(storage(e)),
+            Ok(_) => (),
+        }
+        let file = paths::read_file(&directory, Path::new(&name))?;
+        let mut bytes = Vec::new();
+        file.take(65537).read_to_end(&mut bytes).map_err(storage)?;
+        if bytes.len() > 65536 {
+            return Err(storage("Retained edit metadata exceeds 64 KiB."));
+        }
+        let edit: ProcessedImage = serde_json::from_slice(&bytes).map_err(storage)?;
         Ok(Some(edit))
     }
 }

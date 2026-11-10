@@ -6,6 +6,18 @@ use scanner_types::{error::Result, images::ProcessedImage, scan::ScanRecord};
 pub trait CardProcessor: Send + Sync {
     /// Implementations preserve originals and return a new immutable derived image.
     async fn prepare(&self, record: &ScanRecord, sequence: u32) -> Result<ProcessedImage>;
+    /// Stable operation ID for explicit retries; adapters must preserve it.
+    async fn prepare_with_id(
+        &self,
+        _: &ScanRecord,
+        _: u32,
+        _: uuid::Uuid,
+    ) -> Result<ProcessedImage> {
+        Err(scanner_types::error::ScannerError::new(
+            "unsupported",
+            "This processor does not support explicit preparation IDs.",
+        ))
+    }
 }
 
 #[async_trait]

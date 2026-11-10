@@ -38,6 +38,9 @@ impl Gateway {
             .get("editID")
             .map(|s| Uuid::parse_str(s).map_err(|_| Error::params("Invalid edit ID.")))
             .transpose()?;
+        if tail == ["prepare-card"] && head.method == "POST" {
+            return self.prepare_card_route(path, job, sequence, body).await;
+        }
         if tail == ["identification"] {
             return self
                 .identification_route(head, path, job, sequence, body)

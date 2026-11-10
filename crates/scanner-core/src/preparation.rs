@@ -34,6 +34,14 @@ impl NativeCardProcessor {
 #[async_trait]
 impl CardProcessor for NativeCardProcessor {
     async fn prepare(&self, record: &ScanRecord, sequence: u32) -> Result<ProcessedImage> {
+        self.prepare_with_id(record, sequence, Uuid::new_v4()).await
+    }
+    async fn prepare_with_id(
+        &self,
+        record: &ScanRecord,
+        sequence: u32,
+        id: Uuid,
+    ) -> Result<ProcessedImage> {
         let permit = self
             .workers
             .clone()
@@ -52,7 +60,7 @@ impl CardProcessor for NativeCardProcessor {
                 CardLanguage::Korean => "ko",
             };
             let mut engine = Tesseract::new(&library, &data, language)?;
-            prepare(&root, &record, sequence, |pixels| {
+            prepare(&root, &record, sequence, id, |pixels| {
                 engine.orientation(pixels)
             })
         })
@@ -68,6 +76,7 @@ fn prepare(
     root: &StorageRoot,
     record: &ScanRecord,
     sequence: u32,
+    id: Uuid,
     orient: impl FnOnce(&image::RgbImage) -> Result<Orientation>,
 ) -> Result<ProcessedImage> {
     let original = record
@@ -81,12 +90,15 @@ fn prepare(
         ));
     }
     let bytes = root.read_image(record, original, 32 * 1024 * 1024)?;
+    if let Some(edit) = root.recover_preparation(record, id, sequence)? {
+        return Ok(edit);
+    }
     let mut plan = scanner_images::boundary::prepare_geometry(
         &bytes,
         record.request.background.unwrap_or(ScanBackground::Black),
     )?;
     let mut request = ImageEditRequest {
-        id: Uuid::new_v4(),
+        id,
         job_id: record.id,
         sequence,
         crop: plan.crop,
@@ -102,17 +114,7 @@ fn prepare(
             .thumbnail(1200, 1200)
             .to_rgb8(),
     )?;
-    plan.quarter_turns = orientation.quarter_turns;
-    plan.orientation_verified = orientation.verified;
-    plan.orientation_basis = Some(orientation.basis.into());
-    plan.method = "card-boundary-tesseract-rust-v1".into();
-    plan.warnings
-        .retain(|w| !w.starts_with("Orientation has not yet"));
-    if !orientation.verified {
-        plan.warnings.push(
-            "Orientation is uncertain; review the saved copy before confirming the card.".into(),
-        );
-    }
+    apply_orientation(&mut plan, &orientation);
     request.quarter_turns = orientation.quarter_turns;
     let upright = match request.quarter_turns {
         1 => image::imageops::rotate90(&cropped),
@@ -144,6 +146,20 @@ fn prepare(
     Ok(edit)
 }
 
+fn apply_orientation(plan: &mut scanner_types::images::CardPreparation, orientation: &Orientation) {
+    plan.quarter_turns = orientation.quarter_turns;
+    plan.orientation_verified = orientation.verified;
+    plan.orientation_basis = Some(orientation.basis.into());
+    plan.method = "card-boundary-tesseract-rust-v1".into();
+    plan.warnings
+        .retain(|w| !w.starts_with("Orientation has not yet"));
+    if !orientation.verified {
+        plan.warnings.push(
+            "Orientation is uncertain; review the saved copy before confirming the card.".into(),
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -164,7 +180,8 @@ mod tests {
         let encoded = scanner_images::encode_png(pixels).unwrap();
         std::fs::write(store.incoming_path().join("driver.png"), &encoded.bytes).unwrap();
         store.preserve("driver.png", 1).unwrap();
-        let edit = prepare(&root, store.record(), 1, |_| {
+        let id = Uuid::new_v4();
+        let edit = prepare(&root, store.record(), 1, id, |_| {
             Ok(Orientation {
                 quarter_turns: 0,
                 verified: false,
@@ -177,6 +194,12 @@ mod tests {
                 .unwrap(),
             encoded.bytes
         );
+        let recovered = prepare(&root, store.record(), 1, id, |_| {
+            panic!("Recovered preparation must not rerun OCR")
+        })
+        .unwrap();
+        assert_eq!(recovered.request.id, id);
+        assert_eq!(recovered.image.sha256, edit.image.sha256);
         assert_eq!(edit.source_sha256, encoded.sha256);
         assert!(!edit.card_preparation.as_ref().unwrap().orientation_verified);
         assert!(edit.image.width < 300 && edit.image.height < 400);

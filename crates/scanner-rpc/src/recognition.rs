@@ -9,13 +9,28 @@ impl Router {
     ) -> Option<Result<Value, Failure>> {
         if !matches!(
             method,
-            "v1.images.identification" | "v1.images.review" | "v1.images.identify"
+            "v1.images.identification"
+                | "v1.images.review"
+                | "v1.images.identify"
+                | "v1.images.prepareCard"
         ) {
             return None;
         }
         Some(self.recognition_action(method, params).await)
     }
     async fn recognition_action(&self, method: &str, params: &Params) -> Result<Value, Failure> {
+        if method == "v1.images.prepareCard" {
+            params.only(&["id", "jobID", "sequence"])?;
+            return value(
+                self.engine
+                    .prepare_card(
+                        params.uuid("jobID")?,
+                        params.integer("sequence", 0, 1, 1000)? as u32,
+                        params.uuid("id")?,
+                    )
+                    .await?,
+            );
+        }
         if method == "v1.images.identify" {
             params.only(&["id", "jobID", "sequence", "language"])?;
             let job = params.uuid("jobID")?;

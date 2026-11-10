@@ -23,6 +23,7 @@ pub(crate) fn tools() -> Vec<T> {
         .unwrap()
         .clone();
     vec![
+        T::new("scanner_prepare_card","images.prepareCard","Crop a saved card and orient readable text into an immutable PNG. Originals remain. Inspect warnings for uncertain orientation or clipping. Never feeds hardware. Reuse id for retries.",[image.clone(),vec![("id",F::uuid().required())]].concat()).writes(false),
         T::new("scanner_identify_card","images.identify","Start native OCR and catalogue matching on a saved front. Never scans hardware or uploads images. Reuse id for retries and poll identification. Language must match the batch; defaults to its physical card language. Suggestions need manual confirmation.",[image.clone(),vec![("id",F::uuid().required()),("language",F::choice(&["en","ko"]))]].concat()).writes(false).external(),
         T::new("scanner_get_card_identification","images.identification","Read identification progress, OCR evidence, candidates and manual review metadata.",image.clone()),
         T::new("scanner_review_card","images.review","Record the user's selected candidate, finish and condition. Never infer condition from OCR. Omit cardID to reject suggestions. identificationID prevents reviewing a replaced result.",[image.clone(),vec![("identificationID",F::uuid().required()),("cardID",F::text(100)),("finish",F::choice(&["unverified","normal","holo","reverseHolo","other"])),("condition",F::choice(&["unassessed","nearMint","lightlyPlayed","moderatelyPlayed","heavilyPlayed","damaged"]))]].concat()).writes(false),

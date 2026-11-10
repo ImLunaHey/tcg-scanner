@@ -12,6 +12,24 @@ use axum::{
 use serde_json::{Map, Value, json};
 use uuid::Uuid;
 impl Gateway {
+    pub(crate) async fn prepare_card_route(
+        &self,
+        path: &Path,
+        job: Uuid,
+        sequence: u32,
+        mut body: Map<String, Value>,
+    ) -> Result<Response> {
+        path.only(&[])?;
+        only(&body, &["id"])?;
+        body.insert("jobID".into(), json!(job));
+        body.insert("sequence".into(), json!(sequence));
+        Ok((
+            axum::http::StatusCode::CREATED,
+            Json(self.call("images.prepareCard", json!(body)).await?),
+        )
+            .into_response())
+    }
+
     pub(crate) async fn identification_route(
         &self,
         head: &Parts,

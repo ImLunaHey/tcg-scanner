@@ -148,6 +148,12 @@ impl Harness {
     pub fn with_recognizer(
         recognizer: Option<Arc<dyn scanner_core::backend::CardRecognizer>>,
     ) -> Self {
+        Self::with_components(Arc::new(NoPreparation), recognizer)
+    }
+    pub fn with_components(
+        processor: Arc<dyn CardProcessor>,
+        recognizer: Option<Arc<dyn scanner_core::backend::CardRecognizer>>,
+    ) -> Self {
         let directory = tempfile::tempdir().unwrap();
         let (tx, calls) = mpsc::unbounded_channel();
         let (inspections_tx, inspections) = mpsc::unbounded_channel();
@@ -158,7 +164,7 @@ impl Harness {
         });
         let engine = Engine::with_recognizer(
             driver.clone(),
-            Arc::new(NoPreparation),
+            processor,
             recognizer,
             Arc::new(Database::memory().unwrap()),
             Arc::new(StorageRoot::open(directory.path()).unwrap()),

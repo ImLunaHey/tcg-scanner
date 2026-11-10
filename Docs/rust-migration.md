@@ -232,8 +232,8 @@ Service installation, sleep/wake handling and full friendly CLI parity remain op
 
 `scanner-mcp` implements MCP 2025-06-18 over bounded stdio JSON frames, with
 initialization, tool discovery, structured tool results, read-only filtering, eight
-concurrent calls and request cancellation. It advertises 26 completed Rust-backed
-tools; preparation, finish, condition and inventory tools remain pending their domain slices. Tests
+concurrent calls and request cancellation. It advertises 27 completed Rust-backed
+tools; finish, condition and inventory tools remain pending their domain slices. Tests
 cover initialization gates, argument validation, defaults, domain errors,
 concurrency, duplicate IDs, cancellation and oversized/truncated frames. MCP
 cancellation never sends a physical scan cancellation. The `scanner-mcp` binary
@@ -271,3 +271,9 @@ real saved B-001 front produced the expected `30th-063` suggestion via native
 Tesseract and live TCGdex metadata; its recognized paired back bypassed identity
 OCR. The Rune acceptance UI, visual assessment and additional game adapters remain
 necessary before cutover.
+
+Explicit saved-card preparation now shares the native processor with capture
+processing and accepts a stable operation UUID through core/RPC/HTTP/MCP. A
+retained sidecar can recover the original prepared PNG without rerunning OCR.
+Tests cover duplicate/concurrent requests, publication recovery, conflicting
+sequences, original preservation and shutdown refusal.
