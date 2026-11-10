@@ -12,6 +12,7 @@ use std::{
 pub(crate) struct Configuration {
     pub database: PathBuf,
     pub catalogue_cache: Option<PathBuf>,
+    pub web_directory: Option<PathBuf>,
     pub storage: StorageConfiguration,
     pub token_file: PathBuf,
     #[serde(default = "listen")]
@@ -53,6 +54,15 @@ impl Configuration {
             .is_some_and(|p| !p.is_absolute() || p.file_name().is_none())
         {
             return Err(config("Catalogue cache must be an absolute filename."));
+        }
+        if value
+            .web_directory
+            .as_ref()
+            .is_some_and(|p| !p.is_absolute() || !p.is_dir())
+        {
+            return Err(config(
+                "webDirectory must be an existing absolute directory.",
+            ));
         }
         if value.tesseract_library.is_some() != value.trained_data.is_some() {
             return Err(config("Configure both tesseractLibrary and trainedData."));

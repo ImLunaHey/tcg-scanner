@@ -29,6 +29,14 @@ pub(crate) async fn run(
         configuration.public_origin.as_deref(),
     )?;
     let token = scanner_platform::load_credential(&configuration.token_file)?;
+    let web = match configuration.web_directory.clone() {
+        Some(path) => Some(
+            tokio::task::spawn_blocking(move || scanner_http::web::WebAssets::load(&path))
+                .await
+                .map_err(config)??,
+        ),
+        None => None,
+    };
     let root = Arc::new(StorageRoot::open_configured(configuration.storage.clone())?);
     let database = Arc::new(Database::open(&configuration.database)?);
     let recovery_database = database.clone();
@@ -61,6 +69,12 @@ pub(crate) async fn run(
             return Err(error);
         }
     };
+    if let Some(web) = web
+        && let Err(error) = gateway.configure_web_assets(web)
+    {
+        engine.shutdown().await;
+        return Err(error);
+    }
     eprintln!("Rust scanner service listening on {}", gateway.address());
     let stop = CancellationToken::new();
     let server = gateway.serve(listener, stop.clone());

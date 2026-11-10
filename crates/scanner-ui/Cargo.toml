@@ -7,6 +7,9 @@ rust-version.workspace = true
 repository.workspace = true
 publish = false
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 rune.workspace = true
 scanner-types.workspace = true
@@ -32,6 +35,7 @@ rune = { workspace = true, features = ["webgl"] }
 # Rune's GPU instance cache requires Send/Sync. Browser UI is single-threaded;
 # wgpu only enables these implementations when wasm atomics are disabled.
 wgpu = { version = "~30.0.1", default-features = false, features = ["fragile-send-sync-non-atomic-wasm"] }
+wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 gloo-timers = { version = "0.3", features = ["futures"] }
 web-sys = { version = "0.3", features = ["Window", "Location"] }

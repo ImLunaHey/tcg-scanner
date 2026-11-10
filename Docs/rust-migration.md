@@ -359,3 +359,12 @@ older pending record read. Mutations are serialized in the UI. An uncertain
 response retains its original parameters/UUID for an explicit retry, and a real
 TCP lost-response test verifies identical scan submissions and duplicate-click
 suppression. These tests use a simulated service and never feed the live scanner.
+
+The Rune web bundle now runs in Chromium through an isolated Tailscale fixture
+service. The verified bundle includes wasm-bindgen/Rune helpers, full Inter fonts
+and their licence. The HTTP gateway serves only hash-verified, bounded assets,
+with a separate eight-request asset budget, ETags and a CSP that permits the Rust
+WebAssembly application. API authentication and Host/Origin checks remain intact.
+A browser flow loaded the synthetic card/verified thumbnail and saved a confirmed
+review through native RPC with no JavaScript errors or browser token storage.
+Packaging, fixture and browser-test instructions are in `Docs/rune-web.md`.

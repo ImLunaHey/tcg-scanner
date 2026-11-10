@@ -92,14 +92,15 @@ pub fn login(s: &State, t: tok::Theme) -> El {
     )
 }
 fn field(child: El, t: tok::Theme) -> El {
-    el().w_full()
+    child
+        .w_full()
         .h(40.)
         .px(10.)
         .center_y()
         .radius(8.)
         .border(1., t.card_border)
-        .child(child)
 }
+
 pub fn toolbar(s: &State, t: tok::Theme) -> El {
     let mut bar = row()
         .gap(10.)

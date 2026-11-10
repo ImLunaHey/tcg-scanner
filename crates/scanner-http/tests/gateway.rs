@@ -16,3 +16,6 @@ mod identification;
 
 #[path = "gateway/inventory.rs"]
 mod inventory;
+
+#[path = "gateway/web.rs"]
+mod web;

@@ -18,3 +18,5 @@ pub use gateway::Gateway;
 mod recognition;
 
 mod inventory;
+
+pub mod web;

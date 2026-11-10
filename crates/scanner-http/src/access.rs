@@ -12,6 +12,7 @@ pub(crate) enum Principal {
     Root,
     Session([u8; 32]),
     PublicImage,
+    PublicWeb,
 }
 pub(crate) struct Access {
     root: [u8; 32],
@@ -85,7 +86,7 @@ impl Access {
     }
     pub fn valid(&self, principal: &Principal) -> bool {
         match principal {
-            Principal::Root | Principal::PublicImage => true,
+            Principal::Root | Principal::PublicImage | Principal::PublicWeb => true,
             Principal::Session(hash) => {
                 self.sessions.get(hash).is_some_and(|e| *e > Instant::now())
             }

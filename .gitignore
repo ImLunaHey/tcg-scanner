@@ -11,3 +11,4 @@ Web/playwright-report/
 Web/*.tsbuildinfo
 Tools/RecognitionBench/node_modules/
 /target/
+Tools/NativeUIWebTests/node_modules/

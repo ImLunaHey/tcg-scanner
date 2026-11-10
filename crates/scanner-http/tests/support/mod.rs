@@ -64,6 +64,7 @@ impl CardProcessor for Processor {
 }
 pub struct Harness {
     pub app: Router,
+    pub gateway: Arc<Gateway>,
     pub engine: Arc<Engine>,
     pub token: String,
     pub driver: Arc<Driver>,
@@ -95,6 +96,7 @@ impl Harness {
         .unwrap();
         Self {
             app: gateway.router(),
+            gateway,
             engine,
             token,
             driver,

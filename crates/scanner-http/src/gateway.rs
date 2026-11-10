@@ -15,7 +15,7 @@ use axum::{
 use scanner_core::Engine;
 use serde_json::{Value, json};
 use std::{
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, OnceLock},
     time::Duration,
 };
 use tokio::sync::Semaphore;
@@ -25,6 +25,8 @@ pub struct Gateway {
     pub(crate) rpc: scanner_rpc::Router,
     configuration: Configuration,
     pub(crate) access: Mutex<Access>,
+    web: OnceLock<crate::web::WebAssets>,
+    web_downloads: Arc<Semaphore>,
     active: Arc<Semaphore>,
     pub(crate) downloads: Arc<Semaphore>,
     pub(crate) streams: Arc<Semaphore>,
@@ -42,9 +44,23 @@ impl Gateway {
             configuration,
             access: Mutex::new(Access::new(token)?),
             active: Arc::new(Semaphore::new(16)),
+            web: OnceLock::new(),
+            web_downloads: Arc::new(Semaphore::new(8)),
             downloads: Arc::new(Semaphore::new(2)),
             streams: Arc::new(Semaphore::new(4)),
         }))
+    }
+    /// Configure an immutable, verified UI bundle before accepting connections.
+    pub fn configure_web_assets(
+        &self,
+        assets: crate::web::WebAssets,
+    ) -> scanner_types::error::Result<()> {
+        self.web.set(assets).map_err(|_| {
+            scanner_types::error::ScannerError::new(
+                "configuration",
+                "Browser assets are already configured.",
+            )
+        })
     }
     pub fn router(self: &Arc<Self>) -> Router {
         Router::new().fallback(handle).with_state(self.clone())
@@ -57,36 +73,10 @@ impl Gateway {
         self.headers(&head)?;
         let path = Path::parse(head.uri.path_and_query().map(|p| p.as_str()).unwrap_or("/"))?;
         let public_image = crate::routes::binary_image(&head.method, &path);
-        let principal = if public_image {
-            Principal::PublicImage
-        } else {
-            self.access
-                .lock()
-                .map_err(|_| Error::internal())?
-                .authenticate(header_value(&head, header::AUTHORIZATION)?)?
-        };
-        let mut permits = vec![
-            self.active
-                .clone()
-                .try_acquire_owned()
-                .map_err(|_| Error::busy())?,
-        ];
-        if public_image {
-            permits.push(
-                self.downloads
-                    .clone()
-                    .try_acquire_owned()
-                    .map_err(|_| Error::busy())?,
-            );
-        }
-        if path.parts == ["api", "v1", "events"] {
-            permits.push(
-                self.streams
-                    .clone()
-                    .try_acquire_owned()
-                    .map_err(|_| Error::busy())?,
-            );
-        }
+        let public_web = matches!(head.method.as_str(), "GET" | "HEAD")
+            && self.web.get().is_some_and(|w| w.contains(&path));
+        let principal = self.principal(&head, public_image, public_web)?;
+        let permits = self.request_permits(&path, public_image, public_web)?;
         let rpc = path.parts == ["rpc"];
         let body = collect_body(&head, body, rpc).await?;
         if !self
@@ -101,7 +91,15 @@ impl Gateway {
                 "Session expired or revoked.",
             ));
         }
-        let response = if rpc {
+        let response = if public_web {
+            if !body.is_empty() {
+                return Err(Error::params("Asset requests do not accept a body."));
+            }
+            self.web
+                .get()
+                .ok_or_else(Error::internal)?
+                .response(&head, &path)?
+        } else if rpc {
             path.only(&[])?;
             if head.method != "POST" {
                 return Err(Error::new(
@@ -126,6 +124,52 @@ impl Gateway {
         };
         let (head, body) = response.into_parts();
         Ok(Response::from_parts(head, LeaseBody::wrap(body, permits)))
+    }
+    fn request_permits(
+        &self,
+        path: &Path,
+        public_image: bool,
+        public_web: bool,
+    ) -> Result<Vec<tokio::sync::OwnedSemaphorePermit>> {
+        let mut permits = vec![
+            self.active
+                .clone()
+                .try_acquire_owned()
+                .map_err(|_| Error::busy())?,
+        ];
+        if public_image || public_web {
+            permits.push(
+                (if public_web {
+                    &self.web_downloads
+                } else {
+                    &self.downloads
+                })
+                .clone()
+                .try_acquire_owned()
+                .map_err(|_| Error::busy())?,
+            );
+        }
+        if path.parts == ["api", "v1", "events"] {
+            permits.push(
+                self.streams
+                    .clone()
+                    .try_acquire_owned()
+                    .map_err(|_| Error::busy())?,
+            );
+        }
+        Ok(permits)
+    }
+    fn principal(&self, head: &Parts, image: bool, web: bool) -> Result<Principal> {
+        if web {
+            return Ok(Principal::PublicWeb);
+        }
+        if image {
+            return Ok(Principal::PublicImage);
+        }
+        self.access
+            .lock()
+            .map_err(|_| Error::internal())?
+            .authenticate(header_value(head, header::AUTHORIZATION)?)
     }
     fn headers(&self, head: &Parts) -> Result<()> {
         let host = header_value(head, header::HOST)?
@@ -196,12 +240,14 @@ async fn handle(State(gateway): State<Arc<Gateway>>, request: Request) -> Respon
     }
     headers.insert(header::X_CONTENT_TYPE_OPTIONS, "nosniff".parse().unwrap());
     headers.insert(header::REFERRER_POLICY, "no-referrer".parse().unwrap());
-    headers.insert(
-        header::CONTENT_SECURITY_POLICY,
-        "default-src 'none'; frame-ancestors 'none'"
-            .parse()
-            .unwrap(),
-    );
+    if !headers.contains_key(header::CONTENT_SECURITY_POLICY) {
+        headers.insert(
+            header::CONTENT_SECURITY_POLICY,
+            "default-src 'none'; frame-ancestors 'none'"
+                .parse()
+                .unwrap(),
+        );
+    }
     response
 }
 pub(crate) fn header_value(head: &Parts, key: header::HeaderName) -> Result<Option<&str>> {
