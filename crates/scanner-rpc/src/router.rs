@@ -67,6 +67,9 @@ impl Router {
         if let Some(result) = self.images(method, &params).await {
             return result;
         }
+        if let Some(result) = self.recognition(method, &params).await {
+            return result;
+        }
         if let Some(result) = self.controls(method, &params).await {
             return result;
         }

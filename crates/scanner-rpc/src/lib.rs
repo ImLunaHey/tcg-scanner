@@ -10,3 +10,5 @@ mod router;
 mod scanner;
 pub use model::{Failure, Request, Response};
 pub use router::Router;
+
+mod recognition;

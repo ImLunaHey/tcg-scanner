@@ -1,16 +1,5 @@
-use serde::{Deserialize, Serialize};
+pub use scanner_types::recognition::RecognizedLine;
 use std::collections::BTreeMap;
-
-/// Normalized bottom-left coordinates, preserving the existing recognition contract.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RecognizedLine {
-    pub text: String,
-    pub confidence: f32,
-    pub x: f64,
-    pub y: f64,
-    pub width: f64,
-    pub height: f64,
-}
 
 #[derive(Default)]
 struct Line {

@@ -23,6 +23,8 @@ pub(crate) fn tools() -> Vec<T> {
         .unwrap()
         .clone();
     vec![
+        T::new("scanner_get_card_identification","images.identification","Read identification progress, OCR evidence, candidates and manual review metadata.",image.clone()),
+        T::new("scanner_review_card","images.review","Record the user's selected candidate, finish and condition. Never infer condition from OCR. Omit cardID to reject suggestions. identificationID prevents reviewing a replaced result.",[image.clone(),vec![("identificationID",F::uuid().required()),("cardID",F::text(100)),("finish",F::choice(&["unverified","normal","holo","reverseHolo","other"])),("condition",F::choice(&["unassessed","nearMint","lightlyPlayed","moderatelyPlayed","heavilyPlayed","damaged"]))]].concat()).writes(false),
         T::new("scanner_list_devices","devices","Discover connected scanners without feeding paper.",vec![]),
         T::new("scanner_get_device","device.get","Read readiness and configured defaults. Paper loaded state can be unknown. Never feeds paper.",device.clone()),
         T::new("scanner_get_capabilities","capabilities","Inspect driver capabilities and explicit unknowns. Requires idle hardware; never scans.",device.clone()),

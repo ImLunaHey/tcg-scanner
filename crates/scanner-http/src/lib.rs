@@ -14,3 +14,5 @@ mod server;
 pub use access::generate_token;
 pub use configuration::Configuration;
 pub use gateway::Gateway;
+
+mod recognition;

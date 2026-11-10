@@ -7,3 +7,6 @@ mod server;
 #[path = "gateway/streaming.rs"]
 mod streaming;
 mod support;
+
+#[path = "gateway/review.rs"]
+mod review;

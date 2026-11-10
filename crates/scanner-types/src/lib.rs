@@ -14,3 +14,6 @@ pub fn schema_version() -> u32 {
     1
 }
 pub mod image_access;
+
+pub mod identification;
+pub mod recognition;

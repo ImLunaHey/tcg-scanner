@@ -45,8 +45,7 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   interrupted-work transitions. Existing live ledger read in read-only mode.
   Tests cover restart, rollback, event resets and Unix sidecar symlink rejection.
   Local database/sidecar creation now uses the shared native private-state
-  boundary, including Windows owner/DACL validation. Windows execution and
-  platform execution remains outstanding.
+  boundary, including Windows owner/DACL validation. Native Windows execution remains outstanding.
 
 - `scanner-core`: driver-independent queue ownership, idempotent submissions,
   profile/default resolution, ordered acquisition, cooperative cancellation,
@@ -61,6 +60,11 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   batch, prepared successfully, and its source checksum reverified unchanged.
   Its public code-insert cue and quarter-turn agree with the saved Swift result.
   Automatic identity/finish/condition processing still needs integration.
+  Saved identification reads and manual candidate/finish/condition reviews now
+  use typed lossless records through core, RPC, HTTP and MCP. Reviews require the
+  current identification ID, reject unsupported candidates and in-flight work,
+  preserve visual evidence, and serialize publication with other library writes.
+  Existing B-001 recognition metadata passes read-only compatibility checks.
   Profile create/save/update/remove/name lookup, job summary pagination and bounded
   event long-polling are now exposed through the Rust coordinator. Accepted profile
   writes outlive caller disconnects and hold the submission reservation through
@@ -223,8 +227,8 @@ Service installation, sleep/wake handling and full friendly CLI parity remain op
 
 `scanner-mcp` implements MCP 2025-06-18 over bounded stdio JSON frames, with
 initialization, tool discovery, structured tool results, read-only filtering, eight
-concurrent calls and request cancellation. It advertises 23 completed Rust-backed
-tools; recognition and inventory tools remain pending their domain slices. Tests
+concurrent calls and request cancellation. It advertises 25 completed Rust-backed
+tools; automatic recognition and inventory tools remain pending their domain slices. Tests
 cover initialization gates, argument validation, defaults, domain errors,
 concurrency, duplicate IDs, cancellation and oversized/truncated frames. MCP
 cancellation never sends a physical scan cancellation. The `scanner-mcp` binary
