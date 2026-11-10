@@ -21,12 +21,7 @@ impl State {
         let mut changed = false;
         if let Some(result) = self.ops.discovery.take() {
             match result {
-                Ok(found) => {
-                    self.ops.devices = found.devices;
-                    self.ops.profiles = found.profiles;
-                    self.ops.device = 0;
-                    self.ops.profile = None;
-                }
+                Ok(found) => self.update_discovery(found),
                 Err(error) => self.error = Some(error.to_string()),
             }
             changed = true;
@@ -56,5 +51,29 @@ impl State {
             changed = true;
         }
         changed
+    }
+    fn update_discovery(&mut self, found: super::Discovered) {
+        let device = self.ops.devices.get(self.ops.device).map(|d| d.id.clone());
+        let profile = self
+            .ops
+            .profile
+            .and_then(|i| self.ops.profiles.get(i))
+            .map(|p| p.id);
+        self.ops.device = found
+            .devices
+            .iter()
+            .position(|d| Some(&d.id) == device.as_ref())
+            .unwrap_or(0);
+        self.ops.profile = found.profiles.iter().position(|p| Some(p.id) == profile);
+        if self.ops.settings.report.as_ref().is_some_and(|r| {
+            found
+                .devices
+                .get(self.ops.device)
+                .is_none_or(|d| d.id != r.device.id)
+        }) {
+            self.ops.settings.report = None;
+        }
+        self.ops.devices = found.devices;
+        self.ops.profiles = found.profiles;
     }
 }

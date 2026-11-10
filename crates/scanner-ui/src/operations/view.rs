@@ -29,7 +29,11 @@ fn selectors(s: &State, t: tok::Theme) -> El {
         .map(|d| d.name.as_str())
         .unwrap_or("No scanner found");
     let profile = s.ops.profile.and_then(|i| s.ops.profiles.get(i));
-    let profile_name = profile.map(|p| p.name.as_str()).unwrap_or("600 DPI · PNG");
+    let profile_name = if s.ops.use_defaults {
+        "Device defaults"
+    } else {
+        profile.map(|p| p.name.as_str()).unwrap_or("600 DPI · PNG")
+    };
     let duplex = profile.map(|p| p.settings.duplex).unwrap_or(s.ops.duplex);
     row()
         .gap(8.)
@@ -43,14 +47,20 @@ fn selectors(s: &State, t: tok::Theme) -> El {
         .child(button(
             profile_name,
             "choose-profile",
-            available && !s.ops.profiles.is_empty(),
+            available,
             t,
             cycle_profile,
         ))
         .child(button(
-            if duplex { "Duplex" } else { "Single side" },
+            if s.ops.use_defaults {
+                "Sides from defaults"
+            } else if duplex {
+                "Duplex"
+            } else {
+                "Single side"
+            },
             "duplex",
-            available && profile.is_none(),
+            available && profile.is_none() && !s.ops.use_defaults,
             t,
             |s| s.ops.duplex = !s.ops.duplex,
         ))
@@ -67,11 +77,14 @@ fn selectors(s: &State, t: tok::Theme) -> El {
         ))
 }
 fn cycle_profile(s: &mut State) {
-    s.ops.profile = match s.ops.profile {
-        None => Some(0),
-        Some(i) if i + 1 < s.ops.profiles.len() => Some(i + 1),
-        _ => None,
-    };
+    if s.ops.use_defaults {
+        s.ops.use_defaults = false;
+        s.ops.profile = (!s.ops.profiles.is_empty()).then_some(0);
+    } else if let Some(index) = s.ops.profile {
+        s.ops.profile = (index + 1 < s.ops.profiles.len()).then_some(index + 1);
+    } else {
+        s.ops.use_defaults = true;
+    }
 }
 fn cycle_language(s: &mut State) {
     s.ops.language = if s.ops.language == CardLanguage::English {
@@ -147,7 +160,7 @@ fn scan_buttons(s: &State, t: tok::Theme) -> El {
                 .color(t.text_secondary),
         )
 }
-fn retry(s: &State, t: tok::Theme) -> El {
+pub(super) fn retry(s: &State, t: tok::Theme) -> El {
     if s.ops.mutation.pending() {
         return text("Saving request…")
             .font(type_::LABEL)

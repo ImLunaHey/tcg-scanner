@@ -33,21 +33,27 @@ impl State {
             })
         });
     }
-    pub fn start_scan(&mut self) {
-        let Some(device) = self.ops.devices.get(self.ops.device) else {
-            return;
-        };
+    fn scan_submission(&self) -> Option<ScanRequest> {
+        let device = self.ops.devices.get(self.ops.device)?;
         let mut request = ScanRequest {
             device_id: Some(device.id.clone()),
             duplex: self.ops.duplex,
             prepare_cards: Some(true),
             card_language: Some(self.ops.language),
+            use_device_settings: self.ops.use_defaults.then_some(true),
             ..ScanRequest::default()
         };
         if let Some(profile) = self.ops.profile.and_then(|i| self.ops.profiles.get(i)) {
             request.profile_id = Some(profile.id);
+            request.use_device_settings = None;
             profile.settings.apply(&mut request);
         }
+        Some(request)
+    }
+    pub fn start_scan(&mut self) {
+        let Some(request) = self.scan_submission() else {
+            return;
+        };
         self.submit(Command {
             method: "scan.start",
             params: json!(request),
@@ -124,6 +130,7 @@ impl State {
             Ok(value) => {
                 self.ops.pending = None;
                 self.error = None;
+                self.finish_settings(&command, &value);
                 if command.focus {
                     match serde_json::from_value::<ScanRecord>(value) {
                         Ok(record) => {
@@ -241,6 +248,40 @@ mod tests {
             .unwrap();
         task.take()
             .expect("The completion waker must publish a result")
+    }
+    #[test]
+    fn explicit_profiles_override_defaults_without_combining_both_modes() {
+        use scanner_types::{
+            scan::OriginalFormat,
+            service::{ScanProfile, ScanSettings},
+        };
+        let mut state = State::default();
+        state.ops.devices.push(Device {
+            id: "fixture".into(),
+            ..Device::default()
+        });
+        state.ops.use_defaults = true;
+        assert_eq!(
+            state.scan_submission().unwrap().use_device_settings,
+            Some(true)
+        );
+        let profile = ScanProfile {
+            id: uuid::Uuid::new_v4(),
+            name: "Duplex TIFF".into(),
+            settings: ScanSettings {
+                dpi: 300,
+                duplex: true,
+                format: OriginalFormat::Tiff,
+            },
+        };
+        state.ops.profiles.push(profile.clone());
+        state.ops.profile = Some(0);
+        let request = state.scan_submission().unwrap();
+        assert_eq!(request.profile_id, Some(profile.id));
+        assert_eq!(request.use_device_settings, None);
+        assert_eq!(request.dpi, 300);
+        assert_eq!(request.format, OriginalFormat::Tiff);
+        assert!(request.duplex);
     }
     #[tokio::test]
     async fn lost_scan_response_retries_the_original_submission_without_duplicate_clicks() {

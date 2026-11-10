@@ -1,5 +1,8 @@
 mod commands;
 mod review;
+mod settings;
+mod settings_view;
+pub use settings_view::{sidebar as settings_sidebar, view as settings_view};
 mod view;
 mod watch;
 use crate::task::Task;
@@ -20,6 +23,8 @@ pub struct Operations {
     pub profiles: Vec<ScanProfile>,
     pub profile: Option<usize>,
     pub duplex: bool,
+    pub use_defaults: bool,
+    pub settings: settings::Settings,
     pub language: CardLanguage,
     pub discovery: Task<Discovered>,
     pub mutation: Task<Value>,
@@ -49,6 +54,8 @@ impl Default for Operations {
             profiles: vec![],
             profile: None,
             duplex: true,
+            use_defaults: false,
+            settings: Default::default(),
             language: CardLanguage::English,
             discovery: Task::default(),
             mutation: Task::default(),
@@ -66,11 +73,17 @@ impl Operations {
         self.pending.is_some()
     }
     pub fn set_waker(&mut self, waker: rune::Waker) {
+        self.settings.inspection.set_waker(waker.clone());
         self.discovery.set_waker(waker.clone());
         self.mutation.set_waker(waker.clone());
         self.watch.set_waker(waker);
     }
     pub fn disconnect(&mut self) {
+        self.settings.inspection.cancel();
+        self.settings.report = None;
+        self.settings.load(None);
+        self.settings.profile_offset = 0;
+        self.use_defaults = false;
         self.discovery.cancel();
         self.mutation.cancel();
         self.watch.cancel();

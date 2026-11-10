@@ -51,6 +51,32 @@ try {
     response(page, 'v1.jobs.get'),
     page.getByRole('button', { name: /^Open batch / }).first().dispatchEvent('click'),
   ]);
+  await Promise.all([
+    response(page, 'v1.profiles.list'),
+    page.getByRole('button', { name: 'Settings', exact: true }).dispatchEvent('click'),
+  ]);
+  await page.getByRole('button', { name: 'New profile', exact: true }).dispatchEvent('click');
+  await enter(page, 'Profile name', 'Browser fixture profile');
+  await enter(page, 'DPI', '300');
+  const created = await Promise.all([
+    response(page, 'v1.profiles.create'),
+    page.getByRole('button', { name: 'Save profile', exact: true }).dispatchEvent('click'),
+  ]).then(([response]) => response.json());
+  if (created.result?.dpi !== 300 || !created.result?.id) throw new Error('Profile creation failed');
+  await page.getByText('Profile saved.', { exact: true }).waitFor();
+  await enter(page, 'DPI', '600');
+  const updated = await Promise.all([
+    response(page, 'v1.profiles.update'),
+    page.getByRole('button', { name: 'Save profile', exact: true }).dispatchEvent('click'),
+  ]).then(([response]) => response.json());
+  if (updated.result?.dpi !== 600 || updated.result?.id !== created.result.id) throw new Error('Profile update lost its identity');
+  await page.getByText('Profile saved.', { exact: true }).waitFor();
+  if (screenshots) await page.screenshot({ path: join(screenshots, 'settings.png') });
+  const removed = await Promise.all([
+    response(page, 'v1.profiles.delete'),
+    page.getByRole('button', { name: 'Delete profile', exact: true }).dispatchEvent('click'),
+  ]).then(([response]) => response.json());
+  if (removed.result?.deleted !== true) throw new Error('Profile deletion failed');
   if (errors.length) throw new Error(`Browser errors: ${errors.join('; ')}`);
   const storage = await page.evaluate(() => ({ local: localStorage.length, session: sessionStorage.length }));
   if (storage.local || storage.session || (await page.locator('body').innerText()).includes(token))
@@ -63,4 +89,13 @@ try {
 } finally { await browser.close(); }
 function response(page, method) {
   return page.waitForResponse(response => response.url() === `${origin}/rpc` && response.request().postDataJSON().method === method, { timeout: 15000 });
+}
+
+async function enter(page, name, value) {
+  const label = await page.getByText(name, { exact: true }).boundingBox();
+  if (!label) throw new Error(`Missing ${name} field`);
+  await page.mouse.click(label.x + 80, label.y + label.height + 40);
+  await page.waitForFunction(() => document.activeElement.tagName === 'TEXTAREA', {}, { timeout: 3000 });
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.insertText(value);
 }

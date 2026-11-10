@@ -15,37 +15,40 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         .h_full()
         .fill(t.bg)
         .child(batches(s, t))
-        .child(if s.page == crate::state::Page::Collection {
-            crate::collection::view(s, t)
-        } else {
-            col()
-                .grow(1.)
-                .min_w(0.)
-                .h_full()
-                .px(24.)
-                .py(24.)
-                .gap(20.)
-                .child(crate::connection_view::toolbar(s, t))
-                .child(crate::operations::controls(s, t))
-                .child(
-                    text(
-                        s.error
-                            .as_deref()
-                            .unwrap_or("Browse saved scans and identification evidence"),
-                    )
-                    .font(type_::BODY)
-                    .color(t.text_secondary)
-                    .wrap(),
-                )
-                .child(
-                    row()
-                        .grow(1.)
-                        .min_h(0.)
-                        .gap(20.)
-                        .child(card_list(s, t))
-                        .child(detail(s, t)),
-                )
+        .child(match s.page {
+            crate::state::Page::Library => library_view(s, t),
+            crate::state::Page::Collection => crate::collection::view(s, t),
+            crate::state::Page::Settings => crate::operations::settings_view(s, t),
         })
+}
+fn library_view(s: &State, t: tok::Theme) -> El {
+    col()
+        .grow(1.)
+        .min_w(0.)
+        .h_full()
+        .px(24.)
+        .py(24.)
+        .gap(20.)
+        .child(crate::connection_view::toolbar(s, t))
+        .child(crate::operations::controls(s, t))
+        .child(
+            text(
+                s.error
+                    .as_deref()
+                    .unwrap_or("Browse saved scans and identification evidence"),
+            )
+            .font(type_::BODY)
+            .color(t.text_secondary)
+            .wrap(),
+        )
+        .child(
+            row()
+                .grow(1.)
+                .min_h(0.)
+                .gap(20.)
+                .child(card_list(s, t))
+                .child(detail(s, t)),
+        )
 }
 
 fn batches(s: &State, t: tok::Theme) -> El {
@@ -71,53 +74,70 @@ fn batches(s: &State, t: tok::Theme) -> El {
             !s.fixture,
             t,
             State::show_collection,
+        ))
+        .child(crate::connection_view::button(
+            "Settings",
+            "nav-settings",
+            !s.fixture,
+            t,
+            State::show_settings,
         ));
+    if s.page == crate::state::Page::Settings {
+        return base.child(crate::operations::settings_sidebar(s, t));
+    }
     if s.page == crate::state::Page::Collection {
         return base.child(crate::collection::sidebar(s, t));
     }
-    base.child(
-        text(format!("{} saved batches", s.batches.len()))
-            .font(type_::LABEL)
-            .color(t.text_secondary),
-    )
-    .child(
-        col()
-            .grow(1.)
-            .min_h(0.)
-            .w_full()
-            .gap(6.)
-            .scroll(ScrollSpec {
-                stick_bottom: false,
-            })
-            .children(s.batches.iter().enumerate().map(|(i, batch)| {
-                col()
-                    .key(format!("batch-{i}"))
-                    .w_full()
-                    .px(10.)
-                    .py(12.)
-                    .gap(5.)
-                    .radius(8.)
-                    .fill(if s.batch == i {
-                        t.control_track
-                    } else {
-                        t.card
-                    })
-                    .role("button")
-                    .label(batch_label(batch))
-                    .focusable(true)
-                    .on_press(move |s: &mut State| s.select_batch(i))
-                    .child(text(batch_label(batch)).font(type_::LABEL).color(t.text))
-                    .child(
-                        text(format!(
-                            "{} images · {}",
-                            batch.progress.images_saved,
-                            batch.state.as_str()
-                        ))
-                        .font(type_::LABEL)
-                        .color(t.text_secondary),
-                    )
-            })),
-    )
+    base.child(batch_history(s, t))
+}
+fn batch_history(s: &State, t: tok::Theme) -> El {
+    col()
+        .grow(1.)
+        .min_h(0.)
+        .gap(12.)
+        .child(
+            text(format!("{} saved batches", s.batches.len()))
+                .font(type_::LABEL)
+                .color(t.text_secondary),
+        )
+        .child(
+            col()
+                .grow(1.)
+                .min_h(0.)
+                .w_full()
+                .gap(6.)
+                .scroll(ScrollSpec {
+                    stick_bottom: false,
+                })
+                .children(s.batches.iter().enumerate().map(|(i, batch)| {
+                    col()
+                        .key(format!("batch-{i}"))
+                        .w_full()
+                        .px(10.)
+                        .py(12.)
+                        .gap(5.)
+                        .radius(8.)
+                        .fill(if s.batch == i {
+                            t.control_track
+                        } else {
+                            t.card
+                        })
+                        .role("button")
+                        .label(batch_label(batch))
+                        .focusable(true)
+                        .on_press(move |s: &mut State| s.select_batch(i))
+                        .child(text(batch_label(batch)).font(type_::LABEL).color(t.text))
+                        .child(
+                            text(format!(
+                                "{} images · {}",
+                                batch.progress.images_saved,
+                                batch.state.as_str()
+                            ))
+                            .font(type_::LABEL)
+                            .color(t.text_secondary),
+                        )
+                })),
+        )
 }
 
 fn card_list(s: &State, t: tok::Theme) -> El {

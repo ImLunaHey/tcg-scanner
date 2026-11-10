@@ -17,6 +17,7 @@ pub enum Page {
     #[default]
     Library,
     Collection,
+    Settings,
 }
 
 pub struct State {
@@ -167,6 +168,7 @@ impl State {
     pub fn poll(&mut self, _: f64, _: &mut Tx) -> bool {
         let mut changed = self.poll_operations();
         changed |= self.poll_collection();
+        changed |= self.poll_settings();
         if let Some(result) = self.connecting.take() {
             match result {
                 Ok(connected) => {

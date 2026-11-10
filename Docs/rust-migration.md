@@ -376,3 +376,11 @@ unbounded collections. A real Chromium fixture flow confirms one physical copy,
 loads its preview and returns to its batch after saving explicit finish/condition
 choices. JPEG header/digest tests reject misleading dimensions and corrupt content;
 native tests, strict Clippy and wasm checks pass for this UI slice.
+
+Rune settings now create, edit and delete stable-ID profiles, inspect the selected
+scanner, show reported readiness/defaults and save validated device defaults.
+Scan controls explicitly select either 600-DPI PNG settings, device defaults or a
+profile; selecting a profile clears the defaults mode. Device/profile discovery
+preserves selections by ID. A real browser fixture created a 300-DPI profile,
+updated it to 600 DPI without changing its ID and deleted it through the service.
+The ten native UI tests, native/wasm strict Clippy and structure audit pass.
