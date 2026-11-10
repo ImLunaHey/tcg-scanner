@@ -75,6 +75,9 @@ fn expected_share(share: &str) -> Result<Url> {
     Ok(parsed)
 }
 
+#[cfg(windows)]
+mod windows_share;
+
 fn matches_share(source: &str, expected: &Url) -> bool {
     Url::parse(&format!("smb:{source}"))
         .ok()
@@ -154,18 +157,8 @@ fn linux_mount_matches(mounts: &str, root: &Path, expected: &Url) -> bool {
 
 #[cfg(target_os = "windows")]
 fn mounted_share(root: &Path, expected: &Url) -> Result<bool> {
-    // UNC paths cannot fall back to a local directory. Mapped drives require a
-    // native volume-to-UNC lookup before this policy can accept them.
-    let path = root
-        .canonicalize()
-        .map_err(|_| unavailable())?
-        .to_string_lossy()
-        .replace('\\', "/");
-    let unc = path
-        .strip_prefix("//?/UNC/")
-        .map(|p| format!("//{p}"))
-        .or_else(|| path.starts_with("//").then_some(path.clone()))
-        .ok_or_else(unavailable)?;
+    let path = root.canonicalize().map_err(|_| unavailable())?;
+    let unc = windows_share::resolve(&path)?;
     Ok(matches_share(&unc, expected))
 }
 

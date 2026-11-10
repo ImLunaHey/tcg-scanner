@@ -75,6 +75,23 @@ pub(super) fn read_file(root: &Dir, path: &Path) -> Result<File> {
             return Err(storage("Hard-linked scan files are not accepted."));
         }
     }
+    #[cfg(windows)]
+    {
+        use std::os::windows::io::AsRawHandle;
+        use windows_sys::Win32::Storage::FileSystem::{
+            BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT, GetFileInformationByHandle,
+        };
+        let mut info = BY_HANDLE_FILE_INFORMATION::default();
+        // SAFETY: the owned file keeps its handle alive and info is writable.
+        if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut info) } == 0 {
+            return Err(storage(std::io::Error::last_os_error()));
+        }
+        if info.nNumberOfLinks != 1 || info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+            return Err(storage(
+                "Hard-linked or redirected scan files are not accepted.",
+            ));
+        }
+    }
     Ok(file)
 }
 
@@ -96,9 +113,20 @@ pub(super) fn create_file(root: &Dir, name: &str) -> Result<File> {
     root.open_with(name, &options).map_err(storage)
 }
 
-#[cfg(all(test, unix))]
+#[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn hard_linked_images_are_refused_through_either_name() {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::write(temp.path().join("original"), b"original").unwrap();
+        let dir = Dir::open_ambient_dir(temp.path(), cap_std::ambient_authority()).unwrap();
+        assert!(read_file(&dir, Path::new("original")).is_ok());
+        std::fs::hard_link(temp.path().join("original"), temp.path().join("alias")).unwrap();
+        assert!(read_file(&dir, Path::new("original")).is_err());
+        assert!(read_file(&dir, Path::new("alias")).is_err());
+    }
+    #[cfg(unix)]
     #[test]
     fn capability_directories_can_be_synced_after_their_ambient_name_changes() {
         let temp = tempfile::tempdir().unwrap();
