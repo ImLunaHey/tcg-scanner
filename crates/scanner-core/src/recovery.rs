@@ -10,6 +10,7 @@ use serde_json::Value;
 /// accepting clients. Never feeds hardware, resumes work or changes image files.
 /// With unavailable storage, retain ledger metadata and record explicit warnings.
 pub fn recover_before_start(database: &Database, storage: Option<&StorageRoot>) -> Result<usize> {
+    crate::staging::recover(database)?;
     let records = database.recovery_records()?;
     for mut record in records.iter().cloned() {
         let mut publish = true;

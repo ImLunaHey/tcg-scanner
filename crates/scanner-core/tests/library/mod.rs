@@ -93,3 +93,5 @@ mod preparation;
 mod finish;
 
 mod pricing;
+
+mod staging;

@@ -11,6 +11,7 @@ use std::{
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct Configuration {
     pub database: PathBuf,
+    pub store_configuration: Option<PathBuf>,
     pub catalogue_cache: Option<PathBuf>,
     pub web_directory: Option<PathBuf>,
     pub storage: StorageConfiguration,

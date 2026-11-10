@@ -490,3 +490,17 @@ rules in-process. Bounded HTTPS requests reject redirects; updates and paired
 photo uploads carry revisions. Tests cover lost-response recovery, mixed
 acknowledged fields, preservation of reviewer edits/photos, response limits and
 redacted upstream failures. Transfer planning and service orchestration follow.
+
+Store transfer planning, frozen receipts, restart recovery and resync now run in
+the Rust service through `batches.storeStatus` / `batches.sendToStore`, REST
+`GET` / `POST /api/v1/batches/ID/store`, and MCP. One transfer owns its batch until
+completion; other library reads remain available. Shutdown drains receipt writes.
+Tests cover lost upload responses without duplicate uploads, metadata resync,
+preserved reviewer notes, changed bytes, incomplete/stale preparation, stamped
+retry rejection, interrupted receipts and authenticated API access.
+
+The service accepts an optional `storeConfiguration` absolute path to the existing
+private Store JSON (`baseURL`, `scannerInstanceID`, `tokenFile`). The configuration
+and token are read through the portable private-directory capability. The remote
+contract still cannot represent stamped editions, so those cards remain blocked.
+No live Store uploads were used to validate this migration.

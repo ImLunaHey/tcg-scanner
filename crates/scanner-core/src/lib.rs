@@ -29,3 +29,5 @@ mod prepare_saved;
 mod inventory;
 
 mod pricing;
+
+mod staging;

@@ -135,6 +135,10 @@ fn read_route<'a>(parts: &[&'a str], path: &Path) -> Result<(&'a str, Map<String
                 _ => "batches.get",
             }
         }
+        ["batches", id, "store"] => {
+            p.insert("id".into(), json!(uuid(id)?));
+            "batches.storeStatus"
+        }
         ["batches", id, "valuation"] => {
             p.insert("id".into(), json!(uuid(id)?));
             "batches.valuation"
@@ -179,6 +183,11 @@ fn write_route(
             only(&p, &[])?;
             p.insert("id".into(), json!(uuid(id)?));
             ("jobs.cancel", 200)
+        }
+        ("POST", ["batches", id, "store"]) => {
+            only(&p, &[])?;
+            p.insert("id".into(), json!(uuid(id)?));
+            ("batches.sendToStore", 202)
         }
         ("POST", ["batches", id, "continue"]) => {
             only(&p, &["requestID"])?;

@@ -2,6 +2,46 @@ use super::support::{Harness, json};
 use axum::body::Body;
 use serde_json::json;
 use uuid::Uuid;
+const UNEXPECTED_DESTINATION: &str = "https://evil.example";
+#[tokio::test]
+async fn store_status_is_authenticated_and_sends_require_a_configured_destination() {
+    let h = Harness::new();
+    let (job, _) = h.saved();
+    let path = format!("/api/v1/batches/{job}/store");
+    assert_eq!(
+        h.send(h.request("GET", &path, Body::empty(), false))
+            .await
+            .status(),
+        401
+    );
+    let status = json(h.send(h.request("GET", &path, Body::empty(), true)).await).await;
+    assert_eq!(status["state"], "notSent");
+    assert_eq!(status["configured"], false);
+    assert_eq!(
+        h.send(h.request("GET", &format!("{path}?extra=1"), Body::empty(), true))
+            .await
+            .status(),
+        400
+    );
+    assert_eq!(
+        h.call("POST", &path, json!({"destination":UNEXPECTED_DESTINATION}))
+            .await
+            .status(),
+        400
+    );
+    let response = json(
+        h.call(
+            "POST",
+            "/rpc",
+            json!({"jsonrpc":"2.0","id":9,"method":"v1.batches.sendToStore","params":{"id":job}}),
+        )
+        .await,
+    )
+    .await;
+    assert!(response["error"].is_object());
+    assert!(h.engine.database().store_transfer(job).unwrap().is_none());
+    h.engine.shutdown().await;
+}
 #[tokio::test]
 async fn rest_and_rpc_share_profiles_validation_and_conflicts() {
     let h = Harness::new();

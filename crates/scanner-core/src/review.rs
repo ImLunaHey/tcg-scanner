@@ -54,12 +54,13 @@ impl Engine {
     pub(crate) async fn require_saved_job(&self, job: Uuid) -> Result<()> {
         let state = self.state.lock().await;
         if state.stopping
+            || *self.transfer.borrow() == Some(job)
             || state.active.as_ref().is_some_and(|(id, _)| *id == job)
             || state.queue.iter().any(|w| w.id() == job)
         {
             return Err(ScannerError::new(
                 "busy",
-                "Wait for scanning and processing to finish.",
+                "Wait for scanning, processing and Store transfer to finish.",
             ));
         }
         Ok(())

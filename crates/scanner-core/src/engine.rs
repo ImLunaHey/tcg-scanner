@@ -19,6 +19,8 @@ pub struct Engine {
     pub(crate) backend: Arc<dyn ScannerBackend>,
     pub(crate) processor: Arc<dyn CardProcessor>,
     pub(crate) recognizer: Option<Arc<dyn CardRecognizer>>,
+    pub(crate) staging: tokio::sync::OnceCell<Arc<dyn scanner_staging::Staging>>,
+    pub(crate) transfer: watch::Sender<Option<Uuid>>,
     pub(crate) pricing: tokio::sync::OnceCell<Arc<crate::pricing::Cache>>,
     pub(crate) recognition_workers: Arc<Semaphore>,
     pub(crate) database: Arc<Database>,
@@ -85,6 +87,8 @@ impl Engine {
             backend,
             processor,
             recognizer,
+            staging: tokio::sync::OnceCell::new(),
+            transfer: watch::channel(None).0,
             pricing: tokio::sync::OnceCell::new(),
             recognition_workers: Arc::new(Semaphore::new(1)),
             database,
@@ -165,6 +169,8 @@ impl Engine {
             let _reservation = self.submissions.lock().await;
         }
 
+        let mut transfer = self.transfer.subscribe();
+        let _ = transfer.wait_for(Option::is_none).await;
         if let Some(cache) = self.pricing.get() {
             cache.shutdown().await;
         }

@@ -16,6 +16,7 @@ path = "src/bin/scanner.rs"
 name = "scanner-mcp"
 path = "src/bin/mcp.rs"
 [dependencies]
+scanner-staging.workspace = true
 scanner-pricing.workspace = true
 scanner-catalogue.workspace = true
 scanner-mcp.workspace = true
@@ -36,3 +37,6 @@ async-trait.workspace = true
 uuid.workspace = true
 [lints]
 workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

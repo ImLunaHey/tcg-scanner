@@ -23,6 +23,8 @@ pub(crate) fn tools() -> Vec<T> {
         .unwrap()
         .clone();
     vec![
+        T::new("scanner_store_status","batches.storeStatus","Read Store staging transfer progress and any preserved reviewer cards.",vec![("id",F::uuid().required())]),
+        T::new("scanner_send_to_store","batches.sendToStore","Send prepared paired PNGs and review suggestions to the configured Store staging service. Requires explicit user intent to send these scans. Never approves cards or publishes inventory; retries preserve reviewer changes.",vec![("id",F::uuid().required())]).writes(false).external(),
         T::new("scanner_estimate_finish", "images.estimateFinish", "Record conservative local finish and stamped-edition evidence for the exact saved identification source. Never changes manually confirmed finish or condition; no hardware feed.", [image.clone(), vec![("identificationID", F::uuid().required())]].concat()).writes(false),
         T::new("scanner_check_condition", "images.checkCondition", "Record experimental visible border-mark observations on the exact saved identification source. Never assigns or changes the user's selling grade. Requires a recognized Pokemon pair and current identificationID; no hardware feed.", [image.clone(), vec![("identificationID", F::uuid().required())]].concat()).writes(false),
         T::new("scanner_list_inventory","inventory.list","List physical card copies across saved batches, excluding code inserts. Pagination and filters affect entries; totals and sets describe the whole library. Confirmed quantities remain separate from unreviewed suggestions. Copy locations identify their source batches.",[page.clone(),vec![("search",F::text(160)),("set",F::text(512))]].concat()).external(),

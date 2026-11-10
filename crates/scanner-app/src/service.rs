@@ -47,25 +47,12 @@ pub(crate) async fn run(
     .await
     .map_err(config)??;
     eprintln!("Recovered {recovered} interrupted job(s); physical scans were not resumed.");
+    let staging = crate::staging::load(configuration.store_configuration.as_deref())?;
     let processing = crate::processing::configure(&configuration, root.clone()).await?;
     let listener = tokio::net::TcpListener::bind(http.address())
         .await
         .map_err(config)?;
-    let engine = Engine::with_recognizer(
-        backend,
-        processing.processor,
-        processing.recognizer,
-        database,
-        root,
-    );
-    if let Err(error) = engine.configure_library_catalogue(processing.catalogue) {
-        engine.shutdown().await;
-        return Err(error);
-    }
-    if let Err(error) = engine.configure_pricing(processing.pricing) {
-        engine.shutdown().await;
-        return Err(error);
-    }
+    let engine = build_engine(backend, processing, database, root, staging).await?;
     let gateway = match Gateway::new(engine.clone(), name, &token, http) {
         Ok(gateway) => gateway,
         Err(error) => {
@@ -95,4 +82,35 @@ pub(crate) async fn run(
     stop.cancel();
     engine.shutdown().await;
     result
+}
+
+async fn build_engine(
+    backend: Arc<dyn scanner_device::ScannerBackend>,
+    processing: crate::processing::Processing,
+    database: Arc<Database>,
+    root: Arc<StorageRoot>,
+    staging: Option<Arc<dyn scanner_staging::Staging>>,
+) -> Result<Arc<Engine>> {
+    let engine = Engine::with_recognizer(
+        backend,
+        processing.processor,
+        processing.recognizer,
+        database,
+        root,
+    );
+    if let Err(error) = engine.configure_library_catalogue(processing.catalogue) {
+        engine.shutdown().await;
+        return Err(error);
+    }
+    if let Err(error) = engine.configure_pricing(processing.pricing) {
+        engine.shutdown().await;
+        return Err(error);
+    }
+    if let Some(staging) = staging
+        && let Err(error) = engine.configure_staging(staging)
+    {
+        engine.shutdown().await;
+        return Err(error);
+    }
+    Ok(engine)
 }

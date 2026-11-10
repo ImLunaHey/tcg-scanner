@@ -81,6 +81,7 @@ impl Engine {
                 "Request ID belongs to an original scan.",
             ));
         }
+        self.require_saved_job(id).await?;
         self.state.lock().await.accepting()?;
         let previous = self.scan_status(id)?;
         self.select_device(Some(&previous.device.id)).await?;

@@ -26,3 +26,5 @@ pub mod game_detection;
 pub mod inventory;
 
 pub mod pricing;
+
+pub mod staging;

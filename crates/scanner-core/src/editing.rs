@@ -24,21 +24,7 @@ impl Engine {
             // Serialize publication with continuation/default changes and make shutdown
             // wait for accepted edits. The owned task survives caller disconnection.
             let _reservation = engine.submissions.lock().await;
-            {
-                let state = engine.state.lock().await;
-                if state.stopping
-                    || state
-                        .active
-                        .as_ref()
-                        .is_some_and(|(id, _)| *id == request.job_id)
-                    || state.queue.iter().any(|w| w.id() == request.job_id)
-                {
-                    return Err(ScannerError::new(
-                        "busy",
-                        "Wait for the scan to finish before editing.",
-                    ));
-                }
-            }
+            engine.require_saved_job(request.job_id).await?;
             let worker_engine = engine.clone();
             tokio::task::spawn_blocking(move || worker_engine.edit_owned(request))
                 .await

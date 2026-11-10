@@ -28,7 +28,14 @@ impl Engine {
         let record = tokio::task::spawn_blocking(move || engine.scan_status(id))
             .await
             .map_err(crate::image_access::worker)??;
-        let selected = selection::select(&record)?;
+        self.valuation_for_record(&record).await
+    }
+    pub(crate) async fn valuation_for_record(
+        &self,
+        record: &scanner_types::scan::ScanRecord,
+    ) -> Result<BatchValuation> {
+        let id = record.id;
+        let selected = selection::select(record)?;
         let english = record.request.card_language.unwrap_or_default() == CardLanguage::English;
         let snapshot = if english {
             let cache = self
