@@ -453,3 +453,11 @@ Tests verify that manual finish/condition and unrelated evidence survive,
 repeated checks persist, changed sources and stale IDs fail, and REST rejects
 unauthenticated or extra-field requests. The Rune control compiles natively and
 for WebAssembly; suggestions require an explicit user choice.
+
+Stamped pumpkin assessments now compare the same mark against fixed-host public
+TCGdex artwork. Downloads are capped at 8 MiB, single-frame PNGs at 16 megapixels,
+and decoding/caching are bounded. Reference checks retain the image SHA and never
+supply physical-finish training labels. Tests cover shared fetches, persistent
+reuse, corrupt-cache recovery, hostile URLs and corrupt images. The complete
+workspace passed 195 tests at the finish-service checkpoint with both native
+SANE/TWAIN fixture libraries enabled.

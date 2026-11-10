@@ -12,3 +12,5 @@ pub mod star_wars;
 pub mod yugioh;
 
 pub mod persistent;
+
+pub mod reference;

@@ -3,7 +3,7 @@ use scanner_types::error::{Result, ScannerError};
 pub trait ImageTransport: Send + Sync {
     async fn get(&self, url: &str, limit: usize) -> Result<Vec<u8>>;
 }
-pub(super) struct Https(reqwest::Client);
+pub(crate) struct Https(reqwest::Client);
 impl Https {
     pub fn new() -> Result<Self> {
         Ok(Self(
@@ -21,7 +21,7 @@ impl Https {
 #[async_trait::async_trait]
 impl ImageTransport for Https {
     async fn get(&self, url: &str, limit: usize) -> Result<Vec<u8>> {
-        if !super::references::allowed(url) {
+        if !super::references::allowed(url) && !crate::reference::allowed(url) {
             return Err(ScannerError::new(
                 "reference",
                 "Unsupported catalogue image URL.",

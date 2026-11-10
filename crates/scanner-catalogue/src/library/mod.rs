@@ -1,7 +1,7 @@
 //! Inventory checklists, asynchronous release dates and registered public previews.
 mod checklists;
 mod dates;
-mod image_network;
+pub(crate) mod image_network;
 mod references;
 use crate::{JsonTransport, TcgDex, cache::Cache, transport::Https};
 pub use dates::ReleaseDates;

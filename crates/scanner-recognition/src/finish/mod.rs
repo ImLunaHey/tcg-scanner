@@ -8,6 +8,7 @@ mod border;
 mod decision;
 mod edition;
 mod marker;
+mod reference;
 pub mod stamp;
 use crate::ocr::Tesseract;
 use scanner_types::{
