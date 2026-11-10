@@ -1,5 +1,7 @@
 //! Native OCR and conservative catalogue suggestions. No automatic confirmation.
 mod candidates;
+mod printed;
+mod supplement;
 use crate::matching::{PokemonMatcher, footer_orientation_score};
 use crate::readings;
 use scanner_catalogue::TcgDex;
@@ -52,20 +54,19 @@ impl PokemonRecognizer {
         let permit = self.workers.clone().acquire_owned().await.map_err(error)?;
         let library = self.library.clone();
         let data = self.data.clone();
-        let (readings, permit) = tokio::task::spawn_blocking(move || {
+        let (readings, bytes, permit) = tokio::task::spawn_blocking(move || {
             let result = readings::read_options(
-                bytes,
+                &bytes,
                 &library,
                 &data,
                 language,
                 scanner_types::cards::CardGame::Pokemon,
                 options,
             );
-            (result, permit)
+            (result, bytes, permit)
         })
         .await
         .map_err(error)?;
-        let _permit = permit;
         let readings = readings?;
         if readings.iter().all(|r| r.lines.is_empty()) {
             return Ok(RecognitionEvidence {
@@ -77,7 +78,14 @@ impl PokemonRecognizer {
             CardLanguage::English => &self.english,
             CardLanguage::Korean => &self.korean,
         };
-        resolve(readings, language, catalogue).await
+        let evidence = resolve(readings, language, catalogue).await?;
+        let (library, data) = (self.library.clone(), self.data.clone());
+        tokio::task::spawn_blocking(move || {
+            let _permit = permit;
+            supplement::apply(evidence, &bytes, language, &library, &data, options)
+        })
+        .await
+        .map_err(error)
     }
 }
 async fn resolve(

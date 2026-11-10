@@ -20,6 +20,7 @@ pub fn schema_version() -> u32 {
 pub mod image_access;
 
 pub mod identification;
+pub mod printed;
 pub mod recognition;
 
 pub mod game_detection;

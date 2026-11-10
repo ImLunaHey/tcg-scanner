@@ -16,14 +16,14 @@ pub(crate) struct Options {
     pub deadline: Option<std::time::Instant>,
 }
 pub(crate) fn read_options(
-    bytes: Vec<u8>,
+    bytes: &[u8],
     library: &Path,
     data: &Path,
     language: CardLanguage,
     game: CardGame,
     options: Options,
 ) -> Result<Vec<Reading>> {
-    let image = scanner_images::decode::decode(&bytes)?.to_rgb8();
+    let image = scanner_images::decode::decode(bytes)?.to_rgb8();
     let mut tesseract = Tesseract::new(
         library,
         data,

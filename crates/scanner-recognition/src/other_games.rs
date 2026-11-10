@@ -65,7 +65,7 @@ impl OtherGames {
         let (library, data) = (self.library.clone(), self.data.clone());
         let (readings, permit) = tokio::task::spawn_blocking(move || {
             (
-                readings::read_options(bytes, &library, &data, language, game, options),
+                readings::read_options(&bytes, &library, &data, language, game, options),
                 permit,
             )
         })
