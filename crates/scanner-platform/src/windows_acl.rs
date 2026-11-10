@@ -73,16 +73,16 @@ pub(crate) fn validate(file: &File, directory: bool) -> Result<()> {
     if owner.is_null()
         || acl.is_null()
         || unsafe { IsValidSid(owner) } == 0
-        || unsafe { EqualSid(owner, sid) } == 0
+        || !trusted_identity(owner, sid)
         || unsafe { IsValidAcl(acl) } == 0
     {
         return Err(error(
-            "Private state must have the current user as owner and a non-null DACL.",
+            "Private state must have a trusted owner and a non-null DACL.",
         ));
     }
     validate_acl(acl, sid)
 }
-fn current_user() -> Result<Vec<usize>> {
+pub(super) fn current_user() -> Result<Vec<usize>> {
     let mut token = std::ptr::null_mut();
     // SAFETY: GetCurrentProcess returns a valid pseudo-handle; token is writable.
     if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) } == 0 {
@@ -120,6 +120,16 @@ fn current_user() -> Result<Vec<usize>> {
     }
     Ok(storage)
 }
+fn trusted_identity(sid: *mut c_void, user: *mut c_void) -> bool {
+    // Elevated Windows processes may create SQLite sidecars owned by the local
+    // Administrators group. Both privileged identities already have full access.
+    // The DACL must still grant access only to this user, SYSTEM or Administrators.
+    unsafe {
+        EqualSid(sid, user) != 0
+            || IsWellKnownSid(sid, WinLocalSystemSid) != 0
+            || IsWellKnownSid(sid, WinBuiltinAdministratorsSid) != 0
+    }
+}
 fn validate_acl(acl: *const ACL, user: *mut c_void) -> Result<()> {
     // SAFETY: validate checked the OS-allocated ACL and keeps its descriptor alive.
     for index in 0..unsafe { (*acl).AceCount } {
@@ -144,12 +154,7 @@ fn validate_acl(acl: *const ACL, user: *mut c_void) -> Result<()> {
             .cast();
         // SAFETY: IsValidAcl/GetAce ensure an in-bounds ordinary ACE/SID. Only
         // this user and privileged OS/admin identities may have granted access.
-        let private = unsafe {
-            IsValidSid(sid) != 0
-                && (EqualSid(sid, user) != 0
-                    || IsWellKnownSid(sid, WinLocalSystemSid) != 0
-                    || IsWellKnownSid(sid, WinBuiltinAdministratorsSid) != 0)
-        };
+        let private = unsafe { IsValidSid(sid) != 0 && trusted_identity(sid, user) };
         if !private {
             return Err(error(
                 "Local state ACL grants access to another user or group.",

@@ -4,6 +4,8 @@ mod ownership;
 mod private;
 #[cfg(windows)]
 mod windows_acl;
+#[cfg(windows)]
+mod windows_create;
 pub use credentials::{create_credential, load_credential};
 pub use ownership::HardwareOwner;
 pub use private::PrivateDirectory;

@@ -35,16 +35,7 @@ impl PrivateDirectory {
             dir = match dir.open_dir_nofollow(name) {
                 Ok(dir) => dir,
                 Err(e) if create && e.kind() == std::io::ErrorKind::NotFound => {
-                    #[cfg(unix)]
-                    let options = {
-                        use cap_std::fs::DirBuilderExt;
-                        let mut options = cap_std::fs::DirBuilder::new();
-                        options.mode(0o700);
-                        options
-                    };
-                    #[cfg(not(unix))]
-                    let options = cap_std::fs::DirBuilder::new();
-                    match dir.create_dir_with(name, &options) {
+                    match create_directory(&dir, name) {
                         Ok(()) => (),
                         Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => (),
                         Err(e) => return Err(error(e)),
@@ -64,6 +55,9 @@ impl PrivateDirectory {
         create_new: bool,
         create: bool,
     ) -> Result<File> {
+        if !writable && (create_new || create) {
+            return Err(error("Creating private state requires writable access."));
+        }
         if name.is_empty()
             || Path::new(name).components().count() != 1
             || !matches!(
@@ -75,13 +69,25 @@ impl PrivateDirectory {
             return Err(error("Expected a single local state filename."));
         }
         let mut options = OpenOptions::new();
+        #[cfg(windows)]
+        if create_new || create {
+            match crate::windows_create::create(&self.dir, std::ffi::OsStr::new(name), false) {
+                Ok(file) => {
+                    validate(&file, false)?;
+                    return Ok(file);
+                }
+                Err(e)
+                    if create && !create_new && e.kind() == std::io::ErrorKind::AlreadyExists => {}
+                Err(e) => return Err(error(e)),
+            }
+        }
         options
             .read(true)
             .write(writable)
-            .create_new(create_new)
-            .create(create)
             .follow(FollowSymlinks::No)
             .nonblock(true);
+        #[cfg(not(windows))]
+        options.create_new(create_new).create(create);
         #[cfg(unix)]
         {
             use cap_std::fs::OpenOptionsExt;
@@ -98,9 +104,8 @@ impl PrivateDirectory {
     pub fn synchronize(&self) -> Result<()> {
         #[cfg(unix)]
         self.dir
-            .try_clone()
+            .open(".")
             .map_err(error)?
-            .into_std_file()
             .sync_all()
             .map_err(error)?;
         Ok(())
@@ -114,6 +119,22 @@ impl PrivateDirectory {
             Err(e) => Err(error(e)),
             Ok(_) => self.open_file(name, false, false, false).map(|_| true),
         }
+    }
+}
+fn create_directory(dir: &Dir, name: &std::ffi::OsStr) -> std::io::Result<()> {
+    #[cfg(windows)]
+    {
+        crate::windows_create::create(dir, name, true).map(|_| ())
+    }
+    #[cfg(not(windows))]
+    {
+        let mut options = cap_std::fs::DirBuilder::new();
+        #[cfg(unix)]
+        {
+            use cap_std::fs::DirBuilderExt;
+            options.mode(0o700);
+        }
+        dir.create_dir_with(name, &options)
     }
 }
 fn validate(file: &File, directory: bool) -> Result<()> {
@@ -137,4 +158,23 @@ fn validate(file: &File, directory: bool) -> Result<()> {
     #[cfg(windows)]
     crate::windows_acl::validate(file, directory)?;
     Ok(())
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::*;
+    #[test]
+    fn private_children_and_inherited_sidecars_remain_private_and_reject_hard_links() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().canonicalize().unwrap().join("private");
+        let directory = PrivateDirectory::open(&path, true).unwrap();
+        drop(directory.open_file("state", true, true, false).unwrap());
+        assert!(directory.open_file("state", true, true, false).is_err());
+        // SQLite creates its own journals, with the token's default owner. The
+        // protected parent ACL must be inherited even by elevated processes.
+        std::fs::write(path.join("state-journal"), b"journal").unwrap();
+        assert!(directory.validate_existing_file("state-journal").unwrap());
+        std::fs::hard_link(path.join("state"), path.join("linked")).unwrap();
+        assert!(directory.open_file("state", false, false, false).is_err());
+    }
 }
