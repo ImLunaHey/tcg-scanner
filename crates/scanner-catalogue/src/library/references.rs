@@ -15,6 +15,7 @@ use std::{
 use tokio::sync::Semaphore;
 pub(super) struct References {
     urls: Mutex<BTreeMap<String, String>>,
+    documents: Option<Arc<crate::persistent::Documents>>,
     images: Arc<dyn ImageTransport>,
     cache: Cache<ImageThumbnail>,
     workers: Arc<Semaphore>,
@@ -23,10 +24,15 @@ impl References {
     pub fn new(images: Arc<dyn ImageTransport>) -> Self {
         Self {
             urls: Default::default(),
+            documents: None,
             images,
             cache: Cache::new(128, Duration::from_secs(7 * 86400)),
             workers: Arc::new(Semaphore::new(2)),
         }
+    }
+    pub fn with_documents(mut self, documents: Arc<crate::persistent::Documents>) -> Self {
+        self.documents = Some(documents);
+        self
     }
     pub fn register(&self, url: &str) -> Option<String> {
         if !allowed(url) {
@@ -72,17 +78,43 @@ impl References {
                             "Reload the set checklist to request this catalogue image.",
                         )
                     })?;
+                let cache_key = format!("reference/{key}");
+                if let Some(documents) = &self.documents
+                    && let Ok(Some(bytes)) = documents
+                        .get(&cache_key, Duration::from_secs(7 * 86400), 768 * 1024)
+                        .await
+                    && let Some(thumbnail) = restored(&bytes)
+                {
+                    return Ok(thumbnail);
+                }
                 let bytes = self.images.get(&url, 8 * 1024 * 1024).await?;
-                tokio::task::spawn_blocking(move || {
+                let thumbnail = tokio::task::spawn_blocking(move || {
                     let _permit = permit;
                     encode(&bytes)
                 })
                 .await
-                .map_err(super::unavailable)?
+                .map_err(super::unavailable)??;
+                if let Some(documents) = &self.documents
+                    && let Ok(bytes) = serde_json::to_vec(&thumbnail)
+                {
+                    let _ = documents.put(&cache_key, bytes).await;
+                }
+                Ok(thumbnail)
             })
             .await?;
         Ok(result.as_ref().clone())
     }
+}
+fn restored(bytes: &[u8]) -> Option<ImageThumbnail> {
+    let value: ImageThumbnail = serde_json::from_slice(bytes).ok()?;
+    let image = STANDARD.decode(&value.base64).ok()?;
+    (value.schema_version == 1
+        && value.media_type == "image/jpeg"
+        && (1..=512).contains(&value.width)
+        && (1..=512).contains(&value.height)
+        && image.len() <= 512 * 1024
+        && format!("{:x}", Sha256::digest(&image)) == value.sha256)
+        .then_some(value)
 }
 pub(super) fn allowed(url: &str) -> bool {
     static PATTERN: OnceLock<regex::Regex> = OnceLock::new();
@@ -165,5 +197,40 @@ mod tests {
         ] {
             assert!(!allowed(url));
         }
+    }
+    struct Preview(std::sync::atomic::AtomicUsize);
+    #[async_trait::async_trait]
+    impl ImageTransport for Preview {
+        async fn get(&self, _: &str, _: usize) -> Result<Vec<u8>> {
+            self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            scanner_images::encode_png(image::RgbaImage::from_pixel(
+                10,
+                15,
+                image::Rgba([20, 40, 60, 255]),
+            ))
+            .map(|p| p.bytes)
+        }
+    }
+    #[tokio::test]
+    async fn reopened_cache_serves_previews_without_another_image_download() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir
+            .path()
+            .canonicalize()
+            .unwrap()
+            .join("private/public.sqlite");
+        let transport = Arc::new(Preview(std::sync::atomic::AtomicUsize::new(0)));
+        let url = "https://images.ygoprodeck.com/images/cards/123.jpg";
+        let checksum = {
+            let references = References::new(transport.clone())
+                .with_documents(crate::persistent::Documents::open(&path).unwrap());
+            let key = references.register(url).unwrap();
+            references.thumbnail(&key).await.unwrap().sha256
+        };
+        let references = References::new(transport.clone())
+            .with_documents(crate::persistent::Documents::open(&path).unwrap());
+        let key = references.register(url).unwrap();
+        assert_eq!(references.thumbnail(&key).await.unwrap().sha256, checksum);
+        assert_eq!(transport.0.load(std::sync::atomic::Ordering::SeqCst), 1);
     }
 }

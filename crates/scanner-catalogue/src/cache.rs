@@ -28,7 +28,14 @@ impl<T> Cache<T> {
     {
         let entry = {
             let mut entries = self.entries.lock().await;
-            entries.retain(|_, entry| entry.get().is_none_or(|(at, _)| at.elapsed() < self.ttl));
+            // A cancelled initializer leaves an empty cell. Retain it only while
+            // another caller still holds it; abandoned cells must not fill capacity.
+            entries.retain(|_, entry| {
+                entry.get().map_or_else(
+                    || Arc::strong_count(entry) > 1,
+                    |(at, _)| at.elapsed() < self.ttl,
+                )
+            });
             if let Some(entry) = entries.get(key) {
                 entry.clone()
             } else {
@@ -103,5 +110,26 @@ mod tests {
         let cache = Cache::new(1, Duration::ZERO);
         assert_eq!(*cache.get("x", || async { Ok(1) }).await.unwrap(), 1);
         assert_eq!(*cache.get("x", || async { Ok(2) }).await.unwrap(), 2);
+    }
+    #[tokio::test]
+    async fn cancelled_initializers_do_not_exhaust_cache_capacity() {
+        let cache = Arc::new(Cache::new(1, Duration::from_secs(60)));
+        let started = Arc::new(tokio::sync::Notify::new());
+        let task = tokio::spawn({
+            let cache = cache.clone();
+            let started = started.clone();
+            async move {
+                cache
+                    .get("cancelled", || async {
+                        started.notify_one();
+                        std::future::pending::<Result<i32>>().await
+                    })
+                    .await
+            }
+        });
+        started.notified().await;
+        task.abort();
+        let _ = task.await;
+        assert_eq!(*cache.get("next", || async { Ok(7) }).await.unwrap(), 7);
     }
 }

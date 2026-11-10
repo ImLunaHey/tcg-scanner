@@ -3842,6 +3842,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "clap",
+ "scanner-catalogue",
  "scanner-client",
  "scanner-core",
  "scanner-device",
@@ -3868,11 +3869,14 @@ dependencies = [
  "image",
  "regex",
  "reqwest",
+ "rusqlite",
  "scanner-images",
+ "scanner-platform",
  "scanner-types",
  "serde",
  "serde_json",
  "sha2",
+ "tempfile",
  "tokio",
 ]
 

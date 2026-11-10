@@ -6,3 +6,5 @@ pub mod mcp;
 pub mod options;
 pub mod service;
 mod signals;
+
+mod processing;

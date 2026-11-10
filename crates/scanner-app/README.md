@@ -33,6 +33,10 @@ Automatic preparation requires both `tesseractLibrary` and `trainedData` paths.
 The `libraryOnly` backend exposes saved data without discovering scanner devices.
 Use absolute paths, including drive-qualified paths on Windows. Local state and
 credential directories must satisfy the platform's private ownership checks.
+Public catalogue metadata and previews use a bounded private SQLite cache at
+`catalogue/public.sqlite` beside the ledger. Set `catalogueCache` to override its
+absolute filename. An unavailable optional cache is reported and falls back to
+memory caching; scan originals and inventory never enter this cache.
 
 SIGINT/SIGTERM stop acceptance and wait for owned writes and scanner session
 closure. Interrupted jobs reconcile verified manifests before accepting clients; incomplete

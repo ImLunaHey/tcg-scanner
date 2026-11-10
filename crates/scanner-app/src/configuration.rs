@@ -11,6 +11,7 @@ use std::{
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct Configuration {
     pub database: PathBuf,
+    pub catalogue_cache: Option<PathBuf>,
     pub storage: StorageConfiguration,
     pub token_file: PathBuf,
     #[serde(default = "listen")]
@@ -45,6 +46,13 @@ impl Configuration {
         let value: Self = serde_json::from_slice(&bytes).map_err(config)?;
         if !value.database.is_absolute() || !value.token_file.is_absolute() {
             return Err(config("Database and credential paths must be absolute."));
+        }
+        if value
+            .catalogue_cache
+            .as_ref()
+            .is_some_and(|p| !p.is_absolute() || p.file_name().is_none())
+        {
+            return Err(config("Catalogue cache must be an absolute filename."));
         }
         if value.tesseract_library.is_some() != value.trained_data.is_some() {
             return Err(config("Configure both tesseractLibrary and trainedData."));

@@ -6,6 +6,7 @@ use scanner_types::error::Result;
 use std::{sync::Arc, time::Duration};
 pub struct StarWars {
     transport: Arc<dyn JsonTransport>,
+    documents: Option<Arc<crate::persistent::Documents>>,
     sets: Cache<Vec<Set>>,
     cards: Cache<Vec<Card>>,
 }
@@ -16,30 +17,28 @@ impl StarWars {
     pub fn with_transport(transport: Arc<dyn JsonTransport>) -> Self {
         Self {
             transport,
+            documents: None,
             sets: Cache::new(1, Duration::from_secs(86400)),
             cards: Cache::new(32, Duration::from_secs(86400)),
         }
     }
+    pub fn with_documents(mut self, documents: Arc<crate::persistent::Documents>) -> Self {
+        self.documents = Some(documents);
+        self
+    }
     pub async fn sets(&self) -> Result<Arc<Vec<Set>>> {
         self.sets
             .get("sets", || async {
-                let bytes = self.get("sets").await?;
-                let sets: Vec<Set> = serde_json::from_slice(&bytes).map_err(|_| invalid())?;
-                let unique: std::collections::HashSet<_> = sets.iter().map(|s| &s.set_id).collect();
-                if sets.len() >= 500
-                    || unique.len() != sets.len()
-                    || sets.iter().any(|s| {
-                        !model::valid_id(&s.set_id)
-                            || s.full_name.is_empty()
-                            || s.full_name.len() > 128
-                            || s.number_cards == 0
-                            || s.number_cards > 5000
-                            || s.release_date.as_ref().is_some_and(|d| d.len() > 32)
-                    })
-                {
-                    return Err(invalid());
-                }
-                Ok(sets)
+                crate::persistent::load(
+                    self.transport.as_ref(),
+                    self.documents.as_ref(),
+                    "swu-db/sets",
+                    "sets",
+                    8 * 1024 * 1024,
+                    Duration::from_secs(86400),
+                    decode_sets,
+                )
+                .await
             })
             .await
     }
@@ -49,24 +48,40 @@ impl StarWars {
         }
         self.cards
             .get(set, || async {
-                let bytes = self
-                    .get(&format!("cards/{}", set.to_ascii_lowercase()))
-                    .await?;
                 let expected = set.to_owned();
-                tokio::task::spawn_blocking(move || decode(&bytes, &expected))
-                    .await
-                    .map_err(|_| invalid())?
+                crate::persistent::load(
+                    self.transport.as_ref(),
+                    self.documents.as_ref(),
+                    &format!("swu-db/cards/{set}"),
+                    &format!("cards/{}", set.to_ascii_lowercase()),
+                    8 * 1024 * 1024,
+                    Duration::from_secs(86400),
+                    move |bytes| decode(bytes, &expected),
+                )
+                .await
             })
             .await
     }
-    async fn get(&self, path: &str) -> Result<Vec<u8>> {
-        let bytes = self.transport.get(path, 8 * 1024 * 1024).await?;
-        if bytes.len() > 8 * 1024 * 1024 {
-            return Err(invalid());
-        }
-        Ok(bytes)
-    }
 }
+fn decode_sets(bytes: &[u8]) -> Result<Vec<Set>> {
+    let sets: Vec<Set> = serde_json::from_slice(bytes).map_err(|_| invalid())?;
+    let unique: std::collections::HashSet<_> = sets.iter().map(|s| &s.set_id).collect();
+    if sets.len() >= 500
+        || unique.len() != sets.len()
+        || sets.iter().any(|s| {
+            !model::valid_id(&s.set_id)
+                || s.full_name.is_empty()
+                || s.full_name.len() > 128
+                || s.number_cards == 0
+                || s.number_cards > 5000
+                || s.release_date.as_ref().is_some_and(|d| d.len() > 32)
+        })
+    {
+        return Err(invalid());
+    }
+    Ok(sets)
+}
+
 fn decode(bytes: &[u8], set: &str) -> Result<Vec<Card>> {
     let result: model::Envelope = serde_json::from_slice(bytes).map_err(|_| invalid())?;
     if !model::valid_cards(&result.data, set) {

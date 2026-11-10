@@ -17,6 +17,7 @@ pub struct TcgDex {
     catalogue: Cache<Vec<CatalogueCard>>,
     details: Cache<CardDetail>,
     sets: Cache<SetDetail>,
+    documents: Option<Arc<crate::persistent::Documents>>,
 }
 impl TcgDex {
     pub fn new(language: CardLanguage) -> Result<Self> {
@@ -26,15 +27,21 @@ impl TcgDex {
         Self {
             language,
             transport,
+            documents: None,
             catalogue: Cache::new(1, Duration::from_secs(24 * 3600)),
             details: Cache::new(128, Duration::from_secs(15 * 60)),
             sets: Cache::new(64, Duration::from_secs(24 * 3600)),
         }
     }
+    pub fn with_documents(mut self, documents: Arc<crate::persistent::Documents>) -> Self {
+        self.documents = Some(documents);
+        self
+    }
     pub async fn catalogue(&self) -> Result<Arc<Vec<CatalogueCard>>> {
         self.catalogue
             .get("cards", || async {
-                validation::catalogue(self.load("cards", 12 * 1024 * 1024).await?)
+                self.load("cards", 12 * 1024 * 1024, validation::catalogue)
+                    .await
             })
             .await
     }
@@ -42,9 +49,12 @@ impl TcgDex {
         validation::id(id)?;
         self.details
             .get(id, || async {
-                let detail = self.load(&format!("cards/{id}"), 256 * 1024).await?;
-                validation::detail(&detail, id)?;
-                Ok(detail)
+                let expected = id.to_owned();
+                self.load(&format!("cards/{id}"), 256 * 1024, move |detail| {
+                    validation::detail(&detail, &expected)?;
+                    Ok(detail)
+                })
+                .await
             })
             .await
     }
@@ -53,26 +63,35 @@ impl TcgDex {
         let set = self
             .sets
             .get(id, || async {
-                let set = self.load(&format!("sets/{id}"), 2 * 1024 * 1024).await?;
-                validation::set(&set, id)?;
-                Ok(set)
+                let expected = id.to_owned();
+                self.load(&format!("sets/{id}"), 2 * 1024 * 1024, move |set| {
+                    validation::set(&set, &expected)?;
+                    Ok(set)
+                })
+                .await
             })
             .await?;
         Ok(set.as_ref().clone())
     }
-    async fn load<T: DeserializeOwned>(&self, path: &str, limit: usize) -> Result<T> {
-        let language = match self.language {
-            CardLanguage::English => "en",
-            CardLanguage::Korean => "ko",
-        };
-        let bytes = self
-            .transport
-            .get(&format!("{language}/{path}"), limit)
-            .await?;
-        if bytes.len() > limit {
-            return Err(validation::invalid());
-        }
-        serde_json::from_slice(&bytes).map_err(|_| validation::invalid())
+    async fn load<T, F>(&self, path: &str, limit: usize, validate: F) -> Result<T>
+    where
+        T: DeserializeOwned + Send + 'static,
+        F: Fn(T) -> Result<T> + Send + Sync + 'static,
+    {
+        let path = format!("{}/{path}", self.language.as_str());
+        let ttl = if path.contains("/cards/") { 900 } else { 86400 };
+        crate::persistent::load(
+            self.transport.as_ref(),
+            self.documents.as_ref(),
+            &format!("tcgdex/{path}"),
+            &path,
+            limit,
+            Duration::from_secs(ttl),
+            move |bytes| {
+                validate(serde_json::from_slice(bytes).map_err(|_| validation::invalid())?)
+            },
+        )
+        .await
     }
 }
 #[cfg(test)]

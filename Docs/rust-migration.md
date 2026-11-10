@@ -294,10 +294,21 @@ public-reference Host/Origin/ETag behavior without touching hardware.
 The native catalogue library now supplies Pokémon set checklists, asynchronous
 release dates and registered, bounded reference thumbnails. Injected-transport
 tests verify request coalescing, language separation and rejection of unregistered
-or off-origin images. Optional caches are memory-only at this stage; they do not
-change or store user scan originals.
+or off-origin images. The service now persists validated public metadata and previews in an optional
+private, bounded SQLite cache; it does not store user scan originals.
 
 Native YGOPRODeck and SWU-DB catalogue adapters now support typed printing lists,
 release dates and inventory reference registration. Tests preserve IDs, deduplicate
 rarity rows, reject conflicting sets/duplicate cards, and prevent Korean-to-English
-fallback. Service recognition integration and persistent caches follow this slice.
+fallback. Service recognition integration follows this slice.
+
+A host-configured catalogue cache now persists validated metadata and reference
+previews across restarts. Private-file checks, SHA-256, TTL/schema validation,
+entry/byte caps and bounded blocking workers apply. Tests verify restart reuse,
+corruption/identity rejection, expiry, eviction, linked-sidecar refusal and cache
+capacity recovery after cancelled loads. Service startup configures one shared
+cache for inventory and native Pokémon recognition; cache failure is optional.
+The native checklist example also completed live reads of SWU `SOR` (950 catalogue
+printings) and YGOPRODeck `LOB` (252 English/legacy printings), using the isolated
+main-drive public-data cache. These counts validate provider integration, not card
+recognition accuracy or foil/condition assessment.

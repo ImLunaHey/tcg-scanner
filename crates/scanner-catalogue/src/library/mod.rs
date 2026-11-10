@@ -44,17 +44,43 @@ impl LibraryCatalogue {
         star_wars: Arc<dyn JsonTransport>,
         images: Arc<dyn ImageTransport>,
     ) -> Arc<Self> {
+        Self::from_clients(
+            TcgDex::with_transport(CardLanguage::English, pokemon.clone()),
+            TcgDex::with_transport(CardLanguage::Korean, pokemon),
+            crate::yugioh::Yugioh::with_transport(yugioh),
+            crate::star_wars::StarWars::with_transport(star_wars),
+            references::References::new(images),
+        )
+    }
+    pub fn cached(documents: Arc<crate::persistent::Documents>) -> Result<Arc<Self>> {
+        Ok(Self::from_clients(
+            TcgDex::new(CardLanguage::English)?.with_documents(documents.clone()),
+            TcgDex::new(CardLanguage::Korean)?.with_documents(documents.clone()),
+            crate::yugioh::Yugioh::new()?.with_documents(documents.clone()),
+            crate::star_wars::StarWars::new()?.with_documents(documents.clone()),
+            references::References::new(Arc::new(image_network::Https::new()?))
+                .with_documents(documents),
+        ))
+    }
+    fn from_clients(
+        english: TcgDex,
+        korean: TcgDex,
+        yugioh: crate::yugioh::Yugioh,
+        star_wars: crate::star_wars::StarWars,
+        references: references::References,
+    ) -> Arc<Self> {
         Arc::new(Self {
-            yugioh: crate::yugioh::Yugioh::with_transport(yugioh),
-            star_wars: crate::star_wars::StarWars::with_transport(star_wars),
-            english: TcgDex::with_transport(CardLanguage::English, pokemon.clone()),
-            korean: TcgDex::with_transport(CardLanguage::Korean, pokemon),
+            english,
+            korean,
+            yugioh,
+            star_wars,
+            references,
             cards: Cache::new(64, Duration::from_secs(86400)),
             workers: Semaphore::new(4),
             dates: Default::default(),
-            references: references::References::new(images),
         })
     }
+
     pub async fn cards(
         &self,
         source: &InventoryCatalogueSource,

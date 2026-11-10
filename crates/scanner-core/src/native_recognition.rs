@@ -17,6 +17,13 @@ impl NativeCardRecognizer {
             pokemon: PokemonRecognizer::new(library, data)?,
         })
     }
+    pub fn with_documents(
+        mut self,
+        documents: Arc<scanner_catalogue::persistent::Documents>,
+    ) -> Self {
+        self.pokemon = self.pokemon.with_documents(documents);
+        self
+    }
 }
 #[async_trait::async_trait]
 impl CardRecognizer for NativeCardRecognizer {

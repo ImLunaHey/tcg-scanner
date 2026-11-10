@@ -27,6 +27,14 @@ impl PokemonRecognizer {
             workers: Arc::new(Semaphore::new(1)),
         })
     }
+    pub fn with_documents(
+        mut self,
+        documents: Arc<scanner_catalogue::persistent::Documents>,
+    ) -> Self {
+        self.english = self.english.with_documents(documents.clone());
+        self.korean = self.korean.with_documents(documents);
+        self
+    }
     pub async fn recognize(
         &self,
         bytes: Vec<u8>,

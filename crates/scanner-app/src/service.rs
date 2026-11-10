@@ -2,18 +2,11 @@ use crate::{
     configuration::{Configuration, config},
     options::{ServiceCommand, ServiceOptions},
 };
-use scanner_core::{
-    Engine, NativeCardProcessor, NativeCardRecognizer,
-    backend::{CardProcessor, CardRecognizer},
-};
+use scanner_core::Engine;
 use scanner_files::StorageRoot;
 use scanner_http::Gateway;
 use scanner_store::Database;
-use scanner_types::{
-    error::{Result, ScannerError},
-    images::ProcessedImage,
-    scan::ScanRecord,
-};
+use scanner_types::error::Result;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
@@ -36,7 +29,7 @@ pub(crate) async fn run(
         configuration.public_origin.as_deref(),
     )?;
     let token = scanner_platform::load_credential(&configuration.token_file)?;
-    let root = Arc::new(StorageRoot::open_configured(configuration.storage)?);
+    let root = Arc::new(StorageRoot::open_configured(configuration.storage.clone())?);
     let database = Arc::new(Database::open(&configuration.database)?);
     let recovery_database = database.clone();
     let recovery_root = root.clone();
@@ -46,26 +39,21 @@ pub(crate) async fn run(
     .await
     .map_err(config)??;
     eprintln!("Recovered {recovered} interrupted job(s); physical scans were not resumed.");
-    let (processor, recognizer): (Arc<dyn CardProcessor>, Option<Arc<dyn CardRecognizer>>) =
-        match (configuration.tesseract_library, configuration.trained_data) {
-            (Some(library), Some(data)) => (
-                Arc::new(NativeCardProcessor::new(
-                    root.clone(),
-                    library.clone(),
-                    data.clone(),
-                )),
-                Some(Arc::new(NativeCardRecognizer::new(
-                    root.clone(),
-                    library,
-                    data,
-                )?)),
-            ),
-            _ => (Arc::new(UnconfiguredProcessor), None),
-        };
+    let processing = crate::processing::configure(&configuration, root.clone()).await?;
     let listener = tokio::net::TcpListener::bind(http.address())
         .await
         .map_err(config)?;
-    let engine = Engine::with_recognizer(backend, processor, recognizer, database, root);
+    let engine = Engine::with_recognizer(
+        backend,
+        processing.processor,
+        processing.recognizer,
+        database,
+        root,
+    );
+    if let Err(error) = engine.configure_library_catalogue(processing.catalogue) {
+        engine.shutdown().await;
+        return Err(error);
+    }
     let gateway = match Gateway::new(engine.clone(), name, &token, http) {
         Ok(gateway) => gateway,
         Err(error) => {
@@ -89,14 +77,4 @@ pub(crate) async fn run(
     stop.cancel();
     engine.shutdown().await;
     result
-}
-struct UnconfiguredProcessor;
-#[async_trait::async_trait]
-impl CardProcessor for UnconfiguredProcessor {
-    async fn prepare(&self, _: &ScanRecord, _: u32) -> Result<ProcessedImage> {
-        Err(ScannerError::new(
-            "configuration",
-            "Configure tesseractLibrary and trainedData for native automatic card preparation.",
-        ))
-    }
 }

@@ -6,6 +6,7 @@ use scanner_types::error::Result;
 use std::{collections::BTreeMap, sync::Arc, time::Duration};
 pub struct Yugioh {
     transport: Arc<dyn JsonTransport>,
+    documents: Option<Arc<crate::persistent::Documents>>,
     cards: Cache<Vec<Card>>,
     dates: Cache<BTreeMap<String, String>>,
 }
@@ -16,17 +17,28 @@ impl Yugioh {
     pub fn with_transport(transport: Arc<dyn JsonTransport>) -> Self {
         Self {
             transport,
+            documents: None,
             cards: Cache::new(1, Duration::from_secs(2 * 86400)),
             dates: Cache::new(1, Duration::from_secs(86400)),
         }
     }
+    pub fn with_documents(mut self, documents: Arc<crate::persistent::Documents>) -> Self {
+        self.documents = Some(documents);
+        self
+    }
     pub async fn cards(&self) -> Result<Arc<Vec<Card>>> {
         self.cards
             .get("cards", || async {
-                let bytes = self.transport.get("cardinfo.php", 64 * 1024 * 1024).await?;
-                tokio::task::spawn_blocking(move || decode(&bytes))
-                    .await
-                    .map_err(|_| invalid())?
+                crate::persistent::load(
+                    self.transport.as_ref(),
+                    self.documents.as_ref(),
+                    "ygoprodeck/cards",
+                    "cardinfo.php",
+                    64 * 1024 * 1024,
+                    Duration::from_secs(2 * 86400),
+                    decode,
+                )
+                .await
             })
             .await
     }
@@ -34,29 +46,36 @@ impl Yugioh {
         let dates = self
             .dates
             .get("dates", || async {
-                let bytes = self.transport.get("cardsets.php", 2 * 1024 * 1024).await?;
-                if bytes.len() > 2 * 1024 * 1024 {
-                    return Err(invalid());
-                }
-                let sets: Vec<model::SetDate> =
-                    serde_json::from_slice(&bytes).map_err(|_| invalid())?;
-                if sets.len() > 5000
-                    || sets.iter().any(|s| {
-                        s.set_code.is_empty()
-                            || s.set_code.len() > 40
-                            || s.tcg_date.as_ref().is_some_and(|d| d.len() > 32)
-                    })
-                {
-                    return Err(invalid());
-                }
-                Ok(sets
-                    .into_iter()
-                    .filter_map(|s| Some((s.set_code, s.tcg_date?)))
-                    .collect())
+                crate::persistent::load(
+                    self.transport.as_ref(),
+                    self.documents.as_ref(),
+                    "ygoprodeck/sets",
+                    "cardsets.php",
+                    2 * 1024 * 1024,
+                    Duration::from_secs(86400),
+                    decode_dates,
+                )
+                .await
             })
             .await?;
         Ok(dates.get(code).cloned())
     }
+}
+fn decode_dates(bytes: &[u8]) -> Result<BTreeMap<String, String>> {
+    let sets: Vec<model::SetDate> = serde_json::from_slice(bytes).map_err(|_| invalid())?;
+    if sets.len() > 5000
+        || sets.iter().any(|s| {
+            s.set_code.is_empty()
+                || s.set_code.len() > 40
+                || s.tcg_date.as_ref().is_some_and(|d| d.len() > 32)
+        })
+    {
+        return Err(invalid());
+    }
+    Ok(sets
+        .into_iter()
+        .filter_map(|s| Some((s.set_code, s.tcg_date?)))
+        .collect())
 }
 fn decode(bytes: &[u8]) -> Result<Vec<Card>> {
     if bytes.len() > 64 * 1024 * 1024 {

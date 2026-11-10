@@ -10,3 +10,5 @@ pub mod library;
 
 pub mod star_wars;
 pub mod yugioh;
+
+pub mod persistent;

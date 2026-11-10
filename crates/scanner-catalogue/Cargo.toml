@@ -8,6 +8,8 @@ repository.workspace = true
 publish = false
 
 [dependencies]
+scanner-platform.workspace = true
+rusqlite.workspace = true
 scanner-images.workspace = true
 image.workspace = true
 sha2.workspace = true
@@ -23,3 +25,6 @@ serde_json.workspace = true
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
