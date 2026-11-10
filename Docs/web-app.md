@@ -1,14 +1,33 @@
-# Rune browser application
+# Web workspace
 
-The browser interface is the Rust Rune UI compiled to WebAssembly. The former
-React app has been removed. Build and configuration instructions are in
-[Rune web](rune-web.md); native distribution setup is in [portable installation](portable-install.md).
+The original React interface is the production web UI. Rune is the desktop app;
+the optional Rune WASM build is not installed as the public web interface.
+The Rust service serves the web assets and implements the existing REST API.
+The original dashboard, navigation, card grids, styling, responsive layout and
+fullscreen camera are preserved. A persistent native `<video>` displays the camera
+stream; recognition samples a separate canvas without replacing the preview.
 
-Library operations require a token held only in memory for the active connection.
-The separate `/camera` workflow makes bounded anonymous identification requests;
-it cannot inspect saved scans. Camera tracks stop on leave/background/disconnect,
-and captured frames never enter persistent browser storage. Its Rust worker
-provides an offline explanation without caching private images or API responses.
+Build and verify from the repository root:
 
-Use an explicitly configured HTTPS origin for remote cameras. Serving the bundle
-does not grant access to the authenticated library or mutate scanner ownership.
+```sh
+cd Web
+npm ci --ignore-scripts
+npm test
+npm run build
+cd ..
+cargo run -p scanner-http --example web_bundle --locked -- Web/dist --existing
+```
+
+Point the service's `webDirectory` at that verified output. Distribution packaging
+uses `scanner-setup package --binaries /absolute/binaries --web /absolute/Web/dist
+--output /absolute/new-package`. The running service loads immutable verified
+assets on startup, so changing the bundle requires a service restart.
+
+The library uses an expiring per-tab session; the public camera requires no token.
+Camera frames remain in page memory and are not added to the library. HTTPS is
+required for real remote camera access. Node is needed only to build/test assets.
+
+For browser integration tests, run the Rust `web_fixture` example with a private
+token containing 64 `e` characters and set `SCANNER_BROWSER_URL` to its Tailscale
+URL, then run `npm run test:e2e` in `Web`. The fixture has synthetic saved cards
+and no physical scanner. Never run the mutating fixture suite on the live service.

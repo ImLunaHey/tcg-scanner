@@ -1,12 +1,13 @@
 # Scanner
 
 A Rust application for scanning and cataloguing trading cards on macOS, Linux and
-Windows. [Rune](https://github.com/anomalyco/rune) provides the native desktop and
-WebAssembly browser interfaces. The service, image processing, recognition,
+Windows. [Rune](https://github.com/anomalyco/rune) provides the native desktop
+app. The original React web interface keeps its established layout and mobile
+camera. The service, image processing, recognition,
 library, HTTP API, CLI and MCP server run in Rust, with native libraries loaded
 in-process for scanner drivers, Tesseract OCR and optional ONNX inference.
 
-The Swift/SwiftUI and React implementations have been retired from this branch.
+The Swift/SwiftUI implementation has been retired.
 There is no macOS Vision dependency. macOS acquisition still uses the system's
 ImageCaptureCore API through Rust; Linux uses SANE and Windows uses TWAIN.
 
@@ -40,7 +41,7 @@ A shared per-user owner lock prevents two services from accessing scanner hardwa
   suggestions. Printed identity, finish and condition remain distinct decisions.
 - Inventory, catalogue/reference lookup, GBP market guides, reviewed finish and
   condition, verified exports and explicit Store transfers.
-- Rune browser camera lookup and installable camera page, with frames kept in
+- Browser camera lookup and installable camera page, with frames kept in
   memory. Remote camera access requires HTTPS.
 - Private HTTP credentials, JSON-RPC/REST/MCP, storage reconnection, pause/resume,
   native power notifications and opt-in scanner-button handling.
@@ -55,16 +56,20 @@ sanitized reports in [Tools/RecognitionBench](Tools/RecognitionBench).
 
 Twenty workspace crates separate typed contracts, persistence, safe files, image
 processing, recognition, catalogue/pricing, device adapters, coordination,
-application interfaces and Rune presentation. SQLite and v1 saved manifests remain
+application interfaces and Rune desktop presentation. SQLite and v1 saved
+manifests remain
 compatible. Runtime code does not invoke Swift, Python, Node, shells or scanner
-helper executables. JavaScript is limited to generated WASM/browser bootstrap
-and development tests; the C files under `Tools/NativeDeviceTests` simulate native
-driver ABIs for tests. Legacy experiments remain in Git history.
+helper executables. The original React web interface keeps its established
+design and uses the Rust
+HTTP API; Node is only a development/build dependency. The C files under
+`Tools/NativeDeviceTests` simulate native driver ABIs for tests. Legacy experiments
+remain in Git history.
 
 | Area | Source / guide |
 | --- | --- |
 | Native application and setup | [scanner-app](crates/scanner-app), [installation](Docs/portable-install.md) |
-| Rune desktop, browser, camera | [scanner-ui](crates/scanner-ui), [browser build](Docs/rune-web.md) |
+| Rune desktop | [scanner-ui](crates/scanner-ui), [optional WASM build](Docs/rune-web.md) |
+| Web workspace and camera | [Web](Web), [web build](Docs/web-app.md) |
 | Driver ownership and lifecycle | [scanner-core](crates/scanner-core), [scanner-device](crates/scanner-device), [power](Docs/native-power.md) |
 | Recognition and visual index | [scanner-recognition](crates/scanner-recognition), [DINOv3](Docs/visual-recognition.md) |
 | API / MCP | [scanner-rpc](crates/scanner-rpc), [scanner-http](crates/scanner-http), [MCP setup](Docs/mcp.md) |
@@ -73,9 +78,10 @@ driver ABIs for tests. Legacy experiments remain in Git history.
 ## Validation boundaries
 
 CI builds/tests the Rust workspace on macOS, Linux and Windows and compiles the
-browser UI/worker to WASM. Native SANE/TWAIN fixtures exercise real ABI calls with
+optional Rune UI/worker to WASM. Distributions ship the original web interface.
+Native SANE/TWAIN fixtures exercise real ABI calls with
 simulated devices. Saved scans test preparation and recognition without modifying
-the originals. HTTPS Playwright tests exercise Rune review, editing, inventory,
+the originals. HTTPS Playwright tests exercise web review, editing, inventory,
 profiles, exports, camera lifecycle and installation behavior.
 
 Actual Linux/Windows scanner hardware, vendor backing-colour/ICC behavior,
