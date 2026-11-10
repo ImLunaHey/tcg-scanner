@@ -51,6 +51,7 @@ pub(crate) fn tools() -> Vec<T> {
         T::new("scanner_get_image_metadata","images.get","Read original image metadata by job UUID and page sequence.",image.clone()),
         T::new("scanner_read_image","images.read","Read a bounded base64 chunk of an original. Follow nextOffset until eof; verify chunkSHA256 and the final image SHA-256. Accepts no filesystem path.",[image,vec![("offset",F::integer(0,512*1024*1024)),("length",F::integer(1,262144))]].concat()),
         T::new("scanner_get_service_status","service.status","Read queue and health without opening hardware.",vec![]),
+        T::new("scanner_batch_valuation","batches.valuation","Read cached GBP market guidance per physical card; queues bounded public metadata refreshes. Stamped variants and language are kept separate; no scan pixels or grades are uploaded.",vec![("id",F::uuid().required())]),
         T::new("scanner_get_events","events","Read events, optionally waiting up to 20 seconds. Use nextCursor; on resetRequired refresh snapshots and start after=0.",vec![("after",F::integer(0,9_007_199_254_740_991)),("limit",F::integer(1,100)),("waitSeconds",F::integer(0,20))]),
         T::new("scanner_get_diagnostics","diagnostics","Inspect service and driver diagnostics without feeding. Hardware inspection can return busy; status and events remain available.",device),
     ]

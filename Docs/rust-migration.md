@@ -469,3 +469,12 @@ cover conflicting regular/stamped products, missing reverse prices, stale rates,
 DTD/duplicate-rate rejection, edition-specific quotes and per-copy rounding.
 Shared JSON decimal support passes 204 workspace tests and strict WebAssembly
 Clippy. Service caching and valuation UI integration follow this domain slice.
+
+Valuation now runs through `batches.valuation`, authenticated REST and MCP. Reads
+return cached/pending snapshots without waiting for public requests; two workers,
+a 200-item queue and retry cooldown bound refreshes. The existing SQLite price
+keys remain compatible, with bounded records and corrupt-entry handling. Snapshot
+reads serialize with completion bookkeeping to prevent duplicate refreshes during
+publication. Shutdown drains active cache writes; unsupported languages never
+request substituted English quotes. Integration tests cover the two-fetch bound,
+non-blocking reads, persistence, unsupported pairs and REST authentication.

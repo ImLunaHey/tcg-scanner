@@ -27,3 +27,5 @@ pub use native_recognition::NativeCardRecognizer;
 mod prepare_saved;
 
 mod inventory;
+
+mod pricing;

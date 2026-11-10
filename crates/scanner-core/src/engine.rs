@@ -19,6 +19,7 @@ pub struct Engine {
     pub(crate) backend: Arc<dyn ScannerBackend>,
     pub(crate) processor: Arc<dyn CardProcessor>,
     pub(crate) recognizer: Option<Arc<dyn CardRecognizer>>,
+    pub(crate) pricing: tokio::sync::OnceCell<Arc<crate::pricing::Cache>>,
     pub(crate) recognition_workers: Arc<Semaphore>,
     pub(crate) database: Arc<Database>,
     pub(crate) inventory_workers: Arc<Semaphore>,
@@ -84,6 +85,7 @@ impl Engine {
             backend,
             processor,
             recognizer,
+            pricing: tokio::sync::OnceCell::new(),
             recognition_workers: Arc::new(Semaphore::new(1)),
             database,
             inventory_workers: Arc::new(Semaphore::new(4)),
@@ -163,6 +165,9 @@ impl Engine {
             let _reservation = self.submissions.lock().await;
         }
 
+        if let Some(cache) = self.pricing.get() {
+            cache.shutdown().await;
+        }
         let _ = done.wait_for(|done| *done).await;
     }
     pub(crate) async fn select_device(&self, id: Option<&str>) -> Result<Device> {

@@ -62,6 +62,10 @@ pub(crate) async fn run(
         engine.shutdown().await;
         return Err(error);
     }
+    if let Err(error) = engine.configure_pricing(processing.pricing) {
+        engine.shutdown().await;
+        return Err(error);
+    }
     let gateway = match Gateway::new(engine.clone(), name, &token, http) {
         Ok(gateway) => gateway,
         Err(error) => {

@@ -14,6 +14,7 @@ impl Router {
                 | "v1.batches.list"
                 | "v1.jobs.get"
                 | "v1.batches.get"
+                | "v1.batches.valuation"
                 | "v1.jobs.cancel"
                 | "v1.service.status"
                 | "v1.events"
@@ -24,6 +25,10 @@ impl Router {
     }
     async fn library_action(&self, method: &str, params: &Params) -> Result<Value, Failure> {
         match method {
+            "v1.batches.valuation" => {
+                params.only(&["id"])?;
+                value(self.engine.batch_valuation(params.uuid("id")?).await?)
+            }
             "v1.service.status" => {
                 params.only(&[])?;
                 value(self.engine.status().await)

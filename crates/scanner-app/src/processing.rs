@@ -15,6 +15,7 @@ pub(crate) struct Processing {
     pub processor: Arc<dyn CardProcessor>,
     pub recognizer: Option<Arc<dyn CardRecognizer>>,
     pub catalogue: Arc<LibraryCatalogue>,
+    pub pricing: Arc<dyn scanner_pricing::provider::PricingProvider>,
 }
 pub(crate) async fn configure(
     configuration: &Configuration,
@@ -41,6 +42,10 @@ pub(crate) async fn configure(
         Some(cache) => LibraryCatalogue::cached(cache.clone())?,
         None => LibraryCatalogue::new()?,
     };
+    let mut pricing = scanner_pricing::provider::PublicPricing::new()?;
+    if let Some(cache) = &documents {
+        pricing = pricing.with_documents(cache.clone());
+    }
     let (processor, recognizer): (Arc<dyn CardProcessor>, Option<Arc<dyn CardRecognizer>>) = match (
         &configuration.tesseract_library,
         &configuration.trained_data,
@@ -63,6 +68,7 @@ pub(crate) async fn configure(
         processor,
         recognizer,
         catalogue,
+        pricing: Arc::new(pricing),
     })
 }
 struct UnconfiguredProcessor;

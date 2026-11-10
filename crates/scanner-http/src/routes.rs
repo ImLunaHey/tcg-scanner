@@ -135,6 +135,10 @@ fn read_route<'a>(parts: &[&'a str], path: &Path) -> Result<(&'a str, Map<String
                 _ => "batches.get",
             }
         }
+        ["batches", id, "valuation"] => {
+            p.insert("id".into(), json!(uuid(id)?));
+            "batches.valuation"
+        }
         ["batches", id, "manifest"] => {
             p.insert("id".into(), json!(uuid(id)?));
             "batches.get"

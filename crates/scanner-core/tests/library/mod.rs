@@ -91,3 +91,5 @@ mod identification;
 mod preparation;
 
 mod finish;
+
+mod pricing;

@@ -157,3 +157,29 @@ async fn stale_invalid_and_inflight_reviews_cannot_overwrite_the_identification(
         "busy"
     );
 }
+
+#[tokio::test]
+async fn valuation_read_is_authenticated_strict_and_does_not_price_unknown_pairs() {
+    let h = Harness::new();
+    let (job, _) = h.saved();
+    seed(&h, job);
+    let path = format!("/api/v1/batches/{job}/valuation");
+    assert_eq!(
+        h.send(h.request("GET", &path, Body::empty(), false))
+            .await
+            .status(),
+        401
+    );
+    let response = response_json(h.send(h.request("GET", &path, Body::empty(), true)).await).await;
+    assert_eq!(response["currency"], "GBP", "{response}");
+    assert_eq!(response["pricedCount"], 0);
+    assert!(response.get("lowPence").is_none());
+    assert_eq!(response["refreshing"], false);
+    assert_eq!(
+        h.send(h.request("GET", &format!("{path}?currency=USD"), Body::empty(), true))
+            .await
+            .status(),
+        400
+    );
+    h.engine.shutdown().await;
+}
