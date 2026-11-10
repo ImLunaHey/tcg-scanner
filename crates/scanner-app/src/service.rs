@@ -60,6 +60,12 @@ pub(crate) async fn run(
         .await
         .map_err(config)?;
     let engine = build_engine(backend, processing, database, root, staging).await?;
+    if let Some(device) = &configuration.scan_button_device
+        && let Err(error) = engine.configure_scan_button(device.clone())
+    {
+        engine.shutdown().await;
+        return Err(error);
+    }
     let gateway = match Gateway::new(engine.clone(), name, &token, http) {
         Ok(gateway) => gateway,
         Err(error) => {
@@ -95,6 +101,7 @@ async fn serve(
     monitor: Option<scanner_platform::power::Monitor>,
 ) -> Result<()> {
     let stop = CancellationToken::new();
+    let maintenance = tokio::spawn(crate::maintenance::run(engine.clone(), stop.clone()));
     let power = crate::power::run(engine.clone(), monitor, stop.clone());
     tokio::pin!(power);
     let server = gateway.serve(listener, stop.clone());
@@ -122,7 +129,8 @@ async fn serve(
     };
     stop.cancel();
     engine.shutdown().await;
-    result
+    let maintained = maintenance.await.map_err(config);
+    result.and(maintained)
 }
 
 async fn build_engine(

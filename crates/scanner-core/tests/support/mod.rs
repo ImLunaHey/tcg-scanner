@@ -20,13 +20,25 @@ pub struct Call {
     pub cancel: CancellationToken,
     pub finish: oneshot::Sender<bool>,
 }
+pub struct ButtonCall {
+    pub cancel: CancellationToken,
+    pub finish: oneshot::Sender<Result<()>>,
+}
 pub struct Driver {
+    buttons: mpsc::UnboundedSender<ButtonCall>,
     calls: mpsc::UnboundedSender<Call>,
     inspections: mpsc::UnboundedSender<oneshot::Sender<bool>>,
     discovery: std::sync::Mutex<Option<(oneshot::Sender<()>, oneshot::Receiver<()>)>>,
 }
 #[async_trait]
 impl ScannerBackend for Driver {
+    async fn wait_for_scan_button(&self, _: &str, cancel: CancellationToken) -> Result<()> {
+        let (finish, finished) = oneshot::channel();
+        self.buttons
+            .send(ButtonCall { cancel, finish })
+            .unwrap_or_else(|_| panic!("Button receiver closed"));
+        finished.await.unwrap()
+    }
     async fn devices(&self) -> Result<Vec<Device>> {
         let gate = self.discovery.lock().unwrap().take();
         if let Some((entered, release)) = gate {
@@ -139,6 +151,7 @@ pub struct Harness {
     pub engine: Arc<Engine>,
     pub calls: mpsc::UnboundedReceiver<Call>,
     pub inspections: mpsc::UnboundedReceiver<oneshot::Sender<bool>>,
+    pub buttons: mpsc::UnboundedReceiver<ButtonCall>,
     pub directory: tempfile::TempDir,
 }
 impl Harness {
@@ -169,8 +182,10 @@ impl Harness {
     ) -> Self {
         let directory = tempfile::tempdir().unwrap();
         let (tx, calls) = mpsc::unbounded_channel();
+        let (button_tx, buttons) = mpsc::unbounded_channel();
         let (inspections_tx, inspections) = mpsc::unbounded_channel();
         let driver = Arc::new(Driver {
+            buttons: button_tx,
             calls: tx,
             inspections: inspections_tx,
             discovery: Default::default(),
@@ -187,6 +202,7 @@ impl Harness {
             engine,
             calls,
             inspections,
+            buttons,
             directory,
         }
     }

@@ -610,3 +610,17 @@ required-SMB rejection of local directories, and configuration loading.
 The HTTPS Rune flow also verifies the storage status and explicit reopen action.
 The complete workspace passes 254 tests with native SANE/TWAIN fixtures and real
 Tesseract enabled, plus strict native and WebAssembly Clippy at this checkpoint.
+
+Opt-in automatic physical-button scanning now runs in the coordinator. Set
+`scanButtonDevice` to a native scanner ID in the Rust service JSON; the driver must
+already have button monitoring enabled. The service never changes vendor safety
+settings to enable it. One press creates a 600-DPI prepared duplex PNG job, with a
+five-second rearm delay. Scan/inspection/camera handoffs cancel the listener and
+wait for confirmed native cleanup. Closure failures quarantine hardware; sleep
+and shutdown drain idle listeners. A transition generation prevents old presses
+from creating delayed feeds after ownership changes. Tests cover press/debounce,
+client handoff, inspection, failed closure, sleep and shutdown. Periodic discovery
+and recovery now run independently of power notifications. Recovery waits until
+faulted queued jobs have drained, so reconnect cannot restart an earlier feed.
+SANE/TWAIN explicitly report unsupported button monitoring; real button hardware
+validation remains outstanding.

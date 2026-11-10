@@ -33,6 +33,7 @@ impl Engine {
                     || !state.queue.is_empty()
                     || state.inspecting
                     || state.camera
+                    || state.button.is_some()
                     || engine.transfer.borrow().is_some()
                 {
                     return Err(ScannerError::new(
@@ -41,6 +42,7 @@ impl Engine {
                     ));
                 }
                 state.inspecting = true;
+                state.button_epoch = state.button_epoch.wrapping_add(1);
             }
             let root = engine.root.clone();
             let result = tokio::task::spawn_blocking(move || {

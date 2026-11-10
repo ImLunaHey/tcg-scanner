@@ -35,13 +35,15 @@ impl Engine {
         tokio::spawn(async move {
             // A panic in an adapter must still release the reservation and wake
             // queued scans/shutdown. Native worker permits outlive cancelled callers.
-            let result =
-                tokio::spawn(
-                    async move { recognizer.recognize_camera(bytes, request.language).await },
-                )
+            let result = match engine.release_button().await {
+                Ok(()) => tokio::spawn(async move {
+                    recognizer.recognize_camera(bytes, request.language).await
+                })
                 .await
                 .map_err(crate::image_access::worker)
-                .and_then(|v| v);
+                .and_then(|v| v),
+                Err(error) => Err(error),
+            };
             drop(permit);
             engine.state.lock().await.camera = false;
             engine.wake.notify_one();

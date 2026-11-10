@@ -69,7 +69,8 @@ impl Engine {
                 };
                 return Next::Cancel(work, error);
             }
-            return if state.stopping && !state.inspecting && !state.camera {
+            return if state.stopping && !state.inspecting && !state.camera && state.button.is_none()
+            {
                 Next::Stop
             } else {
                 Next::Wait
@@ -102,6 +103,10 @@ impl Engine {
         result
     }
     async fn execute(&self, work: &mut Work, cancel: CancellationToken) {
+        if let Err(error) = self.release_button().await {
+            let _ = self.finish_queued(work, false, Some(error)).await;
+            return;
+        }
         if let Err(error) = self.transition(work, |record| {
             record.state = ScanState::Preparing;
             if record.started_at.is_none() {

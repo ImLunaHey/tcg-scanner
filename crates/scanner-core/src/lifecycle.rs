@@ -33,6 +33,10 @@ impl Engine {
                 state.manual_pause = true;
             }
             state.paused = true;
+            state.button_epoch = state.button_epoch.wrapping_add(1);
+            if let Some(button) = &state.button {
+                button.cancel.cancel();
+            }
             if let Some((_, cancel)) = &state.active {
                 cancel.cancel();
             }
@@ -110,7 +114,11 @@ impl Engine {
             tokio::pin!(changed);
             changed.as_mut().enable();
             let state = self.state.lock().await;
-            if state.active.is_none() && !state.inspecting && !state.camera {
+            if state.active.is_none()
+                && !state.inspecting
+                && !state.camera
+                && state.button.is_none()
+            {
                 return;
             }
             drop(state);

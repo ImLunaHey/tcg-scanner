@@ -24,6 +24,7 @@ pub(crate) struct Configuration {
     #[serde(default)]
     pub backend: Backend,
     pub driver_library: Option<PathBuf>,
+    pub scan_button_device: Option<String>,
     pub tesseract_library: Option<PathBuf>,
     pub trained_data: Option<PathBuf>,
 }
@@ -81,6 +82,16 @@ impl Configuration {
                     "Native library and data paths must be absolute and exist.",
                 ));
             }
+        }
+        if let Some(device) = &value.scan_button_device
+            && (device.is_empty()
+                || device.len() > 512
+                || device.contains('\0')
+                || matches!(value.backend, Backend::LibraryOnly))
+        {
+            return Err(config(
+                "Scan-button device must identify a native scanner (1–512 bytes).",
+            ));
         }
         value.storage.validate_shape()?;
         Ok(value)

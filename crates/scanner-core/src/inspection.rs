@@ -26,19 +26,9 @@ impl Engine {
         }
         // Device selection cannot open a session. Only a failed inspection leaves
         // closure unknown and requires quarantine.
-        let (result, uncertain) = match self.select_device(device_id.as_deref()).await {
-            Ok(device) => {
-                let backend = self.backend.clone();
-                let result = tokio::spawn(async move { backend.inspect(&device.id).await })
-                    .await
-                    .unwrap_or_else(|e| Err(ScannerError::new("capture", e.to_string())));
-                let uncertain = result
-                    .as_ref()
-                    .map(|r| r.session_opened && !r.session_closed)
-                    .unwrap_or(true);
-                (result, uncertain)
-            }
-            Err(error) => (Err(error), false),
+        let (result, uncertain) = match self.release_button().await {
+            Ok(()) => self.inspect_device(device_id).await,
+            Err(error) => (Err(error), true),
         };
         {
             let mut state = self.state.lock().await;
@@ -57,6 +47,23 @@ impl Engine {
         result
     }
 
+    async fn inspect_device(&self, device_id: Option<String>) -> (Result<Inspection>, bool) {
+        match self.select_device(device_id.as_deref()).await {
+            Ok(device) => {
+                let backend = self.backend.clone();
+                let result = tokio::spawn(async move { backend.inspect(&device.id).await })
+                    .await
+                    .unwrap_or_else(|e| Err(ScannerError::new("capture", e.to_string())));
+                let uncertain = result
+                    .as_ref()
+                    .map(|r| r.session_opened && !r.session_closed)
+                    .unwrap_or(true);
+                (result, uncertain)
+            }
+            Err(error) => (Err(error), false),
+        }
+    }
+
     pub async fn recover_connection(self: &Arc<Self>) -> bool {
         let engine = self.clone();
         tokio::spawn(async move {
@@ -70,6 +77,8 @@ impl Engine {
                     || state.stopping
                     || state.active.is_some()
                     || state.inspecting
+                    || state.button.is_some()
+                    || !state.queue.is_empty()
                 {
                     return false;
                 }

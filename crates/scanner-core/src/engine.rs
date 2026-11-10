@@ -17,6 +17,7 @@ use uuid::Uuid;
 
 pub struct Engine {
     pub(crate) backend: Arc<dyn ScannerBackend>,
+    pub(crate) scan_button: tokio::sync::OnceCell<String>,
     pub(crate) processor: Arc<dyn CardProcessor>,
     pub(crate) recognizer: Option<Arc<dyn CardRecognizer>>,
     pub(crate) staging: tokio::sync::OnceCell<Arc<dyn scanner_staging::Staging>>,
@@ -42,6 +43,9 @@ pub struct Engine {
 #[derive(Default)]
 pub(crate) struct State {
     pub camera: bool,
+    pub button: Option<crate::buttons::Reservation>,
+    pub next_button_attempt: Option<std::time::Instant>,
+    pub button_epoch: u64,
     pub queue: VecDeque<Work>,
     pub active: Option<(Uuid, CancellationToken)>,
     pub inspecting: bool,
@@ -90,6 +94,7 @@ impl Engine {
         let (done, _) = watch::channel(false);
         let engine = Arc::new(Self {
             backend,
+            scan_button: tokio::sync::OnceCell::new(),
             processor,
             recognizer,
             staging: tokio::sync::OnceCell::new(),
@@ -167,6 +172,10 @@ impl Engine {
             // owns the publication reservation. Accepted writes still drain below.
             let mut state = self.state.lock().await;
             state.stopping = true;
+            state.button_epoch = state.button_epoch.wrapping_add(1);
+            if let Some(button) = &state.button {
+                button.cancel.cancel();
+            }
             if let Some((_, cancel)) = &state.active {
                 cancel.cancel();
             }

@@ -12,21 +12,32 @@ impl Engine {
     pub async fn start_scan(self: &Arc<Self>, submission: ScanRequest) -> Result<ScanRecord> {
         let engine = self.clone();
         // A disconnected API caller must not strand a reserved batch outside the queue.
-        tokio::spawn(async move { engine.submit_start(submission).await })
+        tokio::spawn(async move { engine.submit_start(submission, None).await })
             .await
             .map_err(|e| ScannerError::new("storage", e.to_string()))?
     }
-    async fn submit_start(&self, submission: ScanRequest) -> Result<ScanRecord> {
+    pub(crate) async fn submit_button(
+        &self,
+        submission: ScanRequest,
+        epoch: u64,
+    ) -> Result<ScanRecord> {
+        self.submit_start(submission, Some(epoch)).await
+    }
+    async fn submit_start(
+        &self,
+        submission: ScanRequest,
+        from_button: Option<u64>,
+    ) -> Result<ScanRecord> {
         submission.validate()?;
         let _reservation = self.submissions.lock().await;
         if let Some(existing) = self.existing(&submission)? {
             return Ok(existing);
         }
-        self.state.lock().await.accepting()?;
+        self.check_submission(from_button).await?;
         let device = self.select_device(submission.device_id.as_deref()).await?;
         let mut request = submission.clone();
         let profile = self.resolve_settings(&device.id, &mut request)?;
-        self.state.lock().await.accepting()?;
+        self.check_submission(from_button).await?;
         let (root, database) = (self.root.clone(), self.database.clone());
         let mut store = tokio::task::spawn_blocking(move || -> Result<BatchStore> {
             let number = database.reserve_batch_number(request.request_id)?;
@@ -52,6 +63,12 @@ impl Engine {
         state.queue.push_back(Work::new(store));
         drop(state);
         self.wake.notify_one();
+        if from_button.is_some() {
+            let _ = self.database.event(
+                "scanner.button.jobCreated",
+                &serde_json::json!({"jobID":record.id,"deviceID":record.device.id}),
+            );
+        }
         Ok(record)
     }
     pub async fn continue_batch(
@@ -114,6 +131,23 @@ impl Engine {
         drop(state);
         self.wake.notify_one();
         Ok(record)
+    }
+    async fn check_submission(&self, from_button: Option<u64>) -> Result<()> {
+        let state = self.state.lock().await;
+        state.accepting()?;
+        if from_button.is_some()
+            && (from_button != Some(state.button_epoch)
+                || state.active.is_some()
+                || !state.queue.is_empty()
+                || state.inspecting
+                || state.camera)
+        {
+            return Err(ScannerError::new(
+                "busy",
+                "Button press overlapped another operation; no additional feed was queued.",
+            ));
+        }
+        Ok(())
     }
     fn existing(&self, request: &ScanRequest) -> Result<Option<ScanRecord>> {
         if self

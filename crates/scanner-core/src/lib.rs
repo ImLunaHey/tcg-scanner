@@ -37,3 +37,5 @@ mod camera;
 mod lifecycle;
 
 mod storage;
+
+mod buttons;
