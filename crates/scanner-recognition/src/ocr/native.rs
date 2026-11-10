@@ -32,6 +32,7 @@ type Tsv = unsafe extern "C" fn(Handle, c_int) -> *mut c_char;
 type FreeText = unsafe extern "C" fn(*const c_char);
 
 struct Api {
+    deadline: super::deadline::Api,
     _library: Library,
     create: Create,
     delete: Delete,
@@ -50,6 +51,7 @@ impl Api {
         unsafe {
             let library = Library::new(path).map_err(ocr_error)?;
             Ok(Self {
+                deadline: super::deadline::Api::load(&library)?,
                 create: *library.get(b"TessBaseAPICreate\0").map_err(ocr_error)?,
                 delete: *library.get(b"TessBaseAPIDelete\0").map_err(ocr_error)?,
                 init: *library.get(b"TessBaseAPIInit4\0").map_err(ocr_error)?,
@@ -72,6 +74,7 @@ impl Api {
 pub struct Tesseract {
     api: Api,
     handle: NonNull<c_void>,
+    deadline: Option<std::time::Instant>,
 }
 
 impl Tesseract {
@@ -88,7 +91,11 @@ impl Tesseract {
         // SAFETY: loaded create function takes no arguments and returns an owned API handle.
         let handle = NonNull::new(unsafe { (api.create)() })
             .ok_or_else(|| ocr_error("Tesseract initialization failed."))?;
-        let engine = Self { api, handle };
+        let engine = Self {
+            api,
+            handle,
+            deadline: None,
+        };
         let language = if language == "ko" { c"kor+eng" } else { c"eng" };
         // Dictionary loading is initialization-only; pass it before the model is loaded.
         let mut system = b"load_system_dawg\0".to_vec();
@@ -144,6 +151,9 @@ impl Tesseract {
         single_block: bool,
         words: bool,
     ) -> Result<Vec<RecognizedLine>> {
+        if let Some(deadline) = self.deadline {
+            super::deadline::remaining(deadline)?;
+        }
         let (width, height) = image.dimensions();
         if width == 0
             || height == 0
@@ -168,6 +178,11 @@ impl Tesseract {
             );
             (self.api.resolution)(self.handle.as_ptr(), 300);
             (self.api.segmentation)(self.handle.as_ptr(), if single_block { 6 } else { 11 });
+            if let Some(deadline) = self.deadline {
+                self.api
+                    .deadline
+                    .recognize(self.handle.as_ptr(), deadline)?;
+            }
             let text = (self.api.tsv)(self.handle.as_ptr(), 0);
             if text.is_null() {
                 return Err(ocr_error("Tesseract recognition failed."));
@@ -184,11 +199,38 @@ impl Tesseract {
     }
 }
 
+impl Tesseract {
+    /// Bound all subsequent OCR passes by one absolute operation deadline.
+    /// Native recognition cooperatively cancels through Tesseract's C monitor API.
+    pub fn set_deadline(&mut self, deadline: std::time::Instant) {
+        self.deadline = Some(deadline);
+    }
+}
+
 impl Drop for Tesseract {
     fn drop(&mut self) {
         // SAFETY: this is the sole owner, and the library is still loaded.
         unsafe {
             (self.api.delete)(self.handle.as_ptr());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn real_native_deadline_allows_a_frame_then_refuses_expired_work() {
+        let Some(library) = std::env::var_os("SCANNER_TESSERACT_LIBRARY") else {
+            return;
+        };
+        let data =
+            std::env::var_os("SCANNER_TESSERACT_DATA").expect("paired native test data path");
+        let mut ocr = Tesseract::new(Path::new(&library), Path::new(&data), "en").unwrap();
+        let frame = RgbImage::from_pixel(300, 400, image::Rgb([255, 255, 255]));
+        ocr.set_deadline(std::time::Instant::now() + std::time::Duration::from_secs(10));
+        assert!(ocr.recognize(&frame, false).unwrap().is_empty());
+        ocr.set_deadline(std::time::Instant::now() - std::time::Duration::from_secs(1));
+        assert_eq!(ocr.recognize(&frame, false).unwrap_err().kind, "timeout");
     }
 }
