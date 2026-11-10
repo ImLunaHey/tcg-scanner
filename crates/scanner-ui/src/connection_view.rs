@@ -43,6 +43,7 @@ pub fn login(s: &State, t: tok::Theme) -> El {
             .radius(16.)
             .fill(t.card)
             .child(text("Connect to Scanner").font(type_::TITLE).color(t.text))
+            .children(crate::camera::entry(t))
             .child(
                 text("Connect to your scanner service to browse saved cards and manage scans.")
                     .font(type_::BODY)

@@ -40,3 +40,52 @@ fn unavailable() -> ScannerError {
         "Browser fixture has no hardware or recognition backend.",
     )
 }
+
+#[async_trait::async_trait]
+impl scanner_core::backend::CardRecognizer for LibraryOnly {
+    async fn recognize(
+        &self,
+        _: &ScanRecord,
+        _: &scanner_types::images::OriginalImage,
+    ) -> Result<scanner_types::recognition::RecognitionEvidence> {
+        Err(unavailable())
+    }
+    async fn recognize_camera(
+        &self,
+        bytes: Vec<u8>,
+        _: scanner_types::cards::CardLanguage,
+    ) -> Result<scanner_types::camera::CameraIdentification> {
+        use scanner_types::{
+            camera::{CameraIdentification, CameraState},
+            cards::CardGame,
+            recognition::{CardCandidate, RecognitionEvidence},
+        };
+        let card = tokio::task::spawn_blocking(move || scanner_images::camera::extract(&bytes))
+            .await
+            .map_err(|e| ScannerError::new("fixture", e.to_string()))??;
+        if card.is_none() {
+            return Ok(CameraIdentification::empty(CameraState::NoCard));
+        }
+        Ok(CameraIdentification::from_evidence(
+            RecognitionEvidence {
+                candidates: vec![CardCandidate {
+                    id: "synthetic-camera".into(),
+                    name: "Synthetic camera card".into(),
+                    local_id: "001".into(),
+                    set_id: "fixture".into(),
+                    set_name: "Browser fixture".into(),
+                    official_set_count: Some(1),
+                    evidence: vec![
+                        "Synthetic browser lifecycle fixture; no OCR identity claim.".into(),
+                    ],
+                    category: None,
+                    types: None,
+                    available_finishes: vec![],
+                    extensions: Default::default(),
+                }],
+                ..Default::default()
+            },
+            CardGame::Pokemon,
+        ))
+    }
+}

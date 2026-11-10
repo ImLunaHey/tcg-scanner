@@ -6,6 +6,10 @@ use rune::{
 
 pub fn view(s: &State, cx: &mut Cx<State>) -> El {
     let t = tok::theme(cx.system_dark());
+    #[cfg(target_arch = "wasm32")]
+    if s.camera.enabled {
+        return crate::camera::view(s, t);
+    }
     if s.client.is_none() && !s.fixture {
         return crate::connection_view::login(s, t);
     }
@@ -62,6 +66,7 @@ fn batches(s: &State, t: tok::Theme) -> El {
         .gap(12.)
         .fill(t.card)
         .child(text("Scanner").font(type_::TITLE).color(t.text))
+        .children(crate::camera::entry(t))
         .child(crate::connection_view::button(
             "Batches",
             "nav-batches",

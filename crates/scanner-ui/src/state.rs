@@ -21,6 +21,8 @@ pub enum Page {
 }
 
 pub struct State {
+    #[cfg(target_arch = "wasm32")]
+    pub camera: crate::camera::Camera,
     pub exports: crate::exports::Exports,
     pub page: Page,
     pub valuation: crate::valuation::Valuation,
@@ -54,6 +56,8 @@ pub struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
+            #[cfg(target_arch = "wasm32")]
+            camera: Default::default(),
             exports: Default::default(),
             page: Page::Library,
             valuation: Default::default(),
@@ -88,6 +92,8 @@ impl Default for State {
 }
 impl State {
     pub fn setup(&mut self, waker: Waker) {
+        #[cfg(target_arch = "wasm32")]
+        self.camera.setup(waker.clone());
         self.exports.task.set_waker(waker.clone());
         self.collection.set_waker(waker.clone());
         self.ops.set_waker(waker.clone());
@@ -181,6 +187,10 @@ impl State {
         changed |= self.poll_valuation();
         changed |= self.poll_transfer();
         changed |= self.poll_export();
+        #[cfg(target_arch = "wasm32")]
+        {
+            changed |= self.camera.poll();
+        }
         if let Some(result) = self.connecting.take() {
             match result {
                 Ok(connected) => {

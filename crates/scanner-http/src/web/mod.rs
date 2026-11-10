@@ -105,9 +105,9 @@ impl WebAssets {
         Ok(response)
     }
 }
-const CSP: &str = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+const CSP: &str = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; media-src 'self' blob:; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 fn name(path: &crate::path::Path) -> String {
-    if path.parts.is_empty() {
+    if path.parts.is_empty() || path.parts == ["camera"] {
         "index.html".into()
     } else {
         path.parts.join("/")

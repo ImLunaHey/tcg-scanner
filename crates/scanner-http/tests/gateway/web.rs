@@ -85,6 +85,7 @@ async fn verified_browser_assets_are_public_but_do_not_bypass_api_or_origin_chec
             .is_empty()
     );
     for (method, target, expected) in [
+        ("GET", "/camera", 200),
         ("GET", "/api/v1/jobs", 401),
         ("POST", "/app.js", 401),
         ("GET", "/app.js?token=hidden", 400),

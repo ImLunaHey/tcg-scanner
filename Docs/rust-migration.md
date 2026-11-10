@@ -546,3 +546,26 @@ scanner foil thresholds; Korean never falls back to an English printing. The
 real installed Tesseract deadline test, isolated service/HTTP lifecycle tests,
 recognition suites and strict Clippy pass. No phone-image accuracy or physical
 camera validation is claimed yet; Rune camera capture remains in progress.
+
+Rune now owns the public `/camera` workflow in Rust/WebAssembly. Its separate
+anonymous client cannot carry library credentials. Capture bounds JPEGs to
+512 KiB, waits for steady frames, suppresses repeated matches, pauses in details,
+and supports English/Korean selection and verified torch changes. Leaving,
+backgrounding or losing connectivity stops the original camera tracks; a late
+permission response is also stopped. Frames/results remain in memory only.
+The HTTPS browser fixture exercises actual Rust extraction with synthetic
+catalogue results, not a claim of OCR accuracy. It verifies anonymous requests,
+lookup suspension, language changes, late cancellation, track release and empty
+browser storage. The existing library/export flow also passes over HTTPS. Full
+workspace tests and strict native/WebAssembly Clippy pass. PWA installation and
+physical phone validation remain outstanding.
+
+The pinned Rune runtime is vendored with one documented WebGPU probe fix:
+unsupported adapters are tested on a temporary canvas so WebGL fallback can use
+the real display. This fixes HTTPS browsers exposing WebGPU without a usable
+adapter. Both camera and library flows pass that fallback. Remaining Rune sibling
+crates retain the same Git revision.
+
+A Linux CI staging retry race is fixed: final receipt publication and releasing
+the active transfer now share the submission reservation with retry admission.
+An immediate retry cannot observe a terminal receipt alongside stale ownership.
