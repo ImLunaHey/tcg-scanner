@@ -378,12 +378,16 @@ impl<S: 'static> ApplicationHandler<Wake> for Browser<S> {
                     Err(e) => web_sys::console::warn_2(&format!("rune: font {url} did not load:").into(), &e),
                 }
             }
+            // Publish before waking: winit may dispatch a local user event
+            // synchronously. Waking first can consume Ready before the GPU exists
+            // and leave the first frame permanently uninitialized.
+            *pending.borrow_mut() = Some((result, loaded));
             // A loop that has closed was quit while the GPU started.
             if proxy.send_event(Wake::Ready).is_err() {
-                if let Ok((gpu, _)) = result { gpu.device.destroy(); }
-                return;
+                if let Some((Ok((gpu, _)), _)) = pending.borrow_mut().take() {
+                    gpu.device.destroy();
+                }
             }
-            *pending.borrow_mut() = Some((result, loaded));
         });
     }
 

@@ -130,7 +130,9 @@ pub fn file_type(name: &str) -> Result<(&'static str, usize)> {
         Some("html") if name == "index.html" => Ok(("text/html; charset=utf-8", 65536)),
         Some("js") => Ok(("text/javascript; charset=utf-8", 2 * 1024 * 1024)),
         Some("ttf") => Ok(("font/ttf", 2 * 1024 * 1024)),
-        Some("txt") if name == "Inter-LICENSE.txt" => Ok(("text/plain; charset=utf-8", 65536)),
+        Some("txt") if matches!(name, "Inter-LICENSE.txt" | "NotoSansKR-LICENSE.txt") => {
+            Ok(("text/plain; charset=utf-8", 65536))
+        }
         Some("css") => Ok(("text/css; charset=utf-8", 65536)),
         Some("webmanifest") if name == "camera.webmanifest" => {
             Ok(("application/manifest+json", 8192))

@@ -1,2 +1,4 @@
 # Preserve the pinned upstream dependency byte-for-byte, including its whitespace.
 vendor/rune/** -text -whitespace
+# Preserve the upstream font license verbatim, including its trailing whitespace.
+crates/scanner-ui/assets/NotoSansKR-LICENSE.txt -whitespace

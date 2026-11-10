@@ -67,3 +67,11 @@ synchronous, including offline worker restarts. A failed camera navigation shows
 an offline explanation; API requests, camera frames and image downloads are not
 intercepted. No CacheStorage, IndexedDB or browser storage is created. Browser
 installation policy can disable registration without blocking online camera use.
+
+The UI embeds an unmodified, pinned Noto Sans KR fallback alongside Inter, so
+Korean card names render without system fonts or a CDN. Its SIL Open Font License
+ships in the verified web bundle; provenance and SHA-256 are in
+`crates/scanner-ui/assets/README.md`. The synthetic browser fixture includes Korean
+text, and its rendered screenshot was checked. `startup.mjs` exercises three cold
+browser contexts. Startup diagnostics preserve the HTTP status, console failures
+and a screenshot if the first Rune frame does not appear.

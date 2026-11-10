@@ -15,7 +15,14 @@ try {
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   page.on('request', request => { if (request.url() === `${origin}/rpc`) methods.push(request.postDataJSON().method); });
   await page.goto(origin, { waitUntil: 'networkidle', timeout: 15000 });
-  const label = await page.getByText('Access token', { exact: true }).boundingBox();
+  const label = await page.getByText('Access token', { exact: true }).boundingBox().catch(async error => {
+    console.error(JSON.stringify({ startupErrors: errors, startupText: await page.locator('body').innerText() }));
+    if (screenshots) {
+      await mkdir(screenshots, { recursive: true });
+      await page.screenshot({ path: join(screenshots, 'startup-failure.png') });
+    }
+    throw error;
+  });
   if (!label) throw new Error('Missing credential field label');
   // Rune's text entry is drawn on the canvas; wait for its secure native input bridge.
   await page.mouse.click(label.x + 80, label.y + label.height + 40);
@@ -26,7 +33,7 @@ try {
     page.getByRole('button', { name: 'Connect', exact: true }).dispatchEvent('click'),
   ]).then(([response]) => response.json());
   if (!thumbnail.result?.sha256) throw new Error('The service did not return a verified thumbnail');
-  await page.getByText('Browser test card', { exact: true }).first().waitFor();
+  await page.getByText('Browser test card · 피카츄', { exact: true }).first().waitFor();
   const mark = page.getByRole('button', { name: 'Inspect possible mark 1', exact: true });
   await mark.first().dispatchEvent('click');
   await page.getByRole('button', { name: 'Show whole image', exact: true }).waitFor();
@@ -73,7 +80,7 @@ try {
   if (guide.result?.currency !== 'GBP' || guide.result?.pricedCount !== 0 || guide.result?.lowPence != null)
     throw new Error('An unrecognized synthetic pair must not receive a market price');
   await page.getByText('Saved batch market guide', { exact: true }).waitFor({ state: 'attached' });
-  await page.getByRole('button', { name: 'Browser test card · Browser fixture 001', exact: true }).dispatchEvent('click');
+  await page.getByRole('button', { name: 'Browser test card · 피카츄 · Browser fixture 001', exact: true }).dispatchEvent('click');
   await page.getByRole('button', { name: 'Browser visual card · Browser fixture 002', exact: true }).waitFor();
   await page.getByText('Similar artwork; verify the printed set and number.', { exact: true }).waitFor();
   const visualReview = await Promise.all([
@@ -83,7 +90,7 @@ try {
   if (visualReview.result?.selectedCardID !== 'fixture-visual' || visualReview.result?.state !== 'confirmed')
     throw new Error('Explicit visual review did not preserve the chosen printing');
   await page.getByRole('button', { name: 'Browser visual card · Browser fixture 002', exact: true }).dispatchEvent('click');
-  await page.getByRole('button', { name: 'Browser test card · Browser fixture 001', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Browser test card · 피카츄 · Browser fixture 001', exact: true }).waitFor();
   await Promise.all([
     response(page, 'v1.images.review'),
     page.getByRole('button', { name: 'Confirm card', exact: true }).dispatchEvent('click'),

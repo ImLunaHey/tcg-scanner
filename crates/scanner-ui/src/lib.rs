@@ -4,6 +4,7 @@ compile_error!("The Rune browser UI must be compiled without wasm atomics.");
 mod api;
 mod collection;
 mod connection_view;
+mod fonts;
 mod library;
 mod operations;
 mod printed;
@@ -18,6 +19,7 @@ pub fn start() {
     #[cfg(target_arch = "wasm32")]
     camera::register_worker();
     rune::run(rune::AppSpec {
+        fonts: fonts::FONTS,
         #[cfg(not(target_arch = "wasm32"))]
         scenes: &[("saved", state::State::saved_scene)],
         setup: Some(state::State::setup),

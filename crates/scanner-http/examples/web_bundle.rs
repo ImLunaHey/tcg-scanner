@@ -21,6 +21,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     ] {
         std::fs::copy(templates.join(name), output.join(name))?;
     }
+    std::fs::copy(
+        templates.join("../assets/NotoSansKR-LICENSE.txt"),
+        output.join("NotoSansKR-LICENSE.txt"),
+    )?;
     camera::write(&output)?;
     let mut files = BTreeMap::new();
     collect(&output, &output, &mut files)?;

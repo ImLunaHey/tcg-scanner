@@ -720,3 +720,19 @@ WASM Clippy, formatting and the modular-structure audit pass. The private packag
 smoke check confirms actual English OCR initialization and mounted-share access;
 Korean data is explicitly reported absent on this development machine rather
 than silently falling back to English. No physical scanner was opened.
+
+The final Rune portability pass embeds a licensed Korean fallback font and
+checks actual Hangul rendering. Linux font discovery uses Fontique's in-process
+system database instead of `fc-list`/`fc-match`. The pinned web runtime publishes
+GPU readiness before waking its event loop. Cold-start testing initially exposed
+intermittent fixture-start timeouts; the new diagnostic records navigation status
+and a screenshot on failure. Subsequent three-context cold runs and the complete
+Korean-text library, camera and offline-install flows pass with no console errors
+or persistent application storage. These Chromium results do not establish
+physical phone/browser coverage. Vendored changes are recorded in SCANNER-PATCH.md.
+
+A further ten fresh Chromium processes render the credential screen successfully
+with the final font bundle (roughly one second each). The final native/web package
+also installs into a new private cache directory and passes its mounted-share,
+credential, web-manifest and actual Tesseract diagnostic checks. The live service
+and ledger remain unchanged.

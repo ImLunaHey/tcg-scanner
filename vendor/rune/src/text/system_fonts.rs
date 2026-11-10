@@ -35,21 +35,27 @@ const SYSTEM_MONO_FILES: &[&str] = &["sfnsmono", "menlo"];
 const SYSTEM_MONO_FAMILIES: &[&str] = &["Cascadia Mono", "Consolas", "Courier New"];
 #[cfg(windows)]
 const SYSTEM_MONO_FILES: &[&str] = &["cascadiamono", "consola", "cour"];
-// After fontconfig's own answer (`fontconfig_monospace`).
+// After the system font database's own answer (`fontconfig_monospace`).
 #[cfg(not(any(target_vendor = "apple", windows)))]
 const SYSTEM_MONO_FAMILIES: &[&str] = &["DejaVu Sans Mono", "Liberation Mono", "Noto Sans Mono", "Ubuntu Mono"];
 #[cfg(not(any(target_vendor = "apple", windows)))]
 const SYSTEM_MONO_FILES: &[&str] = &["dejavusansmono", "liberationmono", "notosansmono", "ubuntumono"];
 
-/// The family and file fontconfig resolves `monospace` to, asked once per process.
-#[cfg(all(unix, not(target_vendor = "apple"), not(target_os = "android")))]
+/// The family and file the native font database resolves `monospace` to.
+#[cfg(not(target_arch = "wasm32"))]
 fn fontconfig_monospace() -> Option<(String, std::path::PathBuf)> {
     static ANSWER: std::sync::OnceLock<Option<(String, std::path::PathBuf)>> = std::sync::OnceLock::new();
     ANSWER.get_or_init(|| {
-        let out = std::process::Command::new("fc-match").args(["--format=%{family[0]}\n%{file}", "monospace"]).output().ok()?;
-        let out = String::from_utf8(out.stdout).ok()?;
-        let (family, file) = out.split_once('\n')?;
-        (!family.is_empty() && !file.is_empty()).then(|| (family.to_owned(), file.trim().into()))
+        use parley::fontique::{CollectionOptions, SourceKind};
+        let mut collection = Collection::new(CollectionOptions { shared: false, system_fonts: true });
+        let id = collection.generic_families(parley::GenericFamily::Monospace).next()?;
+        let name = collection.family_name(id)?.to_owned();
+        let family = collection.family(id)?;
+        let file = family.fonts().iter().find_map(|font| match &font.source().kind {
+            SourceKind::Path(path) => Some(path.as_ref().to_owned()),
+            _ => None,
+        })?;
+        Some((name, file))
     }).clone()
 }
 
@@ -120,7 +126,7 @@ pub(super) const CJK_FONT_FILES: [&str; 30] = [
 /// Makes text in scripts the app's fonts don't cover render instead of drawing tofu. Families
 /// the app registered beyond its sans and mono (`AppSpec::fonts`) come first, then the CJK fonts
 /// installed on the system (found by file name in the platform's font directories, including
-/// `$XDG_DATA_HOME/fonts` and `$XDG_DATA_DIRS/*/fonts`, and on Linux every file `fc-list` names).
+/// `$XDG_DATA_HOME/fonts` and `$XDG_DATA_DIRS/*/fonts`, and on Linux the in-process system font database).
 pub(super) fn register_cjk_fallbacks(collection: &mut Collection, loaded: &mut LoadedFiles, registered: &[FamilyId], families: (&str, &str)) {
     let primary = [collection.family_id(families.0), collection.family_id(families.1)];
     let mut fallbacks: Vec<FamilyId> = Vec::new();
@@ -291,13 +297,11 @@ fn walk_font_dirs() -> Vec<(String, std::path::PathBuf)> {
             }
         }
     }
-    // Fontconfig knows fonts outside these directories, such as NixOS's store paths.
+    // The native database knows fonts outside these directories, including NixOS.
     #[cfg(all(unix, not(target_vendor = "apple"), not(target_os = "android")))]
-    if let Ok(out) = std::process::Command::new("fc-list").arg("--format=%{file}\n").output() {
-        for path in String::from_utf8_lossy(&out.stdout).lines().map(std::path::PathBuf::from) {
-            if let Some(name) = font_file_name(&path) && seen.insert(path.clone()) {
-                found.push((name, path));
-            }
+    for path in system_collection_files() {
+        if let Some(name) = font_file_name(&path) && seen.insert(path.clone()) {
+            found.push((name, path));
         }
     }
     found
@@ -308,4 +312,21 @@ fn walk_font_dirs() -> Vec<(String, std::path::PathBuf)> {
 fn font_file_name(path: &std::path::Path) -> Option<String> {
     let name = path.file_name()?.to_string_lossy().to_lowercase();
     [".ttf", ".otf", ".ttc", ".otc"].iter().any(|ext| name.ends_with(ext)).then(|| name.replace([' ', '.'], ""))
+}
+
+
+#[cfg(not(target_arch = "wasm32"))]
+fn system_collection_files() -> Vec<std::path::PathBuf> {
+    use parley::fontique::{CollectionOptions, SourceKind};
+    let mut collection = Collection::new(CollectionOptions { shared: false, system_fonts: true });
+    let names: Vec<String> = collection.family_names().take(8192).map(str::to_owned).collect();
+    let mut files = Vec::new();
+    for family in names.into_iter().filter_map(|name| collection.family_by_name(&name)) {
+        for font in family.fonts() {
+            if let SourceKind::Path(path) = &font.source().kind {
+                files.push(path.as_ref().to_owned());
+            }
+        }
+    }
+    files
 }
