@@ -211,7 +211,7 @@ mod tests {
     fn rejects_directory_symlinks_and_forged_paths() {
         let root = tempfile::tempdir().unwrap();
         let storage = StorageRoot::open(root.path()).unwrap();
-        let mut record = ScanRecord::new(
+        let record = ScanRecord::new(
             Device::default(),
             ScanRequest::default(),
             storage.path().join("../outside").to_string_lossy().into(),
@@ -219,6 +219,7 @@ mod tests {
         assert!(storage.save_manifest(&record).is_err());
         #[cfg(unix)]
         {
+            let mut record = record;
             let outside = tempfile::tempdir().unwrap();
             std::os::unix::fs::symlink(outside.path(), root.path().join("B-001")).unwrap();
             record.output_directory = storage.path().join("B-001").to_string_lossy().into();
