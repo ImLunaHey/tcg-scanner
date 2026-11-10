@@ -10,11 +10,30 @@ publish = false
 [dependencies]
 rune.workspace = true
 scanner-types.workspace = true
-scanner-store.workspace = true
-scanner-images.workspace = true
 serde_json.workspace = true
-dirs.workspace = true
+
+scanner-client.workspace = true
+serde.workspace = true
+uuid.workspace = true
+base64.workspace = true
+sha2.workspace = true
+futures-channel = "0.3"
+futures-util = "0.3"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rune = { workspace = true, features = ["accessibility", "dbus", "metal-backend", "native-file-dialog"] }
+scanner-images.workspace = true
 scanner-files.workspace = true
+scanner-platform.workspace = true
+tokio.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+rune = { workspace = true, features = ["webgl"] }
+# Rune's GPU instance cache requires Send/Sync. Browser UI is single-threaded;
+# wgpu only enables these implementations when wasm atomics are disabled.
+wgpu = { version = "~30.0.1", default-features = false, features = ["fragile-send-sync-non-atomic-wasm"] }
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["Window", "Location"] }
 
 [lints]
 workspace = true

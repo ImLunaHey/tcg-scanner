@@ -1,13 +1,9 @@
+#[cfg(not(target_arch = "wasm32"))]
+use scanner_types::error::{Result, ScannerError};
 use scanner_types::images::OriginalImage;
-use scanner_types::{
-    error::{Result, ScannerError},
-    scan::ScanRecord,
-};
+use scanner_types::scan::ScanRecord;
 use serde_json::Value;
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 pub struct Card {
     pub sequence: u32,
@@ -18,21 +14,28 @@ pub struct Card {
     pub source: ImageSource,
 }
 
-pub fn read_library() -> Result<Vec<ScanRecord>> {
-    if let Some(path) = std::env::var_os("SCANNER_UI_MANIFEST") {
-        let bytes = std::fs::read(path).map_err(|e| ScannerError::new("storage", e.to_string()))?;
-        let record = serde_json::from_slice(&bytes)
-            .map_err(|e| ScannerError::new("storage", e.to_string()))?;
-        return Ok(vec![record]);
+#[cfg(not(target_arch = "wasm32"))]
+pub fn read_fixture() -> Result<Vec<ScanRecord>> {
+    let path = std::env::var_os("SCANNER_UI_MANIFEST").ok_or_else(|| {
+        ScannerError::new(
+            "storage",
+            "Set SCANNER_UI_MANIFEST for the saved fixture scene.",
+        )
+    })?;
+    use std::io::Read;
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)
+        .and_then(|f| f.take(16 * 1024 * 1024 + 1).read_to_end(&mut bytes))
+        .map_err(|e| ScannerError::new("storage", e.to_string()))?;
+    if bytes.len() > 16 * 1024 * 1024 {
+        return Err(ScannerError::new(
+            "storage",
+            "Fixture manifest exceeds 16 MiB.",
+        ));
     }
-    let path = std::env::var_os("SCANNER_DATABASE")
-        .map(PathBuf::from)
-        .or_else(|| dirs::data_local_dir().map(|p| p.join("Scanner/state/scanner.sqlite")))
-        .ok_or_else(|| {
-            ScannerError::new("storage", "Application data directory is unavailable.")
-        })?;
-    // Read-only until the service owns all mutations; never initializes or migrates a live ledger.
-    scanner_store::Database::read_only(&path)?.jobs(100, 0)
+    let record =
+        serde_json::from_slice(&bytes).map_err(|e| ScannerError::new("storage", e.to_string()))?;
+    Ok(vec![record])
 }
 
 pub fn cards(record: &ScanRecord) -> Vec<Card> {
@@ -58,17 +61,13 @@ pub fn cards(record: &ScanRecord) -> Vec<Card> {
                     None => candidates.first(),
                 }
             });
-            let image = record
-                .processed_images
-                .as_ref()
-                .and_then(|items| {
-                    items
-                        .iter()
-                        .rev()
-                        .find(|edit| edit.request.sequence == original.sequence)
-                })
-                .map(|edit| &edit.image)
-                .unwrap_or(original);
+            let edit = record.processed_images.as_ref().and_then(|items| {
+                items
+                    .iter()
+                    .rev()
+                    .find(|edit| edit.request.sequence == original.sequence)
+            });
+            let image = edit.map(|e| &e.image).unwrap_or(original);
             Card {
                 sequence: original.sequence,
                 name: candidate
@@ -100,6 +99,7 @@ pub fn cards(record: &ScanRecord) -> Vec<Card> {
                 source: ImageSource {
                     record: record.clone(),
                     image: image.clone(),
+                    edit: edit.map(|e| e.request.id),
                 },
             }
         })
@@ -114,11 +114,20 @@ fn field<'a>(value: &'a Value, key: &str) -> &'a str {
 pub struct ImageSource {
     record: Arc<ScanRecord>,
     image: OriginalImage,
+    edit: Option<uuid::Uuid>,
 }
 
 impl ImageSource {
+    pub fn params(&self) -> Value {
+        let mut value = serde_json::json!({"jobID":self.record.id,"sequence":self.image.sequence,"format":"png"});
+        if let Some(edit) = self.edit {
+            value["editID"] = serde_json::json!(edit);
+        }
+        value
+    }
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn thumbnail(self) -> Result<Vec<u8>> {
-        let parent = Path::new(&self.record.output_directory)
+        let parent = std::path::Path::new(&self.record.output_directory)
             .parent()
             .ok_or_else(|| ScannerError::new("storage", "Saved batch path is invalid."))?;
         let root = scanner_files::StorageRoot::open(parent)?;

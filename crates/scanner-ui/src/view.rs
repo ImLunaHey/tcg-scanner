@@ -6,6 +6,9 @@ use rune::{
 
 pub fn view(s: &State, cx: &mut Cx<State>) -> El {
     let t = tok::theme(cx.system_dark());
+    if s.client.is_none() && !s.fixture {
+        return crate::connection_view::login(s, t);
+    }
     row()
         .key("scanner")
         .w_full()
@@ -20,7 +23,7 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
                 .px(24.)
                 .py(24.)
                 .gap(20.)
-                .child(text("Card library").font(type_::TITLE).color(t.text))
+                .child(crate::connection_view::toolbar(s, t))
                 .child(
                     text(
                         s.error
@@ -80,14 +83,14 @@ fn batches(s: &State, t: tok::Theme) -> El {
                             t.card
                         })
                         .role("button")
-                        .label(batch.batch_label())
+                        .label(batch_label(batch))
                         .focusable(true)
                         .on_press(move |s: &mut State| s.select_batch(i))
-                        .child(text(batch.batch_label()).font(type_::LABEL).color(t.text))
+                        .child(text(batch_label(batch)).font(type_::LABEL).color(t.text))
                         .child(
                             text(format!(
                                 "{} images · {}",
-                                batch.images.len(),
+                                batch.progress.images_saved,
                                 batch.state.as_str()
                             ))
                             .font(type_::LABEL)
@@ -113,6 +116,7 @@ fn card_list(s: &State, t: tok::Theme) -> El {
                 .border(1., t.card_border)
                 .child(
                     text_input(&s.query, type_::BODY)
+                        .w_full()
                         .key("search")
                         .label("Search cards")
                         .placeholder("Search cards…", t.text_secondary)
@@ -228,6 +232,13 @@ fn detail(s: &State, t: tok::Theme) -> El {
     )
 }
 
+fn batch_label(batch: &scanner_types::service::JobSummary) -> String {
+    batch
+        .batch_number
+        .map(|n| format!("B-{n:03}"))
+        .unwrap_or_else(|| batch.id.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -238,6 +249,7 @@ mod tests {
     #[test]
     fn selecting_another_batch_updates_the_library() {
         let mut state = State::default();
+        state.fixture = true;
         for number in 1..=2 {
             let mut batch = ScanRecord::new(
                 Device::default(),
@@ -245,7 +257,7 @@ mod tests {
                 "/unavailable".into(),
             );
             batch.batch_number = Some(number);
-            state.batches.push(batch);
+            state.batches.push((&batch).into());
         }
         let mut rt = rune::Runtime::new(
             state,

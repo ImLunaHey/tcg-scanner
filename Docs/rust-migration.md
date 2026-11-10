@@ -334,3 +334,18 @@ caching, aborts cancelled/timed-out work and reads response streams with the sam
 16 MiB bound. Native TCP gateway tests continue to pass. Browser execution and the
 Rune web application remain to be validated; a successful wasm check alone does
 not establish browser runtime parity.
+
+Rune now uses the Rust service for paginated batch lists, selected records and
+verified PNG previews. Its secure connection screen retains credentials only in
+memory; native launches can use `SCANNER_TOKEN_FILE` and `SCANNER_UI_ENDPOINT`.
+The explicit `SCANNER_UI_MANIFEST` development scene remains read-only. Normal UI
+startup no longer opens the live SQLite ledger directly. Cancellable async slots
+work with native Tokio and browser tasks, and tests reject stale selection results,
+corrupt previews and misleading/oversized PNG dimensions.
+
+Native tests, strict Clippy, a saved B-001 headless snapshot and wasm32 checks pass.
+Rune's pinned GPU cache requires wgpu's documented
+[`fragile-send-sync-non-atomic-wasm`](https://docs.rs/wgpu/30.0.1/wgpu/#other)
+feature in its single-threaded browser build; the UI explicitly rejects wasm atomics.
+Desktop-only Rune features and file/image dependencies are target-gated. Browser
+runtime rendering, hosted assets and service mutations are subsequent work.
