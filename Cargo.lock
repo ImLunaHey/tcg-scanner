@@ -4282,6 +4282,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "scanner-staging"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "reqwest",
+ "scanner-types",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "scanner-store"
 version = "0.1.0"
 dependencies = [

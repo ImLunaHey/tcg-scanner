@@ -484,3 +484,9 @@ panel. It refreshes pending prices, cancels stale requests when selection or
 review changes, and renders missing prices as unavailable. Native and WebAssembly
 Clippy pass; the browser flow verifies an unpriced synthetic card remains
 unpriced after review, alongside editing, inventory and profile operations.
+
+`scanner-staging` now provides the Store protocol client and resync ownership
+rules in-process. Bounded HTTPS requests reject redirects; updates and paired
+photo uploads carry revisions. Tests cover lost-response recovery, mixed
+acknowledged fields, preservation of reviewer edits/photos, response limits and
+redacted upstream failures. Transfer planning and service orchestration follow.
