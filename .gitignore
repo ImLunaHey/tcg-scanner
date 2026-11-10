@@ -1,3 +1,4 @@
+# Retired build artifacts may remain locally; no legacy source is shipped.
 .build/
 .DS_Store
 Diagnostics/
@@ -9,3 +10,6 @@ Web/dist/
 Web/test-results/
 Web/playwright-report/
 Web/*.tsbuildinfo
+Tools/RecognitionBench/node_modules/
+/target/
+Tools/NativeUIWebTests/node_modules/

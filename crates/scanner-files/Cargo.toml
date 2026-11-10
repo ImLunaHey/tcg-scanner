@@ -1,0 +1,33 @@
+[package]
+name = "scanner-files"
+description = "Capability-bounded scan file storage and source integrity"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+scanner-types.workspace = true
+cap-std.workspace = true
+cap-fs-ext.workspace = true
+sha2.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+serde.workspace = true
+url.workspace = true
+libc.workspace = true
+image.workspace = true
+png.workspace = true
+tiff.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_NetworkManagement_WNet"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+scanner-images.workspace = true
+
+[lints]
+workspace = true

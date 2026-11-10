@@ -1,5 +1,9 @@
 # B-045 capture and automatic processing check
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 Validated on 6 November 2026 against saved fi-8170 captures. Batch ID:
 `DFD89430-E806-4ABC-A7EA-4EAAEAFC086E`.
 

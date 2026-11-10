@@ -1,4 +1,8 @@
 Current installation: image storage is configured as `/Volumes/scans` on
+
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
 `smb://lake/scans`. See [storage configuration](storage.md), including the separate
 macOS network-volume permission required by the background service. Local SQLite
 metadata stays in Application Support. Older examples of `~/Scans` below describe

@@ -1,0 +1,28 @@
+[package]
+name = "scanner-recognition"
+description = "In-process portable text and visual card recognition"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+scanner-catalogue.workspace = true
+tokio.workspace = true
+scanner-types.workspace = true
+scanner-images.workspace = true
+image.workspace = true
+libloading.workspace = true
+ort.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+regex.workspace = true
+unicode-normalization.workspace = true
+
+[dev-dependencies]
+async-trait.workspace = true
+
+[lints]
+workspace = true

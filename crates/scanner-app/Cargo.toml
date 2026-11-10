@@ -1,0 +1,55 @@
+[package]
+name = "scanner-app"
+description = "Rust scanner service and command-line application entry points"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+[[bin]]
+name = "scanner-service"
+path = "src/bin/service.rs"
+[[bin]]
+name = "scanner"
+path = "src/bin/scanner.rs"
+[[bin]]
+name = "scanner-mcp"
+path = "src/bin/mcp.rs"
+[[bin]]
+name = "scanner-index"
+path = "src/bin/index.rs"
+[[bin]]
+name = "scanner-setup"
+path = "src/bin/setup.rs"
+[dependencies]
+sha2.workspace = true
+dirs.workspace = true
+cap-std.workspace = true
+cap-fs-ext.workspace = true
+tempfile.workspace = true
+chrono.workspace = true
+scanner-staging.workspace = true
+scanner-pricing.workspace = true
+scanner-catalogue.workspace = true
+scanner-recognition.workspace = true
+scanner-mcp.workspace = true
+scanner-core.workspace = true
+scanner-device.workspace = true
+scanner-store.workspace = true
+scanner-files.workspace = true
+scanner-types.workspace = true
+scanner-platform = { workspace = true, features = ["power"] }
+scanner-http.workspace = true
+scanner-client.workspace = true
+clap = { version = "4.6.7", features = ["derive", "env"] }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+async-trait.workspace = true
+uuid.workspace = true
+[lints]
+workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Registry", "Win32_Security"] }

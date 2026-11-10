@@ -1,4 +1,8 @@
 Game routing: detected Pokémon pairs use the workflow below. Detected English
+
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
 Yu-Gi-Oh! fronts use the separate [YGOPRODeck matcher](yugioh-identification.md).
 Unknown pairs are not sent to either recognizer.
 

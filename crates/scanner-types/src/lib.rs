@@ -1,0 +1,33 @@
+//! Version-one wire contracts shared by the service, native UI and web UI.
+//! Unknown additive metadata survives a read/write cycle during migration.
+pub mod camera;
+pub mod cards;
+pub mod catalogue;
+pub mod condition;
+pub mod device;
+pub mod edition;
+pub mod error;
+pub mod finish;
+pub mod images;
+pub mod scan;
+pub mod service;
+
+pub type Extensions = std::collections::BTreeMap<String, serde_json::Value>;
+
+pub fn schema_version() -> u32 {
+    1
+}
+pub mod image_access;
+
+pub mod identification;
+pub mod printed;
+pub mod recognition;
+pub mod visual;
+
+pub mod game_detection;
+
+pub mod inventory;
+
+pub mod pricing;
+
+pub mod staging;

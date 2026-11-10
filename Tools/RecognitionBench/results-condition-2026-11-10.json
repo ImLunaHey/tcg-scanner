@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-10",
+  "method": "blue-back-visible-marks-rust-v1",
+  "fixture": "B-001",
+  "manifestSHA256": "43a0c3b819a3034fde617a796f4b8d3a4611a78b906f2872a23f0847940b893a",
+  "preparedImages": 128,
+  "states": {
+    "checked": 47,
+    "unsupported": 81
+  },
+  "fallbackWithoutPreparationHints": {
+    "checkedBacks": 47,
+    "rejectedFrontsAndCodeSides": 81
+  },
+  "candidateMarks": [
+    {
+      "sequence": 51,
+      "findings": [
+        {
+          "explanation": "Light patch near a corner. Inspect for whitening, chipped ink or a scan artifact.",
+          "kind": "cornerWhitening",
+          "region": {
+            "height": 0.011666666666666667,
+            "width": 0.017361111111111112,
+            "x": 0.017361111111111112,
+            "y": 0.009166666666666667
+          }
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Candidate marks are not confirmed damage or a selling grade.",
+    "This run inspected saved images read-only and did not alter the fixture manifest."
+  ],
+  "savedSwiftComparison": {
+    "candidateMarkSequences": [
+      3,
+      51
+    ],
+    "nativeCandidateMarkSequences": [
+      51
+    ],
+    "difference": "The tiny saved mark on sequence 3 was not reproduced by native area, nearest, triangle, Catmull-Rom, Gaussian or Lanczos3 resizing. No threshold was weakened to force agreement."
+  }
+}

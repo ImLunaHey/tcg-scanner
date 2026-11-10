@@ -1,0 +1,23 @@
+[package]
+name = "scanner-rpc"
+description = "Version-one JSON-RPC scanner service protocol without transport or UI dependencies"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+[dependencies]
+scanner-core.workspace = true
+scanner-types.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+[dev-dependencies]
+scanner-files.workspace = true
+scanner-store.workspace = true
+tempfile.workspace = true
+async-trait.workspace = true
+tokio-util.workspace = true
+[lints]
+workspace = true

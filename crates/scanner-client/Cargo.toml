@@ -1,0 +1,28 @@
+[package]
+name = "scanner-client"
+description = "Bounded portable scanner RPC and ephemeral camera client"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+[dependencies]
+base64.workspace = true
+sha2.workspace = true
+scanner-types.workspace = true
+serde_json.workspace = true
+url.workspace = true
+uuid.workspace = true
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+reqwest.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+gloo-timers = { version = "0.3", features = ["futures"] }
+futures-util = "0.3"
+web-sys = { version = "0.3", features = ["Window", "Request", "RequestInit", "RequestRedirect", "RequestCredentials", "RequestCache", "ReferrerPolicy", "Headers", "Response", "ReadableStream", "ReadableStreamDefaultReader", "AbortController", "AbortSignal"] }
+
+[lints]
+workspace = true

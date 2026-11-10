@@ -1,0 +1,5 @@
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #111214; color: #ececef; font-family: system-ui, sans-serif; }
+#loading { position: fixed; inset: 40% 24px auto; text-align: center; }
+canvas { display: block; }
+
+.camera-source { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }

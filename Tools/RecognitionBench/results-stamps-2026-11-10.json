@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-10",
+  "methods": [
+    "pumpkin-shape-rust-v1",
+    "anniversary-cheeks-rust-v1"
+  ],
+  "fixtures": [
+    {
+      "fixture": "live-b001",
+      "manifestSHA256": "43a0c3b819a3034fde617a796f4b8d3a4611a78b906f2872a23f0847940b893a",
+      "fronts": 47,
+      "states": {
+        "pikachu-30th-anniversary:present": 44,
+        "pikachu-pumpkin:absent": 2,
+        "pikachu-30th-anniversary:uncertain": 1
+      },
+      "savedComparable": 47,
+      "differences": [
+        {
+          "sequence": 42,
+          "savedKind": "pikachu-30th-anniversary",
+          "savedState": "present",
+          "nativeKind": "pikachu-pumpkin",
+          "nativeState": "absent"
+        },
+        {
+          "sequence": 56,
+          "savedKind": "pikachu-30th-anniversary",
+          "savedState": "uncertain",
+          "nativeKind": "pikachu-30th-anniversary",
+          "nativeState": "present"
+        },
+        {
+          "sequence": 60,
+          "savedKind": "pikachu-30th-anniversary",
+          "savedState": "present",
+          "nativeKind": "pikachu-30th-anniversary",
+          "nativeState": "uncertain"
+        },
+        {
+          "sequence": 120,
+          "savedKind": "pikachu-30th-anniversary",
+          "savedState": "uncertain",
+          "nativeKind": "pikachu-pumpkin",
+          "nativeState": "absent"
+        }
+      ]
+    },
+    {
+      "fixture": "b027",
+      "manifestSHA256": "72acd7792596bd8bf34b8e2838deae3dde410dcb3bb7a54113f4e8ff1d39f2f2",
+      "fronts": 6,
+      "states": {
+        "pikachu-pumpkin:present": 6
+      },
+      "savedComparable": 6,
+      "differences": []
+    },
+    {
+      "fixture": "b013",
+      "manifestSHA256": "6bdd494c502bd0d54a5c549c96fa121e0ec7bab8002bf314cb091724fd9f2d47",
+      "fronts": 20,
+      "states": {
+        "pikachu-pumpkin:absent": 20
+      },
+      "savedComparable": 20,
+      "differences": []
+    },
+    {
+      "fixture": "b014",
+      "manifestSHA256": "a5e921533135cde52dc5da722df4475f99513308e717f7b0ea8ad263f9f2c541",
+      "fronts": 15,
+      "states": {
+        "pikachu-pumpkin:absent": 15
+      },
+      "savedComparable": 15,
+      "differences": []
+    },
+    {
+      "fixture": "b015",
+      "manifestSHA256": "0cbcfff1a454a445a38a4742586604c5847aad6d09980d7efac782be61515a3e",
+      "fronts": 14,
+      "states": {
+        "pikachu-pumpkin:absent": 14
+      },
+      "savedComparable": 14,
+      "differences": []
+    },
+    {
+      "fixture": "b016",
+      "manifestSHA256": "83047ef54cccfec0faee5a2d021d85df3a7349a84930c68b8f26cbf6dd612bb0",
+      "fronts": 22,
+      "states": {
+        "pikachu-pumpkin:absent": 22
+      },
+      "savedComparable": 22,
+      "differences": []
+    }
+  ],
+  "limitations": [
+    "Read-only, checksum-verified prepared fronts; no physical authenticity, edition-year or foil ground truth.",
+    "Frozen templates and thresholds are retained. Native resampling does not reproduce all saved Swift anniversary decisions.",
+    "No findings on the control sample do not establish general specificity."
+  ]
+}

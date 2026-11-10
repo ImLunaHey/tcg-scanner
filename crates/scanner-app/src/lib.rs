@@ -1,0 +1,20 @@
+//! Application composition; reusable behavior belongs in the library crates.
+pub mod cli;
+mod configuration;
+mod hosting;
+pub mod mcp;
+pub mod options;
+pub mod service;
+mod signals;
+
+mod processing;
+
+mod staging;
+
+mod power;
+
+mod maintenance;
+pub mod visual_index;
+
+pub mod distribution;
+pub mod setup;

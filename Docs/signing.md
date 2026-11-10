@@ -1,5 +1,9 @@
 # Stable local signing
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 The installed app and services must retain their signing identity across updates
 so macOS can associate privacy approvals with the same software. Ad-hoc signatures
 identify exact binary contents and change when a build changes. Signing only the

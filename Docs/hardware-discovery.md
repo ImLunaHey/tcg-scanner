@@ -1,5 +1,9 @@
 # fi-8170 discovery investigation — 2026-10-31
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 ## Before driver installation
 
 - macOS 26.5.2 (25F84), Apple Silicon; Swift 6.3.3 via Xcode.

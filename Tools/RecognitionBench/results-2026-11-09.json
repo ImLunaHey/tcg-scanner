@@ -1,0 +1,147 @@
+{
+  "images": 69,
+  "fronts": 63,
+  "backs": 6,
+  "uniquePrintings": 51,
+  "native": {
+    "correct": 62,
+    "wrong": 0,
+    "unresolved": 1,
+    "ambiguous": 0,
+    "rejected": 6,
+    "falsePositive": 0,
+    "medianSeconds": 0.334644079208374
+  },
+  "tesseract": {
+    "combined": {
+      "correct": 33,
+      "wrong": 0,
+      "unresolved": 27,
+      "ambiguous": 3,
+      "rejected": 6,
+      "falsePositive": 0,
+      "medianOCRSeconds": 0.7625234589999965
+    },
+    "ensemble": {
+      "correct": 38,
+      "wrong": 1,
+      "unresolved": 21,
+      "ambiguous": 3,
+      "rejected": 6,
+      "falsePositive": 0,
+      "medianOCRSeconds": 0.9397090419999948
+    },
+    "focused": {
+      "correct": 15,
+      "wrong": 0,
+      "unresolved": 46,
+      "ambiguous": 2,
+      "rejected": 6,
+      "falsePositive": 0,
+      "medianOCRSeconds": 0.161751166
+    },
+    "regional": {
+      "correct": 26,
+      "wrong": 0,
+      "unresolved": 36,
+      "ambiguous": 1,
+      "rejected": 6,
+      "falsePositive": 0,
+      "medianOCRSeconds": 0.4197030000000014
+    },
+    "whole": {
+      "correct": 15,
+      "wrong": 0,
+      "unresolved": 39,
+      "ambiguous": 9,
+      "rejected": 6,
+      "falsePositive": 0,
+      "medianOCRSeconds": 0.3428538750000007
+    }
+  },
+  "dino": {
+    "covered": 48,
+    "missingReference": 15,
+    "top1": 48,
+    "top5": 48,
+    "referenceCount": 121,
+    "medianSeconds": 0.03467837499999996,
+    "withheldCorrectReference": {
+      "maximumWrongSimilarity": 0.8676028822071706,
+      "examples": [
+        {
+          "id": "regression-010",
+          "wrong": {
+            "id": "me02.5-190",
+            "similarity": 0.8676028822071706
+          }
+        },
+        {
+          "id": "current-016",
+          "wrong": {
+            "id": "svp-043",
+            "similarity": 0.8410980456271999
+          }
+        },
+        {
+          "id": "current-052",
+          "wrong": {
+            "id": "svp-043",
+            "similarity": 0.7932873468488887
+          }
+        }
+      ]
+    }
+  },
+  "currentBatch": {
+    "images": 47,
+    "native": {
+      "correct": 47,
+      "wrong": 0,
+      "unresolved": 0,
+      "ambiguous": 0,
+      "rejected": 0,
+      "falsePositive": 0
+    },
+    "combined": {
+      "correct": 26,
+      "wrong": 0,
+      "unresolved": 21,
+      "ambiguous": 0,
+      "rejected": 0,
+      "falsePositive": 0
+    },
+    "ensemble": {
+      "correct": 30,
+      "wrong": 1,
+      "unresolved": 16,
+      "ambiguous": 0,
+      "rejected": 0,
+      "falsePositive": 0
+    },
+    "focused": {
+      "correct": 12,
+      "wrong": 0,
+      "unresolved": 35,
+      "ambiguous": 0,
+      "rejected": 0,
+      "falsePositive": 0
+    },
+    "regional": {
+      "correct": 19,
+      "wrong": 0,
+      "unresolved": 28,
+      "ambiguous": 0,
+      "rejected": 0,
+      "falsePositive": 0
+    },
+    "whole": {
+      "correct": 12,
+      "wrong": 0,
+      "unresolved": 30,
+      "ambiguous": 5,
+      "rejected": 0,
+      "falsePositive": 0
+    }
+  }
+}

@@ -1,5 +1,9 @@
 # Local foil appearance experiment
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 This is an offline measurement experiment, not the production finish detector.
 It reads already upright prepared front PNGs with native Swift/ImageIO and never
 scans hardware, contacts an external API, or changes recognition/review values.

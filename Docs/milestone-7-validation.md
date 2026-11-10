@@ -1,5 +1,9 @@
 # Web workspace validation — 2026-10-31
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 The web dashboard is installed at **http://100.117.220.119:8170/**. Production
 assets are served by the signed Swift HTTP gateway, with all scanner operations
 delegated to the existing background service. No Node server runs in production.

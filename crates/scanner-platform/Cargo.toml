@@ -1,0 +1,28 @@
+[package]
+name = "scanner-platform"
+description = "Native private files and process ownership for scanner applications"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+[features]
+power = ["dep:tokio", "dep:tokio-util", "dep:zbus", "dep:futures-util"]
+[dependencies]
+tokio = { workspace = true, optional = true }
+tokio-util = { workspace = true, optional = true }
+scanner-types.workspace = true
+cap-std.workspace = true
+cap-fs-ext.workspace = true
+dirs.workspace = true
+libc.workspace = true
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Threading", "Win32_Storage_FileSystem", "Wdk_Foundation", "Wdk_Storage_FileSystem", "Win32_System_IO", "Win32_System_Power", "Win32_UI_WindowsAndMessaging"] }
+[dev-dependencies]
+tempfile.workspace = true
+[lints]
+workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus = { version = "6", default-features = false, features = ["tokio", "proxy"], optional = true }
+futures-util = { version = "0.3", optional = true }

@@ -1,0 +1,18 @@
+[package]
+name = "scanner-mcp"
+description = "Bounded native MCP stdio interface for the scanner service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+[dependencies]
+scanner-client.workspace = true
+scanner-types.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+async-trait.workspace = true
+[lints]
+workspace = true

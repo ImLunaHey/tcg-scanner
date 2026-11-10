@@ -1,0 +1,76 @@
+[workspace]
+resolver = "3"
+exclude = ["vendor/rune"]
+members = ["crates/scanner-worker", "crates/scanner-types", "crates/scanner-store", "crates/scanner-ui", "crates/scanner-images", "crates/scanner-recognition", "crates/scanner-files", "crates/scanner-core", "crates/scanner-catalogue", "crates/scanner-device", "crates/scanner-rpc", "crates/scanner-http", "crates/scanner-platform", "crates/scanner-client", "crates/scanner-app", "crates/scanner-mcp", "crates/scanner-library", "crates/scanner-pricing", "crates/scanner-staging", "crates/scanner-export"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+repository = "https://github.com/ImLunaHey/tcg-scanner"
+
+[workspace.dependencies]
+scanner-export = { path = "crates/scanner-export", version = "0.1.0" }
+scanner-staging = { path = "crates/scanner-staging", version = "0.1.0" }
+scanner-pricing = { path = "crates/scanner-pricing", version = "0.1.0" }
+rust_decimal = { version = "1.43", default-features = false, features = ["std", "serde-with-arbitrary-precision"] }
+quick-xml = "0.42"
+scanner-library = { path = "crates/scanner-library", version = "0.1.0" }
+scanner-mcp = { path = "crates/scanner-mcp", version = "0.1.0" }
+scanner-client = { path = "crates/scanner-client", version = "0.1.0" }
+scanner-platform = { path = "crates/scanner-platform", version = "0.1.0" }
+scanner-http = { path = "crates/scanner-http", version = "0.1.0" }
+base64 = "0.22.1"
+scanner-rpc = { path = "crates/scanner-rpc", version = "0.1.0" }
+scanner-device = { path = "crates/scanner-device", version = "0.1.0" }
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls"] }
+scanner-catalogue = { path = "crates/scanner-catalogue", version = "0.1.0" }
+scanner-recognition = { path = "crates/scanner-recognition", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["arbitrary_precision"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["serde", "v4"] }
+thiserror = "2"
+rusqlite = { version = "0.41.1", features = ["bundled"] }
+tempfile = "3"
+libc = "0.2"
+dirs = "6"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tiff", "webp"] }
+imageproc = { version = "0.27", default-features = false }
+png = "0.18"
+tiff = "0.11"
+moxcms = "0.8"
+regex = "1"
+unicode-normalization = "0.1"
+url = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "signal", "io-util", "io-std"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+async-trait = "0.1"
+scanner-core = { path = "crates/scanner-core", version = "0.1.0" }
+cap-std = "4"
+cap-fs-ext = "4"
+scanner-files = { path = "crates/scanner-files", version = "0.1.0" }
+sha2 = "0.10"
+libloading = "0.9"
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "load-dynamic"] }
+scanner-images = { path = "crates/scanner-images", version = "0.1.0" }
+rune = { git = "https://github.com/anomalyco/rune", rev = "e970367bd7d2a51e2e7d58e2978ea32eac7780cb", default-features = false, features = ["embedded-fonts"] }
+scanner-store = { path = "crates/scanner-store", version = "0.1.0" }
+scanner-types = { path = "crates/scanner-types", version = "0.1.0" }
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+await_holding_lock = "deny"
+
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.test]
+debug = 0
+incremental = false
+
+[patch."https://github.com/anomalyco/rune"]
+rune = { path = "vendor/rune" }

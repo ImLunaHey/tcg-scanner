@@ -1,5 +1,9 @@
 # B-010 repeat scan — 2026-10-31
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 The user loaded the same 11 cards and authorized one repeat scan. Job
 `C8764C18-F221-4707-B7CD-6AE384F4D1FD` used the existing fi-8170 configuration:
 300 DPI, RGB, duplex PNG, A4, card preparation enabled, blank-page skipping off,

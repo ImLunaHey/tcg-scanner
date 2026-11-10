@@ -2,8 +2,8 @@
   "mcpServers": {
     "scanner": {
       "type": "stdio",
-      "command": "/bin/sh",
-      "args": ["-c", "exec \"$HOME/Library/Application Support/Scanner/bin/scanner-mcp\""]
+      "command": "scanner-mcp",
+      "args": []
     }
   }
 }

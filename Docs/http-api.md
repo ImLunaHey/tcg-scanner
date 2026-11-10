@@ -1,5 +1,9 @@
 # HTTP API v1
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 `scanner-http` is a Swift 6.2+ [Hummingbird 2.27.1](https://github.com/hummingbird-project/hummingbird/releases/tag/2.27.1) gateway. It communicates exclusively
 with ScannerService over the private Unix socket. No HTTP process opens a scanner,
 executes a shell command, reads an arbitrary file, or schedules hardware itself.

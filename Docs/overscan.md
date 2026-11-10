@@ -1,5 +1,9 @@
 # Overscan for card scans
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 The fi-8170 macOS driver exposes `cropping=4`, labelled Overscan. Its guide says
 this adds background areas above, below, left and right of the image:
 https://origin.pfultd.com/downloads/IMAGE/macos/240/P2ZZ-0370-05ENZ0.pdf (page 17).

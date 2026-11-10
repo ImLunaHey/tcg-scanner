@@ -1,5 +1,9 @@
 # Scan storage
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 The configured destination for this installation is `smb://lake/scans`, mounted
 at `/Volumes/scans`. All clients use ScannerService's configured storage root.
 The SQLite database remains in local Application Support; it is not moved to SMB.
@@ -129,3 +133,11 @@ scanner scan --duplex --format png
 The configuration test rejects local fallback directories and credential-bearing
 URLs. The opt-in mounted-volume test creates a private temporary fixture batch,
 verifies PNG preservation and the flat layout, and removes its own fixture files.
+
+The Rust Windows storage adapter resolves connected mapped drives through
+`WNetGetUniversalNameW` after canonicalization. It accepts the configured UNC
+share only; a disconnected mapping or local drive cannot become fallback scan
+storage. It never connects or authenticates a share. Open scan files are checked
+by native handle for reparse points and multiple hard links on Windows, as well
+as the existing Unix link-count checks. The mapped-drive API is documented by
+[Microsoft](https://learn.microsoft.com/en-us/windows/win32/api/winnetwk/nf-winnetwk-wnetgetuniversalnamew).

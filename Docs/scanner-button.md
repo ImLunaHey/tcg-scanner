@@ -1,5 +1,9 @@
 # Physical Scan-button batches
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 Start ScannerService with `--scan-button-device DEVICE_ID` to explicitly enable
 physical Scan/Enter batches for one scanner. Omit the option to disable automatic
 button handling. The generated LaunchAgent preserves the option. This installation

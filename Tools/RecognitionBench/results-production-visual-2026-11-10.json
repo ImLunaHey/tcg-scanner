@@ -1,0 +1,1855 @@
+{
+  "covered": 48,
+  "results": [
+    {
+      "covered": false,
+      "expected": "mee-009",
+      "id": "current-004",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv02-278",
+          "similarity": 0.7954845
+        },
+        {
+          "id": "sv03-230",
+          "similarity": 0.573069
+        },
+        {
+          "id": "g1-76",
+          "similarity": 0.512887
+        },
+        {
+          "id": "sv06.5-099",
+          "similarity": 0.50985545
+        },
+        {
+          "id": "xy12-92",
+          "similarity": 0.5029175
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": true,
+      "expected": "30th-063",
+      "id": "current-006",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-063",
+          "similarity": 0.920489
+        },
+        {
+          "id": "sv07-094",
+          "similarity": 0.644527
+        },
+        {
+          "id": "30th-083",
+          "similarity": 0.6404005
+        },
+        {
+          "id": "sm12-162",
+          "similarity": 0.6218215
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.618868
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-065",
+      "id": "current-008",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-065",
+          "similarity": 0.9082207
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.6371943
+        },
+        {
+          "id": "swsh2-123",
+          "similarity": 0.63308966
+        },
+        {
+          "id": "30th-120",
+          "similarity": 0.6273004
+        },
+        {
+          "id": "30th-069",
+          "similarity": 0.6240592
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-008",
+      "id": "current-010",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "30th-008",
+          "similarity": 0.9601184
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.56584513
+        },
+        {
+          "id": "30th-083",
+          "similarity": 0.5374751
+        },
+        {
+          "id": "30th-108",
+          "similarity": 0.5351973
+        },
+        {
+          "id": "30th-013",
+          "similarity": 0.51671183
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-096",
+      "id": "current-012",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "30th-096",
+          "similarity": 0.9144215
+        },
+        {
+          "id": "sm4-77",
+          "similarity": 0.6560361
+        },
+        {
+          "id": "sv07-016",
+          "similarity": 0.6370365
+        },
+        {
+          "id": "sv04-122",
+          "similarity": 0.62431806
+        },
+        {
+          "id": "30th-056",
+          "similarity": 0.61739326
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-117",
+      "id": "current-016",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-117",
+          "similarity": 0.9692437
+        },
+        {
+          "id": "svp-043",
+          "similarity": 0.8295081
+        },
+        {
+          "id": "30th-118",
+          "similarity": 0.82637477
+        },
+        {
+          "id": "30th-061",
+          "similarity": 0.70345753
+        },
+        {
+          "id": "30th-067",
+          "similarity": 0.69766665
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": false,
+      "expected": "mee-009",
+      "id": "current-020",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv02-278",
+          "similarity": 0.8047652
+        },
+        {
+          "id": "sv03-230",
+          "similarity": 0.5878756
+        },
+        {
+          "id": "sv06.5-099",
+          "similarity": 0.529724
+        },
+        {
+          "id": "g1-76",
+          "similarity": 0.51852477
+        },
+        {
+          "id": "xy12-92",
+          "similarity": 0.51614517
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": true,
+      "expected": "30th-084",
+      "id": "current-022",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "30th-084",
+          "similarity": 0.9423803
+        },
+        {
+          "id": "30th-111",
+          "similarity": 0.6016418
+        },
+        {
+          "id": "ex12-8",
+          "similarity": 0.5799493
+        },
+        {
+          "id": "sm2-99",
+          "similarity": 0.57431996
+        },
+        {
+          "id": "swsh2-123",
+          "similarity": 0.57027084
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-017",
+      "id": "current-024",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-017",
+          "similarity": 0.9484325
+        },
+        {
+          "id": "ex12-8",
+          "similarity": 0.6180739
+        },
+        {
+          "id": "ex7-51",
+          "similarity": 0.59083945
+        },
+        {
+          "id": "si1-12",
+          "similarity": 0.5891022
+        },
+        {
+          "id": "30th-069",
+          "similarity": 0.58529735
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-122",
+      "id": "current-026",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-122",
+          "similarity": 0.9360054
+        },
+        {
+          "id": "30th-120",
+          "similarity": 0.7089588
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.6878556
+        },
+        {
+          "id": "30th-067",
+          "similarity": 0.67236936
+        },
+        {
+          "id": "30th-069",
+          "similarity": 0.6709183
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": false,
+      "expected": "mee-014",
+      "id": "current-030",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv01-258",
+          "similarity": 0.7625785
+        },
+        {
+          "id": "g1-76",
+          "similarity": 0.45879743
+        },
+        {
+          "id": "sv03-230",
+          "similarity": 0.45447436
+        },
+        {
+          "id": "sv02-278",
+          "similarity": 0.440709
+        },
+        {
+          "id": "xy12-92",
+          "similarity": 0.43976256
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": false,
+      "expected": "mee-016",
+      "id": "current-034",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv06.5-099",
+          "similarity": 0.7461532
+        },
+        {
+          "id": "sv03-230",
+          "similarity": 0.54227364
+        },
+        {
+          "id": "sv01-258",
+          "similarity": 0.5014324
+        },
+        {
+          "id": "sv02-278",
+          "similarity": 0.4835095
+        },
+        {
+          "id": "xy12-92",
+          "similarity": 0.47183102
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": true,
+      "expected": "30th-012",
+      "id": "current-036",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-012",
+          "similarity": 0.891062
+        },
+        {
+          "id": "col1-9",
+          "similarity": 0.7107983
+        },
+        {
+          "id": "pop5-1",
+          "similarity": 0.6890475
+        },
+        {
+          "id": "neo3-7",
+          "similarity": 0.57029575
+        },
+        {
+          "id": "cel25-1",
+          "similarity": 0.509643
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-091",
+      "id": "current-038",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "30th-091",
+          "similarity": 0.94684666
+        },
+        {
+          "id": "30th-096",
+          "similarity": 0.6537834
+        },
+        {
+          "id": "30th-069",
+          "similarity": 0.63448197
+        },
+        {
+          "id": "swsh9-092",
+          "similarity": 0.62348306
+        },
+        {
+          "id": "me02-010",
+          "similarity": 0.6111968
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-120",
+      "id": "current-040",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-120",
+          "similarity": 0.96113634
+        },
+        {
+          "id": "30th-067",
+          "similarity": 0.7425585
+        },
+        {
+          "id": "30th-061",
+          "similarity": 0.7090443
+        },
+        {
+          "id": "ex14-21",
+          "similarity": 0.6754793
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.6720035
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-083",
+      "id": "current-042",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-083",
+          "similarity": 0.9070535
+        },
+        {
+          "id": "30th-056",
+          "similarity": 0.7287277
+        },
+        {
+          "id": "sm12-162",
+          "similarity": 0.6758645
+        },
+        {
+          "id": "sv02-021",
+          "similarity": 0.66925603
+        },
+        {
+          "id": "sv07-016",
+          "similarity": 0.6393889
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": false,
+      "expected": "mee-009",
+      "id": "current-046",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv02-278",
+          "similarity": 0.81514
+        },
+        {
+          "id": "sv03-230",
+          "similarity": 0.58539283
+        },
+        {
+          "id": "g1-76",
+          "similarity": 0.5239801
+        },
+        {
+          "id": "sv06.5-099",
+          "similarity": 0.52002823
+        },
+        {
+          "id": "xy12-92",
+          "similarity": 0.5185068
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": true,
+      "expected": "30th-016",
+      "id": "current-048",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "30th-016",
+          "similarity": 0.95417905
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.54139364
+        },
+        {
+          "id": "xy6-38",
+          "similarity": 0.5247154
+        },
+        {
+          "id": "30th-113",
+          "similarity": 0.4921831
+        },
+        {
+          "id": "30th-125",
+          "similarity": 0.49133107
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-096",
+      "id": "current-050",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "30th-096",
+          "similarity": 0.9077679
+        },
+        {
+          "id": "sm4-77",
+          "similarity": 0.642503
+        },
+        {
+          "id": "sv04-122",
+          "similarity": 0.6393689
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.6313673
+        },
+        {
+          "id": "sv07-094",
+          "similarity": 0.63059515
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-118",
+      "id": "current-052",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-118",
+          "similarity": 0.9746899
+        },
+        {
+          "id": "svp-043",
+          "similarity": 0.81024677
+        },
+        {
+          "id": "30th-117",
+          "similarity": 0.8051969
+        },
+        {
+          "id": "basep-11",
+          "similarity": 0.7264208
+        },
+        {
+          "id": "pop3-13",
+          "similarity": 0.72332895
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-013",
+      "id": "current-054",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "30th-013",
+          "similarity": 0.9634418
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.7267198
+        },
+        {
+          "id": "30th-117",
+          "similarity": 0.6856233
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.6774364
+        },
+        {
+          "id": "30th-111",
+          "similarity": 0.67278
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-128",
+      "id": "current-056",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-128",
+          "similarity": 0.9514456
+        },
+        {
+          "id": "dp2-47",
+          "similarity": 0.5703129
+        },
+        {
+          "id": "hgss2-29",
+          "similarity": 0.5211832
+        },
+        {
+          "id": "ex12-31",
+          "similarity": 0.5083246
+        },
+        {
+          "id": "sv01-155",
+          "similarity": 0.4834265
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": false,
+      "expected": "mee-014",
+      "id": "current-060",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv01-258",
+          "similarity": 0.7728878
+        },
+        {
+          "id": "g1-76",
+          "similarity": 0.4470111
+        },
+        {
+          "id": "sv02-278",
+          "similarity": 0.44605666
+        },
+        {
+          "id": "sv03-230",
+          "similarity": 0.44511616
+        },
+        {
+          "id": "sv06.5-099",
+          "similarity": 0.4351628
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": true,
+      "expected": "30th-056",
+      "id": "current-062",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-056",
+          "similarity": 0.902594
+        },
+        {
+          "id": "sv07-016",
+          "similarity": 0.6866133
+        },
+        {
+          "id": "sv02-021",
+          "similarity": 0.66040033
+        },
+        {
+          "id": "30th-083",
+          "similarity": 0.6570862
+        },
+        {
+          "id": "sm2-99",
+          "similarity": 0.608126
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": false,
+      "expected": "mee-010",
+      "id": "current-066",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv03-230",
+          "similarity": 0.79790056
+        },
+        {
+          "id": "g1-76",
+          "similarity": 0.73564035
+        },
+        {
+          "id": "xy12-92",
+          "similarity": 0.70833176
+        },
+        {
+          "id": "base1-98",
+          "similarity": 0.6918456
+        },
+        {
+          "id": "col1-89",
+          "similarity": 0.6828219
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": true,
+      "expected": "30th-063",
+      "id": "current-068",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-063",
+          "similarity": 0.9363045
+        },
+        {
+          "id": "sm12-162",
+          "similarity": 0.6291532
+        },
+        {
+          "id": "sm2-99",
+          "similarity": 0.623747
+        },
+        {
+          "id": "30th-083",
+          "similarity": 0.62185824
+        },
+        {
+          "id": "swsh11-075",
+          "similarity": 0.61647546
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-125",
+      "id": "current-070",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-125",
+          "similarity": 0.94564444
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.6101622
+        },
+        {
+          "id": "neo2-40",
+          "similarity": 0.5925812
+        },
+        {
+          "id": "basep-36",
+          "similarity": 0.5918084
+        },
+        {
+          "id": "30th-067",
+          "similarity": 0.5874311
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-113",
+      "id": "current-072",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-113",
+          "similarity": 0.9287479
+        },
+        {
+          "id": "svp-043",
+          "similarity": 0.60398877
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.59862113
+        },
+        {
+          "id": "xy6-38",
+          "similarity": 0.58222425
+        },
+        {
+          "id": "swsh11-075",
+          "similarity": 0.57678574
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-113",
+      "id": "current-074",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-113",
+          "similarity": 0.924882
+        },
+        {
+          "id": "svp-043",
+          "similarity": 0.6073276
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.5921354
+        },
+        {
+          "id": "swsh11-075",
+          "similarity": 0.5815271
+        },
+        {
+          "id": "30th-117",
+          "similarity": 0.5803775
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-119",
+      "id": "current-076",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-119",
+          "similarity": 0.91941947
+        },
+        {
+          "id": "30th-111",
+          "similarity": 0.54136544
+        },
+        {
+          "id": "sv01-155",
+          "similarity": 0.53431505
+        },
+        {
+          "id": "sm12-162",
+          "similarity": 0.5327057
+        },
+        {
+          "id": "sm2-99",
+          "similarity": 0.5292707
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-112",
+      "id": "current-078",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-112",
+          "similarity": 0.92500484
+        },
+        {
+          "id": "30th-111",
+          "similarity": 0.66770935
+        },
+        {
+          "id": "sv07-094",
+          "similarity": 0.6667758
+        },
+        {
+          "id": "sv08-131",
+          "similarity": 0.63654673
+        },
+        {
+          "id": "sm2-99",
+          "similarity": 0.6329513
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-125",
+      "id": "current-080",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-125",
+          "similarity": 0.93814915
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.63437235
+        },
+        {
+          "id": "30th-067",
+          "similarity": 0.5912252
+        },
+        {
+          "id": "neo2-40",
+          "similarity": 0.58270293
+        },
+        {
+          "id": "30th-120",
+          "similarity": 0.582162
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-108",
+      "id": "current-082",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "30th-108",
+          "similarity": 0.91836214
+        },
+        {
+          "id": "sv08-131",
+          "similarity": 0.6775197
+        },
+        {
+          "id": "sv04.5-067",
+          "similarity": 0.64895844
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.63641703
+        },
+        {
+          "id": "30th-013",
+          "similarity": 0.63251776
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-128",
+      "id": "current-084",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-128",
+          "similarity": 0.9460491
+        },
+        {
+          "id": "dp2-47",
+          "similarity": 0.5765701
+        },
+        {
+          "id": "hgss2-29",
+          "similarity": 0.5350984
+        },
+        {
+          "id": "ex12-31",
+          "similarity": 0.52567196
+        },
+        {
+          "id": "sv01-155",
+          "similarity": 0.47979286
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": false,
+      "expected": "mee-016",
+      "id": "current-086",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv06.5-099",
+          "similarity": 0.7639905
+        },
+        {
+          "id": "sv03-230",
+          "similarity": 0.5594374
+        },
+        {
+          "id": "sv01-258",
+          "similarity": 0.50969714
+        },
+        {
+          "id": "sv02-278",
+          "similarity": 0.48942074
+        },
+        {
+          "id": "xy12-92",
+          "similarity": 0.48028195
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": true,
+      "expected": "30th-108",
+      "id": "current-088",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-108",
+          "similarity": 0.9212548
+        },
+        {
+          "id": "sv08-131",
+          "similarity": 0.6750415
+        },
+        {
+          "id": "sv04.5-067",
+          "similarity": 0.6373785
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.6212006
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.61975855
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": false,
+      "expected": "mee-009",
+      "id": "current-092",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv02-278",
+          "similarity": 0.80381435
+        },
+        {
+          "id": "sv03-230",
+          "similarity": 0.5794433
+        },
+        {
+          "id": "g1-76",
+          "similarity": 0.5177258
+        },
+        {
+          "id": "sv06.5-099",
+          "similarity": 0.5115627
+        },
+        {
+          "id": "xy12-92",
+          "similarity": 0.50661373
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": false,
+      "expected": "mee-010",
+      "id": "current-110",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "sv03-230",
+          "similarity": 0.80056393
+        },
+        {
+          "id": "g1-76",
+          "similarity": 0.74201024
+        },
+        {
+          "id": "xy12-92",
+          "similarity": 0.7171792
+        },
+        {
+          "id": "base1-98",
+          "similarity": 0.7102066
+        },
+        {
+          "id": "col1-89",
+          "similarity": 0.69520485
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": true,
+      "expected": "30th-105",
+      "id": "current-112",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-105",
+          "similarity": 0.91474223
+        },
+        {
+          "id": "30th-106",
+          "similarity": 0.6308429
+        },
+        {
+          "id": "neo2-1",
+          "similarity": 0.6056813
+        },
+        {
+          "id": "sm2-99",
+          "similarity": 0.60435057
+        },
+        {
+          "id": "30th-145",
+          "similarity": 0.5917641
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-061",
+      "id": "current-114",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-061",
+          "similarity": 0.9455723
+        },
+        {
+          "id": "30th-120",
+          "similarity": 0.71069646
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.69320637
+        },
+        {
+          "id": "30th-067",
+          "similarity": 0.6840704
+        },
+        {
+          "id": "30th-117",
+          "similarity": 0.6703919
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-111",
+      "id": "current-116",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-111",
+          "similarity": 0.9322419
+        },
+        {
+          "id": "sm2-99",
+          "similarity": 0.7144108
+        },
+        {
+          "id": "sm4-76",
+          "similarity": 0.70551795
+        },
+        {
+          "id": "sm12-162",
+          "similarity": 0.6913505
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.6664525
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-019",
+      "id": "current-118",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-019",
+          "similarity": 0.93694514
+        },
+        {
+          "id": "ex9-15",
+          "similarity": 0.62112635
+        },
+        {
+          "id": "ex9-6",
+          "similarity": 0.5646545
+        },
+        {
+          "id": "ex12-8",
+          "similarity": 0.5273449
+        },
+        {
+          "id": "30th-063",
+          "similarity": 0.50379395
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-067",
+      "id": "current-120",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-067",
+          "similarity": 0.96434134
+        },
+        {
+          "id": "30th-120",
+          "similarity": 0.72747576
+        },
+        {
+          "id": "30th-117",
+          "similarity": 0.69778633
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.69716555
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.69303286
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-003",
+      "id": "current-122",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-003",
+          "similarity": 0.9375182
+        },
+        {
+          "id": "30th-067",
+          "similarity": 0.73009473
+        },
+        {
+          "id": "30th-117",
+          "similarity": 0.706118
+        },
+        {
+          "id": "30th-013",
+          "similarity": 0.6898404
+        },
+        {
+          "id": "30th-061",
+          "similarity": 0.6869047
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-002",
+      "id": "current-124",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "30th-002",
+          "similarity": 0.94768834
+        },
+        {
+          "id": "sm6-2",
+          "similarity": 0.6697427
+        },
+        {
+          "id": "sm9-115",
+          "similarity": 0.66618705
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.6498433
+        },
+        {
+          "id": "sm5-95",
+          "similarity": 0.61401486
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-106",
+      "id": "current-126",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-106",
+          "similarity": 0.9270693
+        },
+        {
+          "id": "30th-105",
+          "similarity": 0.6264353
+        },
+        {
+          "id": "sv02-021",
+          "similarity": 0.6087953
+        },
+        {
+          "id": "sv04-122",
+          "similarity": 0.5933049
+        },
+        {
+          "id": "sm2-99",
+          "similarity": 0.5666097
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "30th-069",
+      "id": "current-128",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "30th-069",
+          "similarity": 0.9386623
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.6765344
+        },
+        {
+          "id": "col1-4",
+          "similarity": 0.6742006
+        },
+        {
+          "id": "svp-043",
+          "similarity": 0.6635043
+        },
+        {
+          "id": "ecard2-11",
+          "similarity": 0.65983856
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": false,
+      "expected": "me06-026",
+      "id": "gap-002",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-063",
+          "similarity": 0.6733053
+        },
+        {
+          "id": "ex9-6",
+          "similarity": 0.6524156
+        },
+        {
+          "id": "cel25-3",
+          "similarity": 0.6469204
+        },
+        {
+          "id": "col1-12",
+          "similarity": 0.63363403
+        },
+        {
+          "id": "ex9-15",
+          "similarity": 0.5864393
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": false,
+      "expected": "me06-113",
+      "id": "gap-004",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv07-094",
+          "similarity": 0.6032096
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.5666109
+        },
+        {
+          "id": "30th-120",
+          "similarity": 0.56499517
+        },
+        {
+          "id": "30th-067",
+          "similarity": 0.5248307
+        },
+        {
+          "id": "30th-063",
+          "similarity": 0.5046291
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": false,
+      "expected": "me06-061",
+      "id": "gap-006",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "swsh2-123",
+          "similarity": 0.61048853
+        },
+        {
+          "id": "30th-145",
+          "similarity": 0.581603
+        },
+        {
+          "id": "sv04-122",
+          "similarity": 0.57834685
+        },
+        {
+          "id": "xy2-48",
+          "similarity": 0.56863135
+        },
+        {
+          "id": "30th-096",
+          "similarity": 0.562432
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": false,
+      "expected": "me06-070",
+      "id": "gap-008",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "30th-067",
+          "similarity": 0.73817086
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.7085223
+        },
+        {
+          "id": "30th-061",
+          "similarity": 0.6887957
+        },
+        {
+          "id": "sv07-094",
+          "similarity": 0.6827139
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.6802483
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": true,
+      "expected": "me03-042",
+      "id": "hard-046",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "me03-042",
+          "similarity": 0.8980618
+        },
+        {
+          "id": "xy6-38",
+          "similarity": 0.6280917
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.61482817
+        },
+        {
+          "id": "xy2-48",
+          "similarity": 0.5698908
+        },
+        {
+          "id": "sm6-66",
+          "similarity": 0.56659514
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": false,
+      "expected": "sve-010",
+      "id": "regression-002",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv03-230",
+          "similarity": 0.8918538
+        },
+        {
+          "id": "base1-98",
+          "similarity": 0.79293174
+        },
+        {
+          "id": "xy12-92",
+          "similarity": 0.79180014
+        },
+        {
+          "id": "g1-76",
+          "similarity": 0.76929337
+        },
+        {
+          "id": "col1-89",
+          "similarity": 0.7342045
+        }
+      ],
+      "visualTop1Correct": false
+    },
+    {
+      "covered": true,
+      "expected": "sv09-028",
+      "id": "regression-004",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv09-028",
+          "similarity": 0.87615013
+        },
+        {
+          "id": "xy7-16",
+          "similarity": 0.6854703
+        },
+        {
+          "id": "sv07-094",
+          "similarity": 0.65638864
+        },
+        {
+          "id": "ex7-51",
+          "similarity": 0.5896465
+        },
+        {
+          "id": "30th-120",
+          "similarity": 0.58615714
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "sv09-015",
+      "id": "regression-006",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv09-015",
+          "similarity": 0.91355145
+        },
+        {
+          "id": "base3-10",
+          "similarity": 0.57473665
+        },
+        {
+          "id": "sm2-99",
+          "similarity": 0.55393505
+        },
+        {
+          "id": "sm4-76",
+          "similarity": 0.5505833
+        },
+        {
+          "id": "30th-065",
+          "similarity": 0.54387707
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "sv09-099",
+      "id": "regression-008",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv09-099",
+          "similarity": 0.88498753
+        },
+        {
+          "id": "30th-056",
+          "similarity": 0.6230288
+        },
+        {
+          "id": "sv04-122",
+          "similarity": 0.6004233
+        },
+        {
+          "id": "30th-083",
+          "similarity": 0.5696934
+        },
+        {
+          "id": "sv02-021",
+          "similarity": 0.5459609
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "sv09-149",
+      "id": "regression-010",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "sv09-149",
+          "similarity": 0.9260029
+        },
+        {
+          "id": "me02.5-190",
+          "similarity": 0.9236287
+        },
+        {
+          "id": "sv09-180",
+          "similarity": 0.797372
+        },
+        {
+          "id": "30th-122",
+          "similarity": 0.58692265
+        },
+        {
+          "id": "me02.5-292",
+          "similarity": 0.5437521
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "sv09-100",
+      "id": "regression-012",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv09-100",
+          "similarity": 0.9096444
+        },
+        {
+          "id": "sv07-016",
+          "similarity": 0.5509148
+        },
+        {
+          "id": "sv02-021",
+          "similarity": 0.5496102
+        },
+        {
+          "id": "30th-105",
+          "similarity": 0.5480717
+        },
+        {
+          "id": "30th-056",
+          "similarity": 0.52417463
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "sv09-076",
+      "id": "regression-014",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "sv09-076",
+          "similarity": 0.90947306
+        },
+        {
+          "id": "30th-013",
+          "similarity": 0.5941822
+        },
+        {
+          "id": "sm4-76",
+          "similarity": 0.59260994
+        },
+        {
+          "id": "sv07-094",
+          "similarity": 0.57651365
+        },
+        {
+          "id": "base2-50",
+          "similarity": 0.565219
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "sv09-177",
+      "id": "regression-016",
+      "textCorrectUnique": false,
+      "visual": [
+        {
+          "id": "sv09-177",
+          "similarity": 0.8305299
+        },
+        {
+          "id": "hgss3-2",
+          "similarity": 0.6232264
+        },
+        {
+          "id": "col1-4",
+          "similarity": 0.6192391
+        },
+        {
+          "id": "30th-083",
+          "similarity": 0.6142427
+        },
+        {
+          "id": "swsh9-092",
+          "similarity": 0.6034673
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "sv09-139",
+      "id": "regression-018",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "sv09-139",
+          "similarity": 0.89556205
+        },
+        {
+          "id": "me03-042",
+          "similarity": 0.48894325
+        },
+        {
+          "id": "sv07-126",
+          "similarity": 0.4761384
+        },
+        {
+          "id": "svp-043",
+          "similarity": 0.47154257
+        },
+        {
+          "id": "sm6-2",
+          "similarity": 0.46755585
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "sv09-071",
+      "id": "regression-020",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "sv09-071",
+          "similarity": 0.8523313
+        },
+        {
+          "id": "sv07-094",
+          "similarity": 0.6601482
+        },
+        {
+          "id": "swsh2-123",
+          "similarity": 0.6491743
+        },
+        {
+          "id": "30th-003",
+          "similarity": 0.6117809
+        },
+        {
+          "id": "30th-065",
+          "similarity": 0.6035709
+        }
+      ],
+      "visualTop1Correct": true
+    },
+    {
+      "covered": true,
+      "expected": "sv09-120",
+      "id": "regression-022",
+      "textCorrectUnique": true,
+      "visual": [
+        {
+          "id": "sv09-120",
+          "similarity": 0.87436944
+        },
+        {
+          "id": "hgss1-41",
+          "similarity": 0.5365529
+        },
+        {
+          "id": "dp2-47",
+          "similarity": 0.45038745
+        },
+        {
+          "id": "ex12-31",
+          "similarity": 0.44637284
+        },
+        {
+          "id": "sm6-2",
+          "similarity": 0.43407187
+        }
+      ],
+      "visualTop1Correct": true
+    }
+  ],
+  "textCorrectUnique": 35,
+  "textOrVisualCorrect": 51,
+  "visualTop1Correct": 48,
+  "date": "2026-11-10",
+  "referenceCount": 121,
+  "fronts": 63,
+  "missingReference": 15,
+  "method": "Production persisted DINOv3 index plus replayed independent Tesseract readings; visual suggestions remain separate from printed candidates",
+  "candidateListsChanged": 0,
+  "freshEndToEnd": {
+    "cases": [
+      "current-010",
+      "regression-016",
+      "hard-046"
+    ],
+    "correctFirstVisual": 3,
+    "nativeOCR": "Tesseract 5.5.1"
+  },
+  "limitations": [
+    "Partial reference coverage; nearest results on missing printings are not accepted identities.",
+    "Correct text-or-first-visual availability measures review assistance, not automatic confirmation accuracy.",
+    "No camera or unseen-printing accuracy claim."
+  ]
+}

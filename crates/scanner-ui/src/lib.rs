@@ -1,0 +1,40 @@
+#[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
+compile_error!("The Rune browser UI must be compiled without wasm atomics.");
+
+mod api;
+mod collection;
+mod connection_view;
+mod fonts;
+mod library;
+mod operations;
+mod printed;
+mod reference_preview;
+mod state;
+mod task;
+mod valuation;
+mod view;
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen::prelude::wasm_bindgen(start))]
+pub fn start() {
+    #[cfg(target_arch = "wasm32")]
+    camera::register_worker();
+    rune::run(rune::AppSpec {
+        fonts: fonts::FONTS,
+        #[cfg(not(target_arch = "wasm32"))]
+        scenes: &[("saved", state::State::saved_scene)],
+        setup: Some(state::State::setup),
+        poll: Some(state::State::poll),
+        ..rune::AppSpec::new("Scanner", (1180., 780.), state::State::default, view::view)
+    });
+}
+
+mod review_link;
+
+mod exports;
+
+mod camera;
+mod comparison;
+mod image_review;
+
+#[cfg(not(target_arch = "wasm32"))]
+mod local_connection;

@@ -1,0 +1,32 @@
+[package]
+name = "scanner-device"
+description = "In-process scanner driver contracts and native platform adapters"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+scanner-types.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+async-trait.workspace = true
+serde_json.workspace = true
+libloading.workspace = true
+image.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.5"
+objc2-foundation = { version = "0.3.2", features = ["NSRunLoop", "NSDate", "NSGeometry"] }
+objc2-image-capture-core = "0.3.2"
+futures = "0.3"
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi"] }

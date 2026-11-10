@@ -1,0 +1,22 @@
+[package]
+name = "scanner-images"
+description = "Portable bounded card decoding, editing and preparation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+image.workspace = true
+imageproc.workspace = true
+moxcms.workspace = true
+scanner-types.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+uuid.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

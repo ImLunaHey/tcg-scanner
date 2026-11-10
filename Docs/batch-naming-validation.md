@@ -1,5 +1,9 @@
 # Permanent batch numbering — 2026-10-31
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 The selected layout is `B-001/C-001-front.png`, with dates in metadata only.
 This change implements persistent batch numbers and sequential capture names.
 Front/back card pairing is still unverified; existing paper images use `C-001.png`
