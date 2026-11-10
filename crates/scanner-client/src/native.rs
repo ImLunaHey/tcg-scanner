@@ -16,18 +16,22 @@ impl Transport {
             .map_err(transport)
     }
     pub async fn post(&self, endpoint: &url::Url, token: &str, body: Vec<u8>) -> Result<Vec<u8>> {
-        let mut authorization = reqwest::header::HeaderValue::from_str(token).map_err(transport)?;
-        authorization.set_sensitive(true);
-        let mut response = self
+        let mut request = self
             .0
             .post(endpoint.clone())
-            .header(reqwest::header::AUTHORIZATION, authorization)
             .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .body(body)
-            .send()
-            .await
-            .map_err(transport)?;
+            .body(body);
+        if !token.is_empty() {
+            let mut authorization =
+                reqwest::header::HeaderValue::from_str(token).map_err(transport)?;
+            authorization.set_sensitive(true);
+            request = request.header(reqwest::header::AUTHORIZATION, authorization);
+        }
+        let mut response = request.send().await.map_err(transport)?;
         if !response.status().is_success() {
+            if token.is_empty() {
+                return Err(crate::camera::status_error(response.status().as_u16()));
+            }
             return Err(transport(format!(
                 "Scanner HTTP request failed with status {}.",
                 response.status().as_u16()

@@ -1,6 +1,6 @@
 [package]
 name = "scanner-client"
-description = "Bounded authenticated native client for scanner JSON-RPC"
+description = "Bounded portable scanner RPC and ephemeral camera client"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

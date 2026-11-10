@@ -11,7 +11,9 @@ use browser::Transport;
 #[cfg(not(target_arch = "wasm32"))]
 use native::Transport;
 use uuid::Uuid;
+mod camera;
 mod download;
+pub use camera::CameraClient;
 pub use download::Download;
 
 #[derive(Clone)]
@@ -22,25 +24,7 @@ pub struct Client {
 }
 impl Client {
     pub fn new(origin: &str, token: &str) -> Result<Self> {
-        let mut endpoint =
-            url::Url::parse(origin).map_err(|_| invalid("Invalid service origin."))?;
-        if !matches!(endpoint.scheme(), "https" | "http")
-            || endpoint.host_str().is_none()
-            || !endpoint.username().is_empty()
-            || endpoint.password().is_some()
-            || endpoint.query().is_some()
-            || endpoint.fragment().is_some()
-            || endpoint.path() != "/"
-        {
-            return Err(invalid(
-                "Service origin must contain only an HTTP(S) scheme and authority.",
-            ));
-        }
-        if endpoint.scheme() == "http" && !private_host(&endpoint) {
-            return Err(invalid(
-                "Plain HTTP is restricted to loopback or Tailscale IPv4.",
-            ));
-        }
+        let mut endpoint = service_origin(origin)?;
         if token.len() != 64
             || !token
                 .bytes()
@@ -106,6 +90,28 @@ impl Client {
         Ok(response["result"].clone())
     }
 }
+pub(crate) fn service_origin(origin: &str) -> Result<url::Url> {
+    let endpoint = url::Url::parse(origin).map_err(|_| invalid("Invalid service origin."))?;
+    if !matches!(endpoint.scheme(), "https" | "http")
+        || endpoint.host_str().is_none()
+        || !endpoint.username().is_empty()
+        || endpoint.password().is_some()
+        || endpoint.query().is_some()
+        || endpoint.fragment().is_some()
+        || endpoint.path() != "/"
+    {
+        return Err(invalid(
+            "Service origin must contain only an HTTP(S) scheme and authority.",
+        ));
+    }
+    if endpoint.scheme() == "http" && !private_host(&endpoint) {
+        return Err(invalid(
+            "Plain HTTP is restricted to loopback or Tailscale IPv4.",
+        ));
+    }
+    Ok(endpoint)
+}
+
 fn private_host(url: &url::Url) -> bool {
     match url.host() {
         Some(url::Host::Domain("localhost")) => true,

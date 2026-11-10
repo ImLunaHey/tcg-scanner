@@ -83,6 +83,34 @@ async fn camera_concurrency_stays_bounded_after_http_disconnect() {
 fn body() -> serde_json::Value {
     json!({"base64":base64::engine::general_purpose::STANDARD.encode(vec![1;80*1024]),"language":"ko"})
 }
+
+#[tokio::test]
+async fn native_camera_client_uses_the_anonymous_rest_contract_over_real_tcp() {
+    let h = Harness::with_recognizer(Some(Arc::new(Recognizer::default())));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let gateway = scanner_http::Gateway::new(
+        h.engine.clone(),
+        "camera fixture",
+        &h.token,
+        scanner_http::Configuration::new(address, false, None).unwrap(),
+    )
+    .unwrap();
+    let stop = tokio_util::sync::CancellationToken::new();
+    let server = {
+        let stop = stop.clone();
+        tokio::spawn(async move { gateway.serve(listener, stop).await })
+    };
+    let client = scanner_client::CameraClient::new(&format!("http://{address}")).unwrap();
+    let result = client
+        .identify(serde_json::from_value(body()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(result.state, CameraState::NoCard);
+    stop.cancel();
+    server.await.unwrap().unwrap();
+    h.engine.shutdown().await;
+}
 #[tokio::test]
 async fn public_camera_is_narrow_bounded_and_does_not_grant_library_access() {
     let recognizer = Arc::new(Recognizer::default());
