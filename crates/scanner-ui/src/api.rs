@@ -28,9 +28,17 @@ pub async fn call<T: DeserializeOwned>(client: &Client, method: &str, params: Va
         .map_err(|_| ScannerError::new("transport", "Invalid typed service response."))
 }
 pub async fn thumbnail(client: &Client, source: &crate::library::ImageSource) -> Result<Vec<u8>> {
-    let thumbnail: ImageThumbnail = call(client, "images.thumbnail", source.params()).await?;
+    thumbnail_params(client, source.params()).await
+}
+pub async fn thumbnail_params(client: &Client, params: Value) -> Result<Vec<u8>> {
+    let thumbnail: ImageThumbnail = call(client, "images.thumbnail", params).await?;
     decode_thumbnail(thumbnail)
 }
+pub async fn reference(client: &Client, key: &str) -> Result<Vec<u8>> {
+    let thumbnail: ImageThumbnail = call(client, "inventory.reference", json!({"key":key})).await?;
+    crate::reference_preview::decode(thumbnail)
+}
+
 fn decode_thumbnail(thumbnail: ImageThumbnail) -> Result<Vec<u8>> {
     let invalid = || ScannerError::new("image", "Invalid service thumbnail.");
     if thumbnail.schema_version != 1

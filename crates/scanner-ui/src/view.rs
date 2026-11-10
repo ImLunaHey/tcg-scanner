@@ -15,7 +15,9 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         .h_full()
         .fill(t.bg)
         .child(batches(s, t))
-        .child(
+        .child(if s.page == crate::state::Page::Collection {
+            crate::collection::view(s, t)
+        } else {
             col()
                 .grow(1.)
                 .min_w(0.)
@@ -42,12 +44,12 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
                         .gap(20.)
                         .child(card_list(s, t))
                         .child(detail(s, t)),
-                ),
-        )
+                )
+        })
 }
 
 fn batches(s: &State, t: tok::Theme) -> El {
-    col()
+    let base = col()
         .key("batches")
         .w(206.)
         .h_full()
@@ -56,49 +58,66 @@ fn batches(s: &State, t: tok::Theme) -> El {
         .gap(12.)
         .fill(t.card)
         .child(text("Scanner").font(type_::TITLE).color(t.text))
-        .child(
-            text(format!("{} saved batches", s.batches.len()))
-                .font(type_::LABEL)
-                .color(t.text_secondary),
-        )
-        .child(
-            col()
-                .grow(1.)
-                .min_h(0.)
-                .w_full()
-                .gap(6.)
-                .scroll(ScrollSpec {
-                    stick_bottom: false,
-                })
-                .children(s.batches.iter().enumerate().map(|(i, batch)| {
-                    col()
-                        .key(format!("batch-{i}"))
-                        .w_full()
-                        .px(10.)
-                        .py(12.)
-                        .gap(5.)
-                        .radius(8.)
-                        .fill(if s.batch == i {
-                            t.control_track
-                        } else {
-                            t.card
-                        })
-                        .role("button")
-                        .label(batch_label(batch))
-                        .focusable(true)
-                        .on_press(move |s: &mut State| s.select_batch(i))
-                        .child(text(batch_label(batch)).font(type_::LABEL).color(t.text))
-                        .child(
-                            text(format!(
-                                "{} images · {}",
-                                batch.progress.images_saved,
-                                batch.state.as_str()
-                            ))
-                            .font(type_::LABEL)
-                            .color(t.text_secondary),
-                        )
-                })),
-        )
+        .child(crate::connection_view::button(
+            "Batches",
+            "nav-batches",
+            true,
+            t,
+            |s| s.page = crate::state::Page::Library,
+        ))
+        .child(crate::connection_view::button(
+            "Inventory",
+            "nav-inventory",
+            !s.fixture,
+            t,
+            State::show_collection,
+        ));
+    if s.page == crate::state::Page::Collection {
+        return base.child(crate::collection::sidebar(s, t));
+    }
+    base.child(
+        text(format!("{} saved batches", s.batches.len()))
+            .font(type_::LABEL)
+            .color(t.text_secondary),
+    )
+    .child(
+        col()
+            .grow(1.)
+            .min_h(0.)
+            .w_full()
+            .gap(6.)
+            .scroll(ScrollSpec {
+                stick_bottom: false,
+            })
+            .children(s.batches.iter().enumerate().map(|(i, batch)| {
+                col()
+                    .key(format!("batch-{i}"))
+                    .w_full()
+                    .px(10.)
+                    .py(12.)
+                    .gap(5.)
+                    .radius(8.)
+                    .fill(if s.batch == i {
+                        t.control_track
+                    } else {
+                        t.card
+                    })
+                    .role("button")
+                    .label(batch_label(batch))
+                    .focusable(true)
+                    .on_press(move |s: &mut State| s.select_batch(i))
+                    .child(text(batch_label(batch)).font(type_::LABEL).color(t.text))
+                    .child(
+                        text(format!(
+                            "{} images · {}",
+                            batch.progress.images_saved,
+                            batch.state.as_str()
+                        ))
+                        .font(type_::LABEL)
+                        .color(t.text_secondary),
+                    )
+            })),
+    )
 }
 
 fn card_list(s: &State, t: tok::Theme) -> El {

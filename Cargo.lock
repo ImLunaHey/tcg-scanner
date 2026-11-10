@@ -4179,6 +4179,7 @@ dependencies = [
  "futures-channel",
  "futures-util",
  "gloo-timers",
+ "image",
  "rune",
  "scanner-client",
  "scanner-files",

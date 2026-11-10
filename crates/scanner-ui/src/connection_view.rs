@@ -13,11 +13,12 @@ pub fn button(
 ) -> El {
     let button = el()
         .key(key)
+        .min_w(0.)
         .px(12.)
         .py(9.)
         .radius(8.)
         .fill(t.control_track)
-        .child(text(label).font(type_::LABEL).color(if enabled {
+        .child(text(label).font(type_::LABEL).wrap().color(if enabled {
             t.text
         } else {
             t.text_secondary

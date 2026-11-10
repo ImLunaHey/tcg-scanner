@@ -37,6 +37,20 @@ try {
   const result = reviewed.result;
   if (result?.state !== 'confirmed' || result.selectedCardID !== 'fixture-1' || result.finish !== 'normal' || result.condition !== 'nearMint')
     throw new Error('The browser did not save the explicit fixture review');
+  const inventory = await Promise.all([
+    response(page, 'v1.inventory.list'),
+    page.getByRole('button', { name: 'Inventory', exact: true }).dispatchEvent('click'),
+  ]).then(([response]) => response.json());
+  if (inventory.result?.totalCopies !== 1) throw new Error('Synthetic inventory must contain one physical copy');
+  await page.getByRole('button', { name: /^Open batch / }).first().waitFor();
+  if (screenshots) {
+    await mkdir(screenshots, { recursive: true });
+    await page.screenshot({ path: join(screenshots, 'inventory.png') });
+  }
+  await Promise.all([
+    response(page, 'v1.jobs.get'),
+    page.getByRole('button', { name: /^Open batch / }).first().dispatchEvent('click'),
+  ]);
   if (errors.length) throw new Error(`Browser errors: ${errors.join('; ')}`);
   const storage = await page.evaluate(() => ({ local: localStorage.length, session: sessionStorage.length }));
   if (storage.local || storage.session || (await page.locator('body').innerText()).includes(token))
@@ -45,7 +59,7 @@ try {
     await mkdir(screenshots, { recursive: true });
     await page.screenshot({ path: join(screenshots, 'reviewed.png') });
   }
-  console.log(JSON.stringify({ methods, review: result.state, finish: result.finish, condition: result.condition, storage, errors }, null, 2));
+  console.log(JSON.stringify({ methods, review: result.state, finish: result.finish, condition: result.condition, inventoryCopies: inventory.result.totalCopies, storage, errors }, null, 2));
 } finally { await browser.close(); }
 function response(page, method) {
   return page.waitForResponse(response => response.url() === `${origin}/rpc` && response.request().postDataJSON().method === method, { timeout: 15000 });

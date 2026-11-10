@@ -12,7 +12,16 @@ use scanner_types::{
 };
 use std::sync::Arc;
 
+#[derive(Default, PartialEq, Eq)]
+pub enum Page {
+    #[default]
+    Library,
+    Collection,
+}
+
 pub struct State {
+    pub page: Page,
+    pub collection: crate::collection::Collection,
     pub batches: Vec<JobSummary>,
     pub batch: usize,
     pub record: Option<ScanRecord>,
@@ -42,6 +51,8 @@ pub struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
+            page: Page::Library,
+            collection: Default::default(),
             batches: vec![],
             batch: 0,
             record: None,
@@ -72,6 +83,7 @@ impl Default for State {
 }
 impl State {
     pub fn setup(&mut self, waker: Waker) {
+        self.collection.set_waker(waker.clone());
         self.ops.set_waker(waker.clone());
         self.connecting.set_waker(waker.clone());
         self.listing.set_waker(waker.clone());
@@ -123,6 +135,8 @@ impl State {
             return;
         }
         self.ops.disconnect();
+        self.collection.clear();
+        self.page = Page::Library;
         self.connecting.cancel();
         self.listing.cancel();
         self.details.cancel();
@@ -152,6 +166,7 @@ impl State {
     }
     pub fn poll(&mut self, _: f64, _: &mut Tx) -> bool {
         let mut changed = self.poll_operations();
+        changed |= self.poll_collection();
         if let Some(result) = self.connecting.take() {
             match result {
                 Ok(connected) => {

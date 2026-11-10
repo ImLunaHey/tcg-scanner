@@ -2,9 +2,11 @@
 compile_error!("The Rune browser UI must be compiled without wasm atomics.");
 
 mod api;
+mod collection;
 mod connection_view;
 mod library;
 mod operations;
+mod reference_preview;
 mod state;
 mod task;
 mod view;

@@ -156,7 +156,7 @@ impl State {
             }
         }
     }
-    fn focus_record(&mut self, record: ScanRecord) {
+    pub(crate) fn focus_record(&mut self, record: ScanRecord) {
         if let Some(i) = self.batches.iter().position(|b| b.id == record.id) {
             self.batches[i] = (&record).into();
             self.batch = i;

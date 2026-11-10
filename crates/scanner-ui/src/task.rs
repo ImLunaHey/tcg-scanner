@@ -112,6 +112,13 @@ impl<T: 'static> Task<T> {
     }
 }
 
+pub async fn delay(milliseconds: u32) {
+    #[cfg(not(target_arch = "wasm32"))]
+    tokio::time::sleep(std::time::Duration::from_millis(u64::from(milliseconds))).await;
+    #[cfg(target_arch = "wasm32")]
+    gloo_timers::future::TimeoutFuture::new(milliseconds).await;
+}
+
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;

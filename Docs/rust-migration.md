@@ -368,3 +368,11 @@ WebAssembly application. API authentication and Host/Origin checks remain intact
 A browser flow loaded the synthetic card/verified thumbnail and saved a confirmed
 review through native RPC with no JavaScript errors or browser token storage.
 Packaging, fixture and browser-test instructions are in `Docs/rune-web.md`.
+
+Rune inventory now supports paginated physical-copy entries, debounced searches,
+set filters, missing-card checklists, bounded verified catalogue previews and
+opening a copy's batch. Set/missing/copy lists are paginated rather than rendering
+unbounded collections. A real Chromium fixture flow confirms one physical copy,
+loads its preview and returns to its batch after saving explicit finish/condition
+choices. JPEG header/digest tests reject misleading dimensions and corrupt content;
+native tests, strict Clippy and wasm checks pass for this UI slice.
