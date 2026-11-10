@@ -2150,8 +2150,8 @@
 .camera-status strong { font-size: .85rem; line-height: 1.2; }
 .camera-status small { font-size: .7rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.camera-library-actions { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: 160px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100vw - 32px); }
-.camera-library-actions .button { background: #181818ee; color: #ddd; border-color: #ffffff30; padding: 8px 12px; }
+.camera-library-actions { position: absolute; right: max(8px, env(safe-area-inset-right)); bottom: 160px; display: flex; flex-direction: column; gap: 8px; width: 44px; }
+.camera-library-actions .button { display: flex; flex-direction: column; gap: 4px; background: #181818ee; color: #ddd; border-color: #ffffff30; padding: 8px 3px; font-size: .65rem; }
 .camera-price .card-price { display: flex; gap: 6px; align-items: baseline; margin: 0; }
 .camera-price .card-price span { font-size: .65rem; color: #aaa; }
 .camera-price > small { display: block; color: #aaa; line-height: 1.5; margin: 6px 0; }
@@ -2166,3 +2166,25 @@
 .camera-recent-row input { width: 65px; margin-left: 8px; padding: 5px; }
 .camera-review input, .camera-review select { background: #222; color: white; border: 1px solid #555; border-radius: 6px; }
 .camera-review .button { margin: 4px; }
+
+.camera-binder > .button { display: inline-block; }
+.camera-binder input[type=file] { display: block; max-width: 280px; margin-top: 8px; }
+.binder-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 0; }
+.binder-photo { position: relative; max-width: 650px; margin: 16px auto; }
+.binder-photo > img { width: 100%; display: block; }
+.binder-box { position: absolute; border: 2px solid #f2b75d; background: #f2b75d12; color: #fff; padding: 0; }
+.binder-box > span { position: absolute; top: 0; left: 0; max-width: 100%; font-size: .65rem; background: #181818e6; padding: 3px; }
+.binder-box[data-state=matched] { border-color: #b9f4ce; background: #b9f4ce12; }
+.binder-box[data-state=identifying] { border-color: #89c5ff; }
+.binder-box[data-selected=false] { opacity: .4; border-style: dashed; }
+.camera-recent-row > input[type=checkbox] { flex: 0 0 16px; width: 16px; margin: 4px 0; }
+@media (max-height: 740px) and (max-width: 700px) {
+  .camera-match-tile { min-height: 0; gap: 8px; }
+  .camera-match-tile > img { width: 48px; height: 66px; }
+  .camera-match-tile > span { gap: 2px; }
+  .camera-match-tile small { line-height: 1.2; }
+  .camera-match-tile strong { font-size: .8rem; line-height: 1.2; }
+  .camera-match-tile > span > span { font-size: .65rem; line-height: 1.2; }
+  .camera-match-tile .camera-finish-pill { display: none; }
+  .camera-match-tile .card-price span { font-size: .6rem; }
+}

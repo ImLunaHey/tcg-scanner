@@ -56,7 +56,8 @@ pub fn guide_for_ocr(bytes: &[u8]) -> Result<Option<EncodedImage>> {
     crate::encode_png(image.to_rgba8()).map(Some)
 }
 
-fn decode(bytes: &[u8]) -> Result<DynamicImage> {
+/// Decode a bounded camera or binder JPEG and apply EXIF orientation once.
+pub fn decode(bytes: &[u8]) -> Result<DynamicImage> {
     if bytes.is_empty() || bytes.len() > MAX_IMAGE_BYTES {
         return Err(invalid());
     }

@@ -181,7 +181,7 @@ impl Gateway {
                     .map_err(|_| Error::busy())?,
             );
         }
-        if path.parts == ["api", "v1", "camera", "identify"] {
+        if crate::camera::is_route(path) && path.parts.last().is_some_and(|p| p != "price") {
             permits.push(
                 self.cameras
                     .clone()

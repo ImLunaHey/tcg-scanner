@@ -28,6 +28,7 @@ pub(crate) struct Configuration {
     pub tesseract_library: Option<PathBuf>,
     pub trained_data: Option<PathBuf>,
     pub visual_recognition: Option<VisualConfiguration>,
+    pub binder_detection: Option<BinderConfiguration>,
 }
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -35,6 +36,13 @@ pub(crate) struct VisualConfiguration {
     pub runtime_library: PathBuf,
     pub model: PathBuf,
     pub index: PathBuf,
+}
+#[derive(Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct BinderConfiguration {
+    pub runtime_library: PathBuf,
+    pub model: PathBuf,
+    pub sha256: String,
 }
 #[derive(Clone, Copy, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -85,6 +93,18 @@ impl Configuration {
         {
             return Err(config(
                 "Visual recognition requires OCR and absolute existing runtime, model and index files.",
+            ));
+        }
+        if let Some(binder) = &value.binder_detection
+            && (value.tesseract_library.is_none()
+                || [&binder.runtime_library, &binder.model]
+                    .iter()
+                    .any(|p| !p.is_absolute() || !p.is_file())
+                || binder.sha256.len() != 64
+                || !binder.sha256.bytes().all(|b| b.is_ascii_hexdigit()))
+        {
+            return Err(config(
+                "Binder detection requires OCR, absolute runtime/model paths and a SHA-256.",
             ));
         }
         for path in [

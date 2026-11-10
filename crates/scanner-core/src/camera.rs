@@ -13,6 +13,25 @@ impl Engine {
         request: CameraRequest,
     ) -> Result<CameraIdentification> {
         let bytes = decode(&request.base64)?;
+        self.camera_work(move |recognizer| async move {
+            recognizer.recognize_camera(bytes, request.language).await
+        })
+        .await
+    }
+    pub async fn detect_binder(
+        self: &Arc<Self>,
+        request: CameraRequest,
+    ) -> Result<scanner_types::binder::BinderDetection> {
+        let bytes = decode(&request.base64)?;
+        self.camera_work(move |recognizer| async move { recognizer.detect_binder(bytes).await })
+            .await
+    }
+    async fn camera_work<T, F, Fut>(self: &Arc<Self>, operation: F) -> Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce(Arc<dyn crate::backend::CardRecognizer>) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = Result<T>> + Send + 'static,
+    {
         let recognizer = self.recognizer.clone().ok_or_else(|| {
             ScannerError::new("configuration", "Native recognition is not configured.")
         })?;
@@ -36,12 +55,10 @@ impl Engine {
             // A panic in an adapter must still release the reservation and wake
             // queued scans/shutdown. Native worker permits outlive cancelled callers.
             let result = match engine.release_button().await {
-                Ok(()) => tokio::spawn(async move {
-                    recognizer.recognize_camera(bytes, request.language).await
-                })
-                .await
-                .map_err(crate::image_access::worker)
-                .and_then(|v| v),
+                Ok(()) => tokio::spawn(async move { operation(recognizer).await })
+                    .await
+                    .map_err(crate::image_access::worker)
+                    .and_then(|v| v),
                 Err(error) => Err(error),
             };
             drop(permit);

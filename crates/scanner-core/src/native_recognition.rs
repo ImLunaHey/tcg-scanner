@@ -8,12 +8,20 @@ use scanner_types::{
 use std::{path::PathBuf, sync::Arc};
 pub struct NativeCardRecognizer {
     camera: scanner_recognition::camera::CameraRecognizer,
+    binder: Option<Arc<std::sync::Mutex<scanner_recognition::binder::BinderDetector>>>,
     root: Arc<StorageRoot>,
     pokemon: PokemonRecognizer,
     other_games: OtherGames,
     finish: scanner_recognition::finish::FinishAnalyzer,
 }
 impl NativeCardRecognizer {
+    pub fn with_binder(
+        mut self,
+        detector: Arc<std::sync::Mutex<scanner_recognition::binder::BinderDetector>>,
+    ) -> Self {
+        self.binder = Some(detector);
+        self
+    }
     pub fn with_visual(
         mut self,
         visual: Arc<scanner_recognition::embedding::VisualRetriever>,
@@ -24,6 +32,7 @@ impl NativeCardRecognizer {
     }
     pub fn new(root: Arc<StorageRoot>, library: PathBuf, data: PathBuf) -> Result<Self> {
         Ok(Self {
+            binder: None,
             camera: scanner_recognition::camera::CameraRecognizer::new(
                 library.clone(),
                 data.clone(),
@@ -50,6 +59,25 @@ impl NativeCardRecognizer {
 }
 #[async_trait::async_trait]
 impl CardRecognizer for NativeCardRecognizer {
+    async fn detect_binder(
+        &self,
+        bytes: Vec<u8>,
+    ) -> Result<scanner_types::binder::BinderDetection> {
+        let detector = self.binder.clone().ok_or_else(|| {
+            scanner_types::error::ScannerError::new(
+                "configuration",
+                "Automatic page detection is not configured. Use the pocket grid.",
+            )
+        })?;
+        tokio::task::spawn_blocking(move || {
+            detector
+                .lock()
+                .map_err(crate::image_access::worker)?
+                .detect(&bytes)
+        })
+        .await
+        .map_err(crate::image_access::worker)?
+    }
     async fn recognize_camera(
         &self,
         bytes: Vec<u8>,

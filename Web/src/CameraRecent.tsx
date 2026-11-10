@@ -52,7 +52,7 @@ export function CameraRecent({ close }: { close: () => void }) {
           <option value="unverified">Not checked</option>
           {(row.selection.card.availableFinishes || []).filter(f => f !== "unverified").map(f => <option key={f} value={f}>{f === "reverseHolo" ? "Reverse holo" : f === "normal" ? "Non-holo" : f}</option>)}
         </select></label>
-        {row.savedBatchID && <Link href={`/batches/${row.savedBatchID}`}>Saved to inventory · view batch</Link>}
+        {row.savedBatchID && <><Link href={`/batches/${row.savedBatchID}`}>Saved to inventory · view batch</Link><button className="button" disabled={saving} onClick={() => void update({ ...row, id: crypto.randomUUID(), createdAt: new Date().toISOString(), quantity: 1, savedBatchID: undefined, importStarted: false })}>Add another copy</button></>}
         {row.importStarted && !row.savedBatchID && <small>Save pending · retry to confirm</small>}
         <small>{new Date(row.createdAt).toLocaleString()}</small>
       </div>

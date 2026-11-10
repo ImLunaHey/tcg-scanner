@@ -13,6 +13,7 @@ use std::sync::Arc;
 pub(crate) fn is_route(path: &Path) -> bool {
     path.parts == ["api", "v1", "camera", "identify"]
         || path.parts == ["api", "v1", "camera", "price"]
+        || path.parts == ["api", "v1", "camera", "detect-page"]
 }
 impl Gateway {
     pub(crate) async fn camera_route(
@@ -43,6 +44,9 @@ impl Gateway {
         }
         let request = serde_json::from_value(Value::Object(body))
             .map_err(|_| Error::params("Provide base64 JPEG and language en or ko."))?;
+        if path.parts.last().is_some_and(|p| p == "detect-page") {
+            return Ok(Json(self.engine.detect_binder(request).await?).into_response());
+        }
         Ok(Json(self.engine.identify_camera(request).await?).into_response())
     }
 }

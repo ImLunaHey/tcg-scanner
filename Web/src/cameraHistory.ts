@@ -40,14 +40,14 @@ export async function storeRecentCard(row: RecentCard) {
   await transaction("readwrite", s => s.put(row));
 }
 export async function removeRecentCard(id: string) { await transaction("readwrite", s => s.delete(id)); }
-export async function rememberCard(selection: CameraSelection, base64: string, separate = false): Promise<RecentCard> {
+export async function rememberCard(selection: CameraSelection, base64: string, captureID?: string): Promise<RecentCard> {
   const rows = await recentCards();
   // Repeated video frames never imply another physical copy. Additional copies
   // are explicit quantities; binder pockets use separate capture IDs.
-  const previous = !separate && rows.find(r => sameCameraCard(r.selection, selection));
+  const previous = rows.find(r => captureID ? r.id === captureID : sameCameraCard(r.selection, selection));
   if (previous) return previous;
   if (rows.length >= LIMIT) throw new Error("Recent scans are full (100). Remove reviewed entries before capturing more.");
-  const row: RecentCard = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), selection, base64, quantity: 1 };
+  const row: RecentCard = { id: captureID || crypto.randomUUID(), createdAt: new Date().toISOString(), selection, base64, quantity: 1 };
   await storeRecentCard(row);
   return row;
 }

@@ -41,8 +41,9 @@ A shared per-user owner lock prevents two services from accessing scanner hardwa
   suggestions. Printed identity, finish and condition remain distinct decisions.
 - Inventory, catalogue/reference lookup, GBP market guides, reviewed finish and
   condition, verified exports and explicit Store transfers.
-- Browser camera lookup and installable camera page, with frames kept in
-  memory. Remote camera access requires HTTPS.
+- Browser camera lookup, prices, on-device recent scans and reviewed inventory
+  imports. [Binder pages](Docs/camera-library.md) use optional native ONNX detection
+  with a pocket-grid fallback. Remote camera access requires HTTPS.
 - Private HTTP credentials, JSON-RPC/REST/MCP, storage reconnection, pause/resume,
   native power notifications and opt-in scanner-button handling.
 

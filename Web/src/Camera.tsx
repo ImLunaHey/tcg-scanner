@@ -9,10 +9,13 @@ import {
   RotateCcw,
   X,
   ChevronRight,
+  History,
+  LayoutGrid,
 } from "lucide-react";
 import { Link } from "wouter";
 import { CameraTorch } from "./CameraTorch";
 import { CameraFinish } from "./CameraFinish";
+import { CameraBinder } from "./CameraBinder";
 import { CameraRecent } from "./CameraRecent";
 import { CameraPrice, selectedCameraCard } from "./CameraPrice";
 import { recentCards, rememberCard } from "./cameraHistory";
@@ -77,6 +80,8 @@ export function Camera() {
   const [preview, setPreview] = useState<string>();
   const [details, setDetails] = useState(false);
   const [recent, setRecent] = useState(false);
+  const [binder, setBinder] = useState(false);
+  function showBinder(open: boolean) { detailsOpen.current = open; setBinder(open); }
   const [recentCount, setRecentCount] = useState(0);
   const [historyError, setHistoryError] = useState("");
   useEffect(() => { void recentCards().then(rows => setRecentCount(rows.length)).catch(() => {}); }, [recent]);
@@ -399,8 +404,8 @@ export function Camera() {
     <main className="camera-page" aria-label="Card camera">
       <div
         className="camera-surface"
-        inert={details || recent}
-        aria-hidden={details || recent || undefined}
+        inert={details || recent || binder}
+        aria-hidden={details || recent || binder || undefined}
       >
         <div ref={view} className="camera-view" data-active={active}>
           <video
@@ -524,7 +529,8 @@ export function Camera() {
           )}
         </div>
         <div className="camera-library-actions">
-          <button className="button" onClick={() => showRecent(true)}>Recent scans ({recentCount})</button>
+          <button className="button" aria-label={`Recent scans (${recentCount})`} title="Recent scans" onClick={() => showRecent(true)}><History size={18} /><span>{recentCount}</span></button>
+          <button className="button" aria-label="Binder page" title="Binder page" onClick={() => showBinder(true)}><LayoutGrid size={18} /><span>Page</span></button>
           {historyError && <small role="alert">{historyError}</small>}
         </div>
         {result && (
@@ -559,6 +565,7 @@ export function Camera() {
           </button>
         )}
       </div>
+      {binder && <CameraBinder language={language} close={() => showBinder(false)} recent={() => { setBinder(false); showRecent(true); }} />}
       {recent && <CameraRecent close={() => showRecent(false)} />}
       {details && result && (
         <CameraDetails

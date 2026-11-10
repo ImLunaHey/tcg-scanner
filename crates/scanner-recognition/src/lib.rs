@@ -1,3 +1,4 @@
+pub mod binder;
 pub mod camera;
 pub mod condition;
 pub mod embedding;

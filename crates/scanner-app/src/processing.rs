@@ -69,6 +69,18 @@ pub(crate) async fn configure(
                 .map_err(config)??;
                 recognizer = recognizer.with_visual(Arc::new(retriever));
             }
+            if let Some(binder) = configuration.binder_detection.clone() {
+                let detector = tokio::task::spawn_blocking(move || {
+                    scanner_recognition::binder::BinderDetector::load(
+                        &binder.runtime_library,
+                        &binder.model,
+                        &binder.sha256,
+                    )
+                })
+                .await
+                .map_err(config)??;
+                recognizer = recognizer.with_binder(detector);
+            }
             if let Some(cache) = documents {
                 recognizer = recognizer.with_documents(cache);
             }
