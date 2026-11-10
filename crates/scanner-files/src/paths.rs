@@ -18,12 +18,14 @@ pub(super) fn sync_directory(directory: &Dir) -> Result<()> {
 }
 
 pub(super) fn create_directory(root: &Dir, name: &Path) -> std::io::Result<()> {
-    let mut options = cap_std::fs::DirBuilder::new();
+    let options = cap_std::fs::DirBuilder::new();
     #[cfg(unix)]
-    {
+    let options = {
         use cap_std::fs::DirBuilderExt;
+        let mut options = options;
         options.mode(0o700);
-    }
+        options
+    };
     root.create_dir_with(name, &options)
 }
 
