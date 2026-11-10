@@ -33,3 +33,6 @@ mod exports;
 mod camera;
 mod comparison;
 mod image_review;
+
+#[cfg(not(target_arch = "wasm32"))]
+mod local_connection;

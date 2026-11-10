@@ -70,7 +70,24 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo test --workspace --locked
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo build --workspace --bins --locked
+      - run: cargo build --workspace --bins --release --locked
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: native-${{ runner.os }}
+          path: |
+            target/release/scanner
+            target/release/scanner.exe
+            target/release/scanner-service
+            target/release/scanner-service.exe
+            target/release/scanner-ui
+            target/release/scanner-ui.exe
+            target/release/scanner-mcp
+            target/release/scanner-mcp.exe
+            target/release/scanner-index
+            target/release/scanner-index.exe
+            target/release/scanner-setup
+            target/release/scanner-setup.exe
+          if-no-files-found: error
 
   browser:
     name: Browser WebAssembly
@@ -92,10 +109,47 @@ jobs:
           restore-keys: cargo-web-
       - run: cargo clippy -p scanner-ui -p scanner-worker --lib --target wasm32-unknown-unknown --locked -- -D warnings
       - run: cargo build -p scanner-ui -p scanner-worker --lib --release --target wasm32-unknown-unknown --locked
+      - run: cargo install wasm-bindgen-cli --version 0.2.128 --locked
+      - run: wasm-bindgen --target web --no-typescript --out-dir target/rune-web target/wasm32-unknown-unknown/release/scanner_ui.wasm
+      - run: wasm-bindgen --target web --no-typescript --out-dir target/rune-web target/wasm32-unknown-unknown/release/scanner_worker.wasm
+      - run: cargo run -p scanner-http --example web_bundle --locked -- target/rune-web
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: rune-webassembly
-          path: |
-            target/wasm32-unknown-unknown/release/scanner_ui.wasm
-            target/wasm32-unknown-unknown/release/scanner_worker.wasm
+          name: rune-web
+          path: target/rune-web
+          if-no-files-found: error
+
+  distribution:
+    name: Distribution (${{ matrix.os }})
+    needs: [native, browser]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: native-${{ runner.os }}
+          path: native
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: rune-web
+          path: web
+      - name: Assemble verified distribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          suffix=""
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            suffix=".exe"
+          else
+            chmod +x native/scanner-setup
+          fi
+          "./native/scanner-setup$suffix" package --binaries native --web web --output scanner-distribution
+          tar -czf "scanner-$RUNNER_OS-$RUNNER_ARCH.tar.gz" -C scanner-distribution .
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: scanner-${{ runner.os }}-${{ runner.arch }}
+          path: scanner-*.tar.gz
           if-no-files-found: error

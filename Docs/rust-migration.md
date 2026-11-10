@@ -686,3 +686,16 @@ A separately loaded comparison shows only the other image in the same duplex
 pair and invalidates on a source change. These are verified thumbnails, not
 full-resolution forensic views. Geometry/source tests, strict native/WASM Clippy
 and the HTTPS review/edit/export flow pass; both views were visually inspected.
+
+`scanner-setup` now assembles/checks native distributions, installs into a new
+private directory, detects or accepts explicit native dependencies, validates
+Tesseract initialization, and registers/removes per-user startup without helpers.
+It never starts another scanner owner or migrates the live database implicitly.
+Rune's installed desktop executable reads its adjacent private configuration.
+Windows also observes console close/logoff/shutdown signals for best-effort drain.
+Package corruption, overwrite refusal, private credentials, unchanged source
+storage and matching-only startup removal are tested. A complete local package
+was installed under the development cache and its private credential, verified
+web bundle, actual Tesseract initialization and mounted lake/scans policy passed
+`doctor`; no scanner was opened. CI now assembles per-platform archives.
+See [portable installation](portable-install.md) for cutover and dependency steps.

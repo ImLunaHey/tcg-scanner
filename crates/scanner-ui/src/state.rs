@@ -118,8 +118,19 @@ impl State {
             self.saved_scene();
             return;
         }
-        if let Some(path) = std::env::var_os("SCANNER_TOKEN_FILE") {
-            let origin = self.origin.text.clone();
+        let connection = if let Some(path) = std::env::var_os("SCANNER_TOKEN_FILE") {
+            Some((self.origin.text.clone(), std::path::PathBuf::from(path)))
+        } else {
+            match crate::local_connection::installed() {
+                Ok(value) => value,
+                Err(error) => {
+                    self.error = Some(error.to_string());
+                    None
+                }
+            }
+        };
+        if let Some((origin, path)) = connection {
+            self.origin = TextEdit::new(&origin);
             self.connecting.request(async move {
                 let client = tokio::task::spawn_blocking(move || {
                     let token = scanner_platform::load_credential(std::path::Path::new(&path))?;

@@ -15,3 +15,6 @@ mod power;
 
 mod maintenance;
 pub mod visual_index;
+
+pub mod distribution;
+pub mod setup;
