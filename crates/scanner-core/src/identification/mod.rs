@@ -1,5 +1,6 @@
 mod persistence;
 mod pipeline;
+mod retry;
 use crate::{
     Engine,
     image_access::{selected, worker},
@@ -66,17 +67,7 @@ impl Engine {
                 }
                 Ok((pending, Some((record, image)))) => {
                     let _ = reply.send(Ok(pending.clone()));
-                    let result = engine.recognize(pending, &record, &image).await;
-                    let publisher = engine.clone();
-                    let saved = tokio::task::spawn_blocking(move || {
-                        publisher.publish_identification(&result)
-                    })
-                    .await
-                    .map_err(worker)
-                    .and_then(|v| v);
-                    if let Err(error) = saved {
-                        engine.state.lock().await.persistence_error = Some(error);
-                    }
+                    engine.complete_identification(pending, record, image).await;
                 }
             }
         });
@@ -145,6 +136,9 @@ impl Engine {
             image.sha256.clone(),
             prepared.map(|e| e.request.id),
         );
+        if previous.is_some_and(|p| p.catalogue_retry_after.is_some()) {
+            pending.catalogue_retry_after = Some(chrono::Utc::now() + chrono::Duration::hours(24));
+        }
         if let Some(previous) = previous.filter(|p| {
             p.source_sha256 == pending.source_sha256 && p.source_edit_id == pending.source_edit_id
         }) && let Some(estimate) = previous.extensions.get("finishEstimate")
@@ -179,6 +173,18 @@ impl Engine {
                 } else {
                     IdentificationState::ReviewRequired
                 };
+                if pending.state == IdentificationState::NoMatch
+                    && evidence
+                        .extensions
+                        .get("uncataloguedCard")
+                        .is_some_and(serde_json::Value::is_object)
+                {
+                    pending.state = IdentificationState::AwaitingCatalogue;
+                    pending.catalogue_retry_after =
+                        Some(chrono::Utc::now() + chrono::Duration::hours(24));
+                } else {
+                    pending.catalogue_retry_after = None;
+                }
                 pending.evidence = Some(evidence);
             }
             Err(error) => {

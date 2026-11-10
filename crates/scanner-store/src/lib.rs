@@ -80,3 +80,5 @@ impl Database {
 }
 
 mod inventory;
+
+mod catalogue_retry;

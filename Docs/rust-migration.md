@@ -632,3 +632,12 @@ selection; stop/sleep/shutdown cancel startup as well as an open listener and wa
 for cleanup. Diagnostic presses never create jobs. Tests verify automatic-listener
 handoff, queued/late cancellation, range/authentication validation and no feeds.
 Service status now exposes `buttonObservation` separately from manual pause.
+
+Scheduled catalogue retries now select one due terminal job from the compatible
+ledger while idle, using real timestamp ordering across Swift/Rust wire formats.
+Uncatalogued evidence enters `awaitingCatalogue` with a 24-hour deadline; a retry
+uses a new operation ID and retains its next deadline through catalogue failure.
+Recognition and publication keep owned permits/reservations. Tests cover future
+and reviewed exclusions, concurrent retry admission, pause/capture priority,
+source preservation and failure backoff. Maintenance checks every 30 seconds;
+no physical job is created by a catalogue retry.

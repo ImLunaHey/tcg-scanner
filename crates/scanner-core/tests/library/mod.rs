@@ -101,3 +101,5 @@ mod camera;
 mod lifecycle;
 
 mod buttons;
+
+mod catalogue_retry;
