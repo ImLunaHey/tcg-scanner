@@ -19,3 +19,5 @@ pub mod identification;
 pub mod recognition;
 
 pub mod game_detection;
+
+pub mod inventory;

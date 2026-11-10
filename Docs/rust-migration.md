@@ -277,3 +277,12 @@ processing and accepts a stable operation UUID through core/RPC/HTTP/MCP. A
 retained sidecar can recover the original prepared PNG without rerunning OCR.
 Tests cover duplicate/concurrent requests, publication recovery, conflicting
 sequences, original preservation and shutdown refusal.
+
+`scanner-library` provides pure inventory aggregation over saved records: physical
+copy counts, confirmed quantities, language separation, code-insert exclusion,
+search/set filters, deterministic set slugs, previews, catalogue sources and
+missing-card subtraction. B-001 projects to 47 playable copies in 35 entries and
+17 excluded code inserts without modifying files. Synthetic tests cover rescans,
+reviews, incomplete pairs and filtered totals. Non-Latin set slugs use portable
+transliteration; native locale-specific ordering is not assumed across platforms.
+Service and remote catalogue wiring follow this domain slice.
