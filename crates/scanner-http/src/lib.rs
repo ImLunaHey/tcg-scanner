@@ -16,3 +16,5 @@ pub use configuration::Configuration;
 pub use gateway::Gateway;
 
 mod recognition;
+
+mod inventory;

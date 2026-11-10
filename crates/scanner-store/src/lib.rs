@@ -78,3 +78,5 @@ impl Database {
         Ok(result)
     }
 }
+
+mod inventory;

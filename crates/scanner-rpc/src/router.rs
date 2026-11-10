@@ -61,6 +61,9 @@ impl Router {
         if let Some(result) = self.library(method, &params).await {
             return result;
         }
+        if let Some(result) = self.inventory(method, &params).await {
+            return result;
+        }
         if let Some(result) = self.profiles(method, &params).await {
             return result;
         }

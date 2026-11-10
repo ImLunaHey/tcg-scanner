@@ -21,7 +21,9 @@ pub(crate) fn binary_image(method: &Method, path: &Path) -> bool {
     let p: Vec<_> = path.parts.iter().map(String::as_str).collect();
     matches!(
         p.as_slice(),
-        ["api", "v1", "images", _] | ["api", "v1", "images", _, "thumbnail"]
+        ["api", "v1", "images", _]
+            | ["api", "v1", "images", _, "thumbnail"]
+            | ["api", "v1", "inventory", "references", _, "thumbnail"]
     )
 }
 impl Gateway {
@@ -62,6 +64,9 @@ impl Gateway {
         }
         if rest == ["events"] && head.method == "GET" {
             return self.event_stream(head, path, principal.clone()).await;
+        }
+        if rest.first() == Some(&"inventory") {
+            return self.inventory_route(head, path, rest).await;
         }
         if rest.first() == Some(&"images") {
             return self.image_route(head, path, rest, body).await;

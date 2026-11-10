@@ -27,6 +27,7 @@ url.workspace = true
 uuid.workspace = true
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 [dev-dependencies]
+scanner-catalogue.workspace = true
 scanner-client.workspace = true
 scanner-images.workspace = true
 image.workspace = true

@@ -12,3 +12,5 @@ pub use model::{Failure, Request, Response};
 pub use router::Router;
 
 mod recognition;
+
+mod inventory;

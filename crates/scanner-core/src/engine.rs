@@ -21,6 +21,9 @@ pub struct Engine {
     pub(crate) recognizer: Option<Arc<dyn CardRecognizer>>,
     pub(crate) recognition_workers: Arc<Semaphore>,
     pub(crate) database: Arc<Database>,
+    pub(crate) inventory_workers: Arc<Semaphore>,
+    pub(crate) library_catalogue:
+        tokio::sync::OnceCell<Arc<scanner_catalogue::library::LibraryCatalogue>>,
     pub(crate) root: Arc<StorageRoot>,
     pub(crate) state: Mutex<State>,
     pub(crate) submissions: Mutex<()>,
@@ -83,6 +86,8 @@ impl Engine {
             recognizer,
             recognition_workers: Arc::new(Semaphore::new(1)),
             database,
+            inventory_workers: Arc::new(Semaphore::new(4)),
+            library_catalogue: tokio::sync::OnceCell::new(),
             root,
             state: Mutex::new(State::default()),
             submissions: Mutex::new(()),

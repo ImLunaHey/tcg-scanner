@@ -233,7 +233,7 @@ Service installation, sleep/wake handling and full friendly CLI parity remain op
 `scanner-mcp` implements MCP 2025-06-18 over bounded stdio JSON frames, with
 initialization, tool discovery, structured tool results, read-only filtering, eight
 concurrent calls and request cancellation. It advertises 27 completed Rust-backed
-tools; finish, condition and inventory tools remain pending their domain slices. Tests
+tools; finish and condition assessment tools remain pending their domain slices. Tests
 cover initialization gates, argument validation, defaults, domain errors,
 concurrency, duplicate IDs, cancellation and oversized/truncated frames. MCP
 cancellation never sends a physical scan cancellation. The `scanner-mcp` binary
@@ -285,4 +285,14 @@ missing-card subtraction. B-001 projects to 47 playable copies in 35 entries and
 17 excluded code inserts without modifying files. Synthetic tests cover rescans,
 reviews, incomplete pairs and filtered totals. Non-Latin set slugs use portable
 transliteration; native locale-specific ordering is not assumed across platforms.
-Service and remote catalogue wiring follow this domain slice.
+The service projects a consistent terminal-job cursor on up to four bounded
+blocking workers, then exposes inventory, missing-card checklists and registered
+references through v1 RPC/HTTP; MCP includes inventory listing. HTTP tests verify
+active-job exclusion, filtered totals, owned-card subtraction, bearer controls and
+public-reference Host/Origin/ETag behavior without touching hardware.
+
+The native catalogue library now supplies Pokémon set checklists, asynchronous
+release dates and registered, bounded reference thumbnails. Injected-transport
+tests verify request coalescing, language separation and rejection of unregistered
+or off-origin images. Optional caches are memory-only at this stage; they do not
+change or store user scan originals.

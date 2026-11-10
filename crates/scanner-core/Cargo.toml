@@ -10,6 +10,8 @@ publish = false
 [dependencies]
 base64.workspace = true
 scanner-types.workspace = true
+scanner-library.workspace = true
+scanner-catalogue.workspace = true
 scanner-device.workspace = true
 scanner-store.workspace = true
 scanner-files.workspace = true

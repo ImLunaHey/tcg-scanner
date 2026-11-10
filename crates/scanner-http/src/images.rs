@@ -215,7 +215,7 @@ impl Download {
         Ok(Some((bytes, self)))
     }
 }
-fn cached(head: &Parts, body: Body, media_type: &str, sha: &str) -> Result<Response> {
+pub(crate) fn cached(head: &Parts, body: Body, media_type: &str, sha: &str) -> Result<Response> {
     if sha.len() != 64 || !sha.bytes().all(|b| b.is_ascii_hexdigit()) {
         return Err(Error::internal());
     }

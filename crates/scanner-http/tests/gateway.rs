@@ -13,3 +13,6 @@ mod review;
 
 #[path = "gateway/identification.rs"]
 mod identification;
+
+#[path = "gateway/inventory.rs"]
+mod inventory;

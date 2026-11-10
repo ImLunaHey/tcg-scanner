@@ -16,8 +16,9 @@ cargo test -p scanner-http --test gateway
 
 Implemented routes include `/rpc` (POST JSON-RPC), device inspection/defaults,
 profiles, jobs, continuations, status, image metadata/edits/downloads/thumbnails,
-one-hour bearer sessions, and resumable SSE events. Inventory, recognition,
-pricing, Store transfer, public camera lookup and Rune web assets remain pending.
+one-hour bearer sessions, resumable SSE events, saved-card preparation/OCR/review,
+and inventory/checklists/reference thumbnails. Pricing, visual assessment, Store
+transfer, public camera lookup and Rune web assets remain pending.
 The migration ledger tracks the complete interface scope.
 
 Control routes require exactly one Bearer authorization header. Credentials in
@@ -26,7 +27,7 @@ session credentials can revoke themselves. SHA-256 root digests use constant-tim
 comparison, and token generation uses the operating system random source.
 
 The existing gateway's public binary-image policy is preserved: original and
-thumbnail GETs do not require login, but metadata and edits do. Host and Origin
+thumbnail GETs (including registered catalogue references) do not require login, but metadata and edits do. Host and Origin
 checks apply to all routes. Bind validation permits loopback or explicitly enabled
 Tailscale IPv4 addresses; it rejects wildcard/public addresses. Explicit public
 origins must be bare HTTPS origins.

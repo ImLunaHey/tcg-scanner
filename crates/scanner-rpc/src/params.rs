@@ -18,6 +18,15 @@ impl Params {
         }
         Ok(())
     }
+    pub fn filter(&self, key: &str, max: usize) -> Result<&str, Failure> {
+        match self.0.get(key) {
+            None => Ok(""),
+            Some(Value::String(s)) if s.len() <= max && !s.contains('\0') => Ok(s),
+            _ => Err(Failure::params(format!(
+                "{key} must be a string of at most {max} bytes."
+            ))),
+        }
+    }
     pub fn optional_identifier(&self, key: &str) -> Result<Option<String>, Failure> {
         let Some(value) = self.0.get(key) else {
             return Ok(None);
