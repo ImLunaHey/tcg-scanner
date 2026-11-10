@@ -117,6 +117,16 @@ pub struct ProcessedImage {
 mod tests {
     use super::*;
     #[test]
+    fn crop_coordinates_survive_direct_and_value_json_paths_exactly() {
+        let json = r#"{"x":0.36903018872890414,"y":0.0621360712626452,"width":0.24966967649723099,"height":0.24777452823137183}"#;
+        let direct: ImageCrop = serde_json::from_str(json).unwrap();
+        let value: ImageCrop = serde_json::from_value(serde_json::from_str(json).unwrap()).unwrap();
+        assert_eq!(direct, value);
+        let restored: ImageCrop =
+            serde_json::from_str(&serde_json::to_string(&direct).unwrap()).unwrap();
+        assert_eq!(direct, restored);
+    }
+    #[test]
     fn rejects_nonfinite_and_outside_crops() {
         let mut request = ImageEditRequest {
             id: Uuid::new_v4(),
