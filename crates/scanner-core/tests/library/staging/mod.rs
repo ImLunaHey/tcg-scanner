@@ -14,9 +14,12 @@ async fn frozen_retry_recovers_lost_upload_without_reupload_and_resync_preserves
     );
     assert_eq!(settled(&h, record.id).await.state, TransferState::Failed);
     assert_eq!(store.uploads.load(Ordering::SeqCst), 1);
-    h.engine.send_to_store(record.id).await.unwrap();
+    assert_eq!(
+        h.engine.send_to_store(record.id).await.unwrap().state,
+        TransferState::Sending
+    );
     let sent = settled(&h, record.id).await;
-    assert_eq!(sent.state, TransferState::Sent);
+    assert_eq!(sent.state, TransferState::Sent, "{sent:?}");
     assert_eq!(sent.sent_cards, 1);
     assert_eq!(store.uploads.load(Ordering::SeqCst), 1);
     assert_eq!(

@@ -29,6 +29,10 @@ impl Engine {
                 ledger.status.error = Some(error);
             }
         }
+        // A retry may observe the terminal receipt immediately. Publish it and
+        // release ownership under the same reservation used to admit transfers,
+        // so retry cannot return an old failure while its worker is still active.
+        let _reservation = self.submissions.lock().await;
         if self.save_transfer(&mut ledger).await.is_err() {
             self.state.lock().await.persistence_error = Some(ScannerError::new(
                 "storage",
