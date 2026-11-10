@@ -31,6 +31,7 @@ try {
   if (await page.getByRole('button', { name: 'Condition unassessed', exact: true }).count())
     await page.getByRole('button', { name: 'Condition unassessed', exact: true }).dispatchEvent('click');
   const guideResponse = response(page, 'v1.batches.valuation');
+  const storeResponse = response(page, 'v1.batches.storeStatus');
   const reviewed = await Promise.all([
     response(page, 'v1.images.review'),
     page.getByRole('button', { name: 'Confirm card', exact: true }).dispatchEvent('click'),
@@ -38,6 +39,9 @@ try {
   const result = reviewed.result;
   if (result?.state !== 'confirmed' || result.selectedCardID !== 'fixture-1' || result.finish !== 'normal' || result.condition !== 'nearMint')
     throw new Error('The browser did not save the explicit fixture review');
+  const store = await (await storeResponse).json();
+  if (store.result?.configured !== false || store.result?.state !== 'notSent')
+    throw new Error('The offline fixture must have no configured Store destination');
   const guide = await (await guideResponse).json();
   if (guide.result?.currency !== 'GBP' || guide.result?.pricedCount !== 0 || guide.result?.lowPence != null)
     throw new Error('An unrecognized synthetic pair must not receive a market price');

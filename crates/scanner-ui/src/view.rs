@@ -279,6 +279,7 @@ fn detail(s: &State, t: tok::Theme) -> El {
             })
             .child(crate::operations::review_panel(s, t))
             .child(crate::valuation::panel(s, t))
+            .child(crate::operations::staging_panel(s, t))
             .child(
                 col().gap(6.).children(
                     card.evidence

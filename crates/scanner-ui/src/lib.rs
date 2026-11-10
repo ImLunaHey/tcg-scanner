@@ -22,3 +22,5 @@ pub fn start() {
         ..rune::AppSpec::new("Scanner", (1180., 780.), state::State::default, view::view)
     });
 }
+
+mod review_link;

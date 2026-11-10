@@ -504,3 +504,10 @@ private Store JSON (`baseURL`, `scannerInstanceID`, `tokenFile`). The configurat
 and token are read through the portable private-directory capability. The remote
 contract still cannot represent stamped editions, so those cards remain blocked.
 No live Store uploads were used to validate this migration.
+
+Rune now shows Store progress, failures, preserved reviewer cards, retry/resync
+and validated review links. The browser flow checks that an unconfigured service
+cannot send. Review links use native platform handling on macOS/Windows and an
+in-process OpenURI desktop-portal request on Linux; no xdg-open helper is used.
+The portal call compiles independently against the pinned zbus API. Native and
+WebAssembly UI checks pass; a real Linux desktop portal remains a platform test.

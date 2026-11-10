@@ -1,4 +1,6 @@
 mod commands;
+mod staging;
+pub use staging::panel as staging_panel;
 mod condition;
 mod editing;
 mod editing_view;
@@ -23,6 +25,7 @@ use uuid::Uuid;
 pub use view::{controls, review_panel};
 
 pub struct Operations {
+    pub transfer: staging::Transfer,
     pub editor: Option<editing::Editor>,
     pub devices: Vec<Device>,
     pub device: usize,
@@ -55,6 +58,7 @@ pub struct Command {
 impl Default for Operations {
     fn default() -> Self {
         Self {
+            transfer: Default::default(),
             editor: None,
             devices: vec![],
             device: 0,
@@ -80,12 +84,15 @@ impl Operations {
         self.pending.is_some()
     }
     pub fn set_waker(&mut self, waker: rune::Waker) {
+        self.transfer.task.set_waker(waker.clone());
+        self.transfer.link.set_waker(waker.clone());
         self.settings.inspection.set_waker(waker.clone());
         self.discovery.set_waker(waker.clone());
         self.mutation.set_waker(waker.clone());
         self.watch.set_waker(waker);
     }
     pub fn disconnect(&mut self) {
+        self.transfer.clear();
         self.editor = None;
         self.settings.inspection.cancel();
         self.settings.report = None;
