@@ -1,0 +1,17 @@
+import { expect, it } from "vitest";
+import { inventoryURL } from "./inventoryNavigation";
+it("links to card and set views with bookmarkable search", () => {
+  expect(inventoryURL()).toBe("/inventory");
+  expect(inventoryURL({ view: "sets", search: "Prismatic Evolutions" }))
+    .toBe("/inventory/sets?search=Prismatic+Evolutions");
+  expect(inventoryURL({ setID: "prismatic-evolutions", search: "Great Tusk" }))
+    .toBe("/inventory/sets/prismatic-evolutions?search=Great+Tusk");
+  expect(new URL(inventoryURL({ search: "Farfetch'd & Pikachu + friends" }), "https://scanner.test").searchParams.get("search"))
+    .toBe("Farfetch'd & Pikachu + friends");
+});
+
+it("keeps missing-card selection in set links only", () => {
+  expect(inventoryURL({ setID: "ascended-heroes", search: "Pikachu", missing: true }))
+    .toBe("/inventory/sets/ascended-heroes?search=Pikachu&missing=1");
+  expect(inventoryURL({ missing: true })).toBe("/inventory");
+});
