@@ -129,6 +129,21 @@ impl Tesseract {
         image: &RgbImage,
         single_block: bool,
     ) -> Result<Vec<RecognizedLine>> {
+        self.recognize_with_words(image, single_block, false)
+    }
+    pub(crate) fn recognize_words(
+        &mut self,
+        image: &RgbImage,
+        single_block: bool,
+    ) -> Result<Vec<RecognizedLine>> {
+        self.recognize_with_words(image, single_block, true)
+    }
+    fn recognize_with_words(
+        &mut self,
+        image: &RgbImage,
+        single_block: bool,
+        words: bool,
+    ) -> Result<Vec<RecognizedLine>> {
         let (width, height) = image.dimensions();
         if width == 0
             || height == 0
@@ -157,7 +172,12 @@ impl Tesseract {
             if text.is_null() {
                 return Err(ocr_error("Tesseract recognition failed."));
             }
-            let result = tsv::parse(&CStr::from_ptr(text).to_string_lossy(), width, height);
+            let text_value = CStr::from_ptr(text).to_string_lossy();
+            let result = if words {
+                tsv::parse_words(&text_value, width, height)
+            } else {
+                tsv::parse(&text_value, width, height)
+            };
             (self.api.free_text)(text);
             Ok(result)
         }

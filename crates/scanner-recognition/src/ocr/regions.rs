@@ -67,12 +67,44 @@ impl Tesseract {
         region: [f64; 4],
         single_block: bool,
     ) -> Result<Vec<RecognizedLine>> {
+        self.read_scaled_region(image, region, single_block, 820, false)
+    }
+    pub(crate) fn read_set_code(
+        &mut self,
+        image: &RgbImage,
+        magnify: bool,
+    ) -> Result<Vec<RecognizedLine>> {
+        validate(image)?;
+        let mut words = self.read_scaled_region(
+            image,
+            [0.03, 0.915, 0.21, 0.08],
+            true,
+            if magnify { 1640 } else { 820 },
+            true,
+        )?;
+        words.extend(super::set_code::joined_words(&words));
+        Ok(words)
+    }
+    fn read_scaled_region(
+        &mut self,
+        image: &RgbImage,
+        region: [f64; 4],
+        single_block: bool,
+        target_width: u32,
+        words: bool,
+    ) -> Result<Vec<RecognizedLine>> {
         let crop = Region::new(image.width(), image.height(), region);
         let pixels =
             imageops::crop_imm(image, crop.left, crop.top, crop.width, crop.height).to_image();
-        let height =
-            ((f64::from(crop.height) / f64::from(crop.width) * 820.).round() as u32).clamp(1, 1600);
-        let mut pixels = imageops::resize(&pixels, 820, height, imageops::FilterType::Lanczos3);
+        let height = ((f64::from(crop.height) / f64::from(crop.width) * f64::from(target_width))
+            .round() as u32)
+            .clamp(1, 1600);
+        let mut pixels = imageops::resize(
+            &pixels,
+            target_width,
+            height,
+            imageops::FilterType::Lanczos3,
+        );
         for pixel in pixels.pixels_mut() {
             let [r, g, b] = pixel.0.map(f64::from);
             let value = ((r * 0.2126 + g * 0.7152 + b * 0.0722) * 1.28 + 4.)
@@ -86,7 +118,9 @@ impl Tesseract {
             imageops::replace(&mut out, &pixels, 16, 16);
             out
         });
-        let mut lines = if single_block {
+        let mut lines = if words {
+            self.recognize_words(padded.as_ref().unwrap_or(&pixels), single_block)?
+        } else if single_block {
             self.recognize(padded.as_ref().unwrap(), true)?
         } else {
             self.recognize(&pixels, false)?

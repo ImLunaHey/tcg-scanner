@@ -13,7 +13,13 @@ struct Line {
 }
 
 pub(super) fn parse(tsv: &str, width: u32, height: u32) -> Vec<RecognizedLine> {
-    let mut lines: BTreeMap<(u32, u32, u32, u32), Line> = BTreeMap::new();
+    parse_with_words(tsv, width, height, false)
+}
+pub(super) fn parse_words(tsv: &str, width: u32, height: u32) -> Vec<RecognizedLine> {
+    parse_with_words(tsv, width, height, true)
+}
+fn parse_with_words(tsv: &str, width: u32, height: u32, words: bool) -> Vec<RecognizedLine> {
+    let mut lines: BTreeMap<(u32, u32, u32, u32, u32), Line> = BTreeMap::new();
     for row in tsv.lines().skip(1) {
         let fields: Vec<_> = row.splitn(12, '\t').collect();
         if fields.len() != 12 || fields[0] != "5" || fields[11].trim().is_empty() {
@@ -39,7 +45,13 @@ pub(super) fn parse(tsv: &str, width: u32, height: u32) -> Vec<RecognizedLine> {
             continue;
         }
         let entry = lines
-            .entry((page, block, para, line))
+            .entry((
+                page,
+                block,
+                para,
+                line,
+                if words { number(5).unwrap_or(0) } else { 0 },
+            ))
             .or_insert_with(|| Line {
                 left,
                 top,
@@ -80,5 +92,11 @@ mod tests {
         assert_eq!(lines[0].y, 0.85);
         assert_eq!(lines[0].width, 0.75);
         assert!((0.8..0.9).contains(&lines[0].confidence));
+        let words = parse_words(tsv, 100, 200);
+        assert_eq!(words.len(), 2);
+        assert_eq!(words[0].text, "Basic");
+        assert_eq!(words[1].text, "Energy");
+        assert_eq!(words[1].x, 0.45);
+        assert_eq!(words[1].width, 0.40);
     }
 }

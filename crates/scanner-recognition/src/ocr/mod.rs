@@ -1,5 +1,6 @@
 mod native;
 mod regions;
+mod set_code;
 mod tsv;
 
 pub use native::Tesseract;

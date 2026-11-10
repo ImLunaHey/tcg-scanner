@@ -1,5 +1,6 @@
 pub mod condition;
 pub mod embedding;
+pub mod finish;
 pub mod matching;
 pub mod ocr;
 

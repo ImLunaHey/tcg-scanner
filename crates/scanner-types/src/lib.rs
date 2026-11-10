@@ -5,6 +5,7 @@ pub mod catalogue;
 pub mod condition;
 pub mod device;
 pub mod error;
+pub mod finish;
 pub mod images;
 pub mod scan;
 pub mod service;
