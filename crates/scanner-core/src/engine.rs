@@ -39,6 +39,7 @@ pub struct Engine {
 
 #[derive(Default)]
 pub(crate) struct State {
+    pub camera: bool,
     pub queue: VecDeque<Work>,
     pub active: Option<(Uuid, CancellationToken)>,
     pub inspecting: bool,

@@ -39,6 +39,16 @@ impl OtherGames {
         bytes: Vec<u8>,
         language: CardLanguage,
     ) -> Result<RecognitionEvidence> {
+        self.recognize_with_options(game, bytes, language, readings::Options::default())
+            .await
+    }
+    pub(crate) async fn recognize_with_options(
+        &self,
+        game: CardGame,
+        bytes: Vec<u8>,
+        language: CardLanguage,
+        options: readings::Options,
+    ) -> Result<RecognitionEvidence> {
         if language != CardLanguage::English {
             return Err(ScannerError::new(
                 "unsupportedLanguage",
@@ -55,7 +65,7 @@ impl OtherGames {
         let (library, data) = (self.library.clone(), self.data.clone());
         let (readings, permit) = tokio::task::spawn_blocking(move || {
             (
-                readings::read_game(bytes, &library, &data, language, game),
+                readings::read_options(bytes, &library, &data, language, game, options),
                 permit,
             )
         })

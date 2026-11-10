@@ -13,6 +13,7 @@ pub(crate) enum Principal {
     Session([u8; 32]),
     PublicImage,
     PublicWeb,
+    PublicCamera,
 }
 pub(crate) struct Access {
     root: [u8; 32],
@@ -20,6 +21,8 @@ pub(crate) struct Access {
     window: Instant,
     requests: u32,
     attempts: u32,
+    camera_window: Instant,
+    camera_requests: u32,
 }
 impl Access {
     pub fn new(token: &str) -> scanner_types::error::Result<Self> {
@@ -35,6 +38,8 @@ impl Access {
             window: Instant::now(),
             requests: 0,
             attempts: 0,
+            camera_window: Instant::now(),
+            camera_requests: 0,
         })
     }
     pub fn authenticate(&mut self, header: Option<&str>) -> Result<Principal> {
@@ -86,11 +91,30 @@ impl Access {
     }
     pub fn valid(&self, principal: &Principal) -> bool {
         match principal {
-            Principal::Root | Principal::PublicImage | Principal::PublicWeb => true,
+            Principal::Root
+            | Principal::PublicImage
+            | Principal::PublicWeb
+            | Principal::PublicCamera => true,
             Principal::Session(hash) => {
                 self.sessions.get(hash).is_some_and(|e| *e > Instant::now())
             }
         }
+    }
+    pub fn camera(&mut self) -> Result<Principal> {
+        let now = Instant::now();
+        if now.duration_since(self.camera_window) >= Duration::from_secs(60) {
+            self.camera_window = now;
+            self.camera_requests = 0;
+        }
+        if self.camera_requests >= 60 {
+            return Err(Error::new(
+                429,
+                "rateLimit",
+                "Camera lookup limit reached; retry shortly.",
+            ));
+        }
+        self.camera_requests += 1;
+        Ok(Principal::PublicCamera)
     }
     pub fn issue(&mut self, principal: &Principal) -> Result<(String, DateTime<Utc>)> {
         if !matches!(principal, Principal::Root) {
@@ -138,6 +162,20 @@ fn digest(token: &str) -> [u8; 32] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn public_camera_budget_never_creates_session_authority() {
+        let mut access = Access::new(&generate_token().unwrap()).unwrap();
+        for _ in 0..60 {
+            let camera = access.camera().unwrap();
+            assert!(access.valid(&camera));
+            assert_eq!(access.issue(&camera).unwrap_err().status, 403);
+        }
+        assert_eq!(access.camera().err().unwrap().status, 429);
+        access.camera_window = Instant::now() - Duration::from_secs(61);
+        assert!(access.camera().is_ok());
+        assert_eq!(access.camera_requests, 1);
+        assert!(access.sessions.is_empty());
+    }
     #[test]
     fn session_authority_revocation_expiry_and_authentication_budget() {
         let token = generate_token().unwrap();

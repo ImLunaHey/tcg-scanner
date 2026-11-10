@@ -30,6 +30,7 @@ pub struct Gateway {
     active: Arc<Semaphore>,
     pub(crate) downloads: Arc<Semaphore>,
     pub(crate) streams: Arc<Semaphore>,
+    cameras: Arc<Semaphore>,
 }
 impl Gateway {
     pub fn new(
@@ -48,6 +49,7 @@ impl Gateway {
             web_downloads: Arc::new(Semaphore::new(8)),
             downloads: Arc::new(Semaphore::new(2)),
             streams: Arc::new(Semaphore::new(4)),
+            cameras: Arc::new(Semaphore::new(1)),
         }))
     }
     /// Configure an immutable, verified UI bundle before accepting connections.
@@ -75,10 +77,30 @@ impl Gateway {
         let public_image = crate::routes::binary_image(&head.method, &path);
         let public_web = matches!(head.method.as_str(), "GET" | "HEAD")
             && self.web.get().is_some_and(|w| w.contains(&path));
-        let principal = self.principal(&head, public_image, public_web)?;
+        let camera = head.method == "POST" && crate::camera::is_route(&path);
+        let principal = if camera {
+            self.access
+                .lock()
+                .map_err(|_| Error::internal())?
+                .camera()?
+        } else {
+            self.principal(&head, public_image, public_web)?
+        };
         let permits = self.request_permits(&path, public_image, public_web)?;
         let rpc = path.parts == ["rpc"];
-        let body = collect_body(&head, body, rpc).await?;
+        let limit = if camera || rpc {
+            scanner_types::camera::MAX_REQUEST_BYTES
+        } else {
+            60 * 1024
+        };
+        let body = collect_body(&head, body, limit).await?;
+        if rpc && body.len() > 65536 && !scanner_rpc::is_camera_request(&body) {
+            return Err(Error::new(
+                413,
+                "resourceLimit",
+                "RPC request exceeds 64 KiB.",
+            ));
+        }
         if !self
             .access
             .lock()
@@ -152,6 +174,14 @@ impl Gateway {
         if path.parts == ["api", "v1", "events"] {
             permits.push(
                 self.streams
+                    .clone()
+                    .try_acquire_owned()
+                    .map_err(|_| Error::busy())?,
+            );
+        }
+        if crate::camera::is_route(path) {
+            permits.push(
+                self.cameras
                     .clone()
                     .try_acquire_owned()
                     .map_err(|_| Error::busy())?,
@@ -264,20 +294,17 @@ pub(crate) fn header_value(head: &Parts, key: header::HeaderName) -> Result<Opti
         .transpose()
 }
 
-async fn collect_body(head: &Parts, body: Body, rpc: bool) -> Result<axum::body::Bytes> {
-    let body = tokio::time::timeout(
-        Duration::from_secs(5),
-        to_bytes(body, if rpc { 65536 } else { 60 * 1024 }),
-    )
-    .await
-    .map_err(|_| Error::new(408, "timeout", "Request body timed out."))?
-    .map_err(|_| {
-        Error::new(
-            413,
-            "resourceLimit",
-            "Request body exceeds the route limit or cannot be read.",
-        )
-    })?;
+async fn collect_body(head: &Parts, body: Body, limit: usize) -> Result<axum::body::Bytes> {
+    let body = tokio::time::timeout(Duration::from_secs(5), to_bytes(body, limit))
+        .await
+        .map_err(|_| Error::new(408, "timeout", "Request body timed out."))?
+        .map_err(|_| {
+            Error::new(
+                413,
+                "resourceLimit",
+                "Request body exceeds the route limit or cannot be read.",
+            )
+        })?;
     if !body.is_empty() {
         if !matches!(head.method.as_str(), "POST" | "PATCH") {
             return Err(Error::params("This method does not accept a body."));

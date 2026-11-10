@@ -7,6 +7,7 @@ use scanner_types::{
 };
 use std::{path::PathBuf, sync::Arc};
 pub struct NativeCardRecognizer {
+    camera: scanner_recognition::camera::CameraRecognizer,
     root: Arc<StorageRoot>,
     pokemon: PokemonRecognizer,
     other_games: OtherGames,
@@ -15,6 +16,10 @@ pub struct NativeCardRecognizer {
 impl NativeCardRecognizer {
     pub fn new(root: Arc<StorageRoot>, library: PathBuf, data: PathBuf) -> Result<Self> {
         Ok(Self {
+            camera: scanner_recognition::camera::CameraRecognizer::new(
+                library.clone(),
+                data.clone(),
+            )?,
             root,
             pokemon: PokemonRecognizer::new(library.clone(), data.clone())?,
             finish: scanner_recognition::finish::FinishAnalyzer::new(
@@ -28,6 +33,7 @@ impl NativeCardRecognizer {
         mut self,
         documents: Arc<scanner_catalogue::persistent::Documents>,
     ) -> Self {
+        self.camera = self.camera.with_documents(documents.clone());
         self.pokemon = self.pokemon.with_documents(documents.clone());
         self.finish = self.finish.with_documents(documents.clone());
         self.other_games = self.other_games.with_documents(documents);
@@ -36,6 +42,13 @@ impl NativeCardRecognizer {
 }
 #[async_trait::async_trait]
 impl CardRecognizer for NativeCardRecognizer {
+    async fn recognize_camera(
+        &self,
+        bytes: Vec<u8>,
+        language: scanner_types::cards::CardLanguage,
+    ) -> Result<scanner_types::camera::CameraIdentification> {
+        self.camera.recognize(bytes, language).await
+    }
     fn method(&self, record: &ScanRecord, image: &OriginalImage) -> &'static str {
         match CardGameDetection::resolve(record)
             .into_iter()

@@ -84,6 +84,7 @@ mod tests {
     static CREATED: AtomicUsize = AtomicUsize::new(0);
     static DELETED: AtomicUsize = AtomicUsize::new(0);
     static CALLED: AtomicUsize = AtomicUsize::new(0);
+    static MILLIS: AtomicUsize = AtomicUsize::new(0);
     unsafe extern "C" fn create() -> Handle {
         CREATED.fetch_add(1, Ordering::SeqCst);
         Box::into_raw(Box::new(0_i32)).cast()
@@ -103,6 +104,7 @@ mod tests {
         CALLED.fetch_add(1, Ordering::SeqCst);
         // SAFETY: live monitor allocated by create.
         let millis = unsafe { *monitor.cast::<i32>() };
+        MILLIS.store(millis as usize, Ordering::SeqCst);
         if (1..=10_001).contains(&millis) {
             -1
         } else {
@@ -140,5 +142,6 @@ mod tests {
         assert_eq!(CREATED.load(Ordering::SeqCst), 1);
         assert_eq!(CALLED.load(Ordering::SeqCst), 1);
         assert_eq!(DELETED.load(Ordering::SeqCst), 1);
+        assert!((1..=10_001).contains(&MILLIS.load(Ordering::SeqCst)));
     }
 }

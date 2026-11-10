@@ -20,3 +20,5 @@ mod recognition;
 mod inventory;
 
 pub mod web;
+
+mod camera;

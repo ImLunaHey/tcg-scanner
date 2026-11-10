@@ -31,3 +31,5 @@ mod inventory;
 mod pricing;
 
 mod staging;
+
+mod camera;

@@ -40,11 +40,27 @@ impl PokemonRecognizer {
         bytes: Vec<u8>,
         language: CardLanguage,
     ) -> Result<RecognitionEvidence> {
+        self.recognize_with_options(bytes, language, readings::Options::default())
+            .await
+    }
+    pub(crate) async fn recognize_with_options(
+        &self,
+        bytes: Vec<u8>,
+        language: CardLanguage,
+        options: readings::Options,
+    ) -> Result<RecognitionEvidence> {
         let permit = self.workers.clone().acquire_owned().await.map_err(error)?;
         let library = self.library.clone();
         let data = self.data.clone();
         let (readings, permit) = tokio::task::spawn_blocking(move || {
-            let result = readings::read(bytes, &library, &data, language);
+            let result = readings::read_options(
+                bytes,
+                &library,
+                &data,
+                language,
+                scanner_types::cards::CardGame::Pokemon,
+                options,
+            );
             (result, permit)
         })
         .await

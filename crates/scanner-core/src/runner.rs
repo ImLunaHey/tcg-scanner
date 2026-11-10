@@ -68,13 +68,13 @@ impl Engine {
                 };
                 return Next::Cancel(work, error);
             }
-            return if state.stopping && !state.inspecting {
+            return if state.stopping && !state.inspecting && !state.camera {
                 Next::Stop
             } else {
                 Next::Wait
             };
         }
-        if state.paused || state.inspecting {
+        if state.paused || state.inspecting || state.camera {
             return Next::Wait;
         }
         if let Some(work) = state.queue.pop_front() {

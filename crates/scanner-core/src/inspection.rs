@@ -18,7 +18,8 @@ impl Engine {
         {
             let mut state = self.state.lock().await;
             state.accepting()?;
-            if state.inspecting || state.active.is_some() || !state.queue.is_empty() {
+            if state.camera || state.inspecting || state.active.is_some() || !state.queue.is_empty()
+            {
                 return Err(ScannerError::new("busy", "Scanner is in use."));
             }
             state.inspecting = true;
@@ -63,7 +64,7 @@ impl Engine {
                 if !state.quarantined {
                     return true;
                 }
-                if state.stopping || state.active.is_some() || state.inspecting {
+                if state.camera || state.stopping || state.active.is_some() || state.inspecting {
                     return false;
                 }
                 state.inspecting = true;

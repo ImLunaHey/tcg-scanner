@@ -65,6 +65,9 @@ impl FinishAnalyzer {
         let (mut result,permit)=tokio::task::spawn_blocking(move || {
             let mut ocr=if language==CardLanguage::English {Tesseract::new(&library,&data,"en").ok()}else{None};
             let missing=language==CardLanguage::English && ocr.is_none();
+            if camera && let Some(ocr)=ocr.as_mut() {
+                ocr.set_deadline(std::time::Instant::now()+std::time::Duration::from_secs(10));
+            }
             let mut result=estimate(&bytes,&evidence,preparation.as_ref(),language,ocr.as_mut(),camera);
             if missing {result.limitations.push("Portable OCR could not initialize; only retained text and image evidence were available.".into());}
             if let Some(warning)=warning {result.limitations.push(warning.into());}

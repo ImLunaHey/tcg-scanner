@@ -1,5 +1,6 @@
 //! Version-one wire contracts shared by the service, native UI and web UI.
 //! Unknown additive metadata survives a read/write cycle during migration.
+pub mod camera;
 pub mod cards;
 pub mod catalogue;
 pub mod condition;

@@ -22,6 +22,17 @@ pub trait CardProcessor: Send + Sync {
 
 #[async_trait]
 pub trait CardRecognizer: Send + Sync {
+    /// Ephemeral lookup: implementations must not save pixels, create jobs or feed hardware.
+    async fn recognize_camera(
+        &self,
+        _: Vec<u8>,
+        _: scanner_types::cards::CardLanguage,
+    ) -> Result<scanner_types::camera::CameraIdentification> {
+        Err(scanner_types::error::ScannerError::new(
+            "configuration",
+            "Camera recognition is not configured.",
+        ))
+    }
     fn method(&self, _: &ScanRecord, _: &scanner_types::images::OriginalImage) -> &'static str {
         "native-card-recognition-rust-v1"
     }

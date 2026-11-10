@@ -9,7 +9,7 @@ mod profiles;
 mod router;
 mod scanner;
 pub use model::{Failure, Request, Response};
-pub use router::Router;
+pub use router::{Router, is_camera_request};
 
 mod recognition;
 

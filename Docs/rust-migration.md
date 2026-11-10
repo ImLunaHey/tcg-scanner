@@ -530,3 +530,19 @@ validated four-corner outlines with perspective correction. Partial, small and
 unsuitable shapes return no card. Synthetic tests verify asymmetric marks survive
 without mirroring. This replaces the geometry dependency on Vision/CoreImage;
 real phone-frame quality and the service/UI camera path are still in progress.
+
+Ephemeral camera lookup now uses the Rust recognizers through
+`v1.camera.identify` and public `POST /api/v1/camera/identify`. The public route
+retains authority/origin validation, a 60-request/minute budget, one in-flight
+request and a 768 KiB envelope / 512 KiB decoded-image bound. Other RPC methods
+retain their 64 KiB limit. Camera requests cannot create sessions or access the
+library. A single owned camera task reserves recognition and delays queued feeds;
+caller disconnects do not strand ownership and shutdown drains the worker.
+
+Tesseract camera OCR uses the native C deadline monitor and a shared 60-second
+lookup budget. Verified orientation narrows OCR passes; known backs and code
+cards return guidance. Pokémon finish estimates use camera limitations without
+scanner foil thresholds; Korean never falls back to an English printing. The
+real installed Tesseract deadline test, isolated service/HTTP lifecycle tests,
+recognition suites and strict Clippy pass. No phone-image accuracy or physical
+camera validation is claimed yet; Rune camera capture remains in progress.

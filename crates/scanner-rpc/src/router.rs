@@ -16,9 +16,15 @@ impl Router {
         }
     }
     /// Version-one requests require an ID; batches/notifications are not part of
-    /// the existing scanner protocol. Camera payloads will have a separate bound.
+    /// the existing scanner protocol. Only camera lookup has a larger body bound.
     pub async fn respond(&self, bytes: &[u8]) -> Response {
-        if bytes.len() > 64 * 1024 {
+        if bytes.len() > scanner_types::camera::MAX_REQUEST_BYTES {
+            return Response::new(
+                Value::Null,
+                Err(Failure::new(-32600, "RPC request exceeds 768 KiB.")),
+            );
+        }
+        if bytes.len() > 65536 && !is_camera_request(bytes) {
             return Response::new(
                 Value::Null,
                 Err(Failure::new(-32600, "RPC request exceeds 64 KiB.")),
@@ -39,6 +45,12 @@ impl Router {
                 );
             }
         };
+        if request.method != "v1.camera.identify" && bytes.len() > 64 * 1024 {
+            return Response::new(
+                request.id,
+                Err(Failure::new(-32600, "RPC request exceeds 64 KiB.")),
+            );
+        }
         if request.jsonrpc != "2.0" || !matches!(request.id, Value::String(_) | Value::Number(_)) {
             return Response::new(
                 request.id,
@@ -55,6 +67,11 @@ impl Router {
         Response::new(request.id, result)
     }
     async fn dispatch(&self, method: &str, params: Params) -> Result<Value, Failure> {
+        if method == "v1.camera.identify" {
+            let result = self.engine.identify_camera(params.decode()?).await?;
+            return serde_json::to_value(result)
+                .map_err(|_| Failure::new(-32603, "Could not encode camera result."));
+        }
         if let Some(result) = self.scanner(method, &params).await {
             return result;
         }
@@ -78,4 +95,15 @@ impl Router {
         }
         Err(Failure::new(-32601, format!("Unknown method: {method}")))
     }
+}
+
+/// Inspect only the method for route-specific body limits; this grants no authority.
+/// Full envelope/parameter validation still runs before dispatch.
+pub fn is_camera_request(bytes: &[u8]) -> bool {
+    #[derive(serde::Deserialize)]
+    struct Method {
+        method: String,
+    }
+    bytes.len() <= scanner_types::camera::MAX_REQUEST_BYTES
+        && serde_json::from_slice::<Method>(bytes).is_ok_and(|v| v.method == "v1.camera.identify")
 }

@@ -19,3 +19,6 @@ mod inventory;
 
 #[path = "gateway/web.rs"]
 mod web;
+
+#[path = "gateway/camera.rs"]
+mod camera;

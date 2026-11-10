@@ -38,6 +38,9 @@ impl Gateway {
         let ["api", "v1", rest @ ..] = p.as_slice() else {
             return Err(Error::new(404, "notFound", "Unknown API route."));
         };
+        if rest == ["camera", "identify"] {
+            return self.camera_route(head, path, body).await;
+        }
         if rest == ["session"] {
             path.only(&[])?;
             only(&body, &[])?;

@@ -95,3 +95,5 @@ mod finish;
 mod pricing;
 
 mod staging;
+
+mod camera;

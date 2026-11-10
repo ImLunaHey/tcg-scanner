@@ -6,7 +6,7 @@ use imageproc::geometric_transformations::{Border, Interpolation, Projection, wa
 use scanner_types::error::{Result, ScannerError};
 use std::io::Cursor;
 
-pub const MAX_IMAGE_BYTES: usize = 512 * 1024;
+pub use scanner_types::camera::MAX_IMAGE_BYTES;
 
 /// Returns `None` for a frame without a complete, sufficiently large card outline.
 /// Pixels are never written to disk. The output is lossless for subsequent OCR.
