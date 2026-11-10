@@ -11,22 +11,33 @@ pub trait JsonTransport: Send + Sync {
 }
 pub(crate) struct Https {
     client: reqwest::Client,
+    origin: &'static str,
     requests: Semaphore,
 }
 impl Https {
     pub fn new() -> Result<Self> {
+        Self::with_origin("https://api.tcgdex.net/v2/", 20)
+    }
+    pub fn yugioh() -> Result<Self> {
+        Self::with_origin("https://db.ygoprodeck.com/api/v7/", 60)
+    }
+    pub fn star_wars() -> Result<Self> {
+        Self::with_origin("https://api.swu-db.com/", 25)
+    }
+    fn with_origin(origin: &'static str, timeout: u64) -> Result<Self> {
         let client = reqwest::Client::builder()
             .https_only(true)
             .redirect(reqwest::redirect::Policy::none())
             .referer(false)
             .connect_timeout(Duration::from_secs(12))
-            .timeout(Duration::from_secs(20))
+            .timeout(Duration::from_secs(timeout))
             .pool_max_idle_per_host(2)
             .user_agent("Scanner/1 (local card identification)")
             .build()
             .map_err(unavailable)?;
         Ok(Self {
             client,
+            origin,
             requests: Semaphore::new(2),
         })
     }
@@ -35,7 +46,7 @@ impl Https {
 impl JsonTransport for Https {
     async fn get(&self, path: &str, limit: usize) -> Result<Vec<u8>> {
         let _permit = self.requests.acquire().await.map_err(unavailable)?;
-        let url = format!("https://api.tcgdex.net/v2/{path}");
+        let url = format!("{}{path}", self.origin);
         let mut response = self
             .client
             .get(&url)
@@ -49,7 +60,7 @@ impl JsonTransport for Https {
         {
             return Err(ScannerError::new(
                 "catalogueUnavailable",
-                "TCGdex returned an unsuccessful or oversized response. Retry later.",
+                "Catalogue returned an unsuccessful or oversized response. Retry later.",
             ));
         }
         let mut bytes = Vec::new();

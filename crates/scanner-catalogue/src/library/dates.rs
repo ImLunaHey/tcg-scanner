@@ -28,7 +28,7 @@ impl LibraryCatalogue {
         let snapshot = {
             let mut state = self.dates.lock().unwrap_or_else(|p| p.into_inner());
             for source in sources {
-                if source.provider == "tcgdex"
+                if matches!(source.provider.as_str(), "tcgdex" | "ygoprodeck" | "swu-db")
                     && state.entries.get(source).is_none_or(|e| e.expires < now)
                     && !state.active.contains(source)
                     && !state.queued.contains(source)
@@ -65,11 +65,11 @@ impl LibraryCatalogue {
             };
             let catalogue = self.clone();
             tokio::spawn(async move {
-                let result = catalogue.pokemon(source.language).set(&source.set_id).await;
+                let result = catalogue.fetch_date(&source).await;
                 {
                     let mut state = catalogue.dates.lock().unwrap_or_else(|p| p.into_inner());
                     let (date, ttl) = match result {
-                        Ok(set) => (set.release_date.as_deref().and_then(normalized), 86400),
+                        Ok(date) => (date.as_deref().and_then(normalized), 86400),
                         Err(_) => (state.entries.get(&source).and_then(|e| e.date.clone()), 300),
                     };
                     if state.entries.len() >= 2000

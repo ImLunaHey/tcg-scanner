@@ -27,3 +27,12 @@ catalogue URLs; callers cannot supply arbitrary URLs. Two workers accept at most
 8 MiB / 16 megapixels per static PNG/JPEG, returning a checked 512-pixel JPEG.
 The 128-entry thumbnail cache and release-date cache are currently memory-only;
 restarting may require refetching optional metadata and reloading a checklist.
+
+`yugioh::Yugioh` and `star_wars::StarWars` provide typed English catalogues with
+fixed origins, deadlines, size/field limits and coalesced caches. Inventory keeps
+YGOPRODeck passcode plus printed set code as the printing ID, deduplicates rarity
+rows, and includes English/Asian-English/legacy numbered printings only. SWU
+printings retain set plus collector number. Korean requests never fall back to
+English. Reference URLs are registered without downloading artwork during listing.
+Provider contracts: [YGOPRODeck v7](https://ygoprodeck.com/api-guide/) and
+[SWU-DB API](https://www.swu-db.com/api).

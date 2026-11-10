@@ -1,4 +1,5 @@
 //! Inventory checklists, asynchronous release dates and registered public previews.
+mod checklists;
 mod dates;
 mod image_network;
 mod references;
@@ -15,6 +16,8 @@ use tokio::sync::Semaphore;
 pub struct LibraryCatalogue {
     english: TcgDex,
     korean: TcgDex,
+    yugioh: crate::yugioh::Yugioh,
+    star_wars: crate::star_wars::StarWars,
     cards: Cache<Vec<InventoryCatalogueCard>>,
     workers: Semaphore,
     dates: std::sync::Mutex<dates::State>,
@@ -22,8 +25,10 @@ pub struct LibraryCatalogue {
 }
 impl LibraryCatalogue {
     pub fn new() -> Result<Arc<Self>> {
-        Ok(Self::with_transports(
+        Ok(Self::with_all_transports(
             Arc::new(Https::new()?),
+            Arc::new(Https::yugioh()?),
+            Arc::new(Https::star_wars()?),
             Arc::new(image_network::Https::new()?),
         ))
     }
@@ -31,9 +36,19 @@ impl LibraryCatalogue {
         json: Arc<dyn JsonTransport>,
         images: Arc<dyn ImageTransport>,
     ) -> Arc<Self> {
+        Self::with_all_transports(json.clone(), json.clone(), json, images)
+    }
+    pub fn with_all_transports(
+        pokemon: Arc<dyn JsonTransport>,
+        yugioh: Arc<dyn JsonTransport>,
+        star_wars: Arc<dyn JsonTransport>,
+        images: Arc<dyn ImageTransport>,
+    ) -> Arc<Self> {
         Arc::new(Self {
-            english: TcgDex::with_transport(CardLanguage::English, json.clone()),
-            korean: TcgDex::with_transport(CardLanguage::Korean, json),
+            yugioh: crate::yugioh::Yugioh::with_transport(yugioh),
+            star_wars: crate::star_wars::StarWars::with_transport(star_wars),
+            english: TcgDex::with_transport(CardLanguage::English, pokemon.clone()),
+            korean: TcgDex::with_transport(CardLanguage::Korean, pokemon),
             cards: Cache::new(64, Duration::from_secs(86400)),
             workers: Semaphore::new(4),
             dates: Default::default(),
@@ -50,29 +65,14 @@ impl LibraryCatalogue {
                 let _permit = self.workers.try_acquire().map_err(|_| {
                     ScannerError::new("resourceLimit", "Catalogue is busy; retry shortly.")
                 })?;
-                if source.provider != "tcgdex" {
+                let mut cards = self.load_checklist(source).await?;
+                let unique: std::collections::HashSet<_> = cards.iter().map(|c| &c.id).collect();
+                if cards.is_empty() || cards.len() > 5000 || unique.len() != cards.len() {
                     return Err(ScannerError::new(
-                        "unsupported",
-                        "This catalogue's native checklist adapter is not configured yet.",
+                        "catalogueUnavailable",
+                        "No usable checklist for this set yet.",
                     ));
                 }
-                let set = self.pokemon(source.language).set(&source.set_id).await?;
-                let mut cards: Vec<_> = set
-                    .cards
-                    .into_iter()
-                    .map(|card| {
-                        let thumbnail_key = card
-                            .image
-                            .and_then(|url| self.references.register(&format!("{url}/low.png")));
-                        InventoryCatalogueCard {
-                            id: card.id,
-                            name: card.name,
-                            number: card.local_id,
-                            language: source.language.as_str().into(),
-                            thumbnail_key,
-                        }
-                    })
-                    .collect();
                 cards.sort_by(|a, b| number_order(&a.number, &b.number).then(a.id.cmp(&b.id)));
                 Ok(cards)
             })

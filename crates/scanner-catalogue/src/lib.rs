@@ -7,3 +7,6 @@ pub use client::TcgDex;
 pub use transport::JsonTransport;
 
 pub mod library;
+
+pub mod star_wars;
+pub mod yugioh;

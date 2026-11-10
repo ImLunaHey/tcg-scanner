@@ -296,3 +296,8 @@ release dates and registered, bounded reference thumbnails. Injected-transport
 tests verify request coalescing, language separation and rejection of unregistered
 or off-origin images. Optional caches are memory-only at this stage; they do not
 change or store user scan originals.
+
+Native YGOPRODeck and SWU-DB catalogue adapters now support typed printing lists,
+release dates and inventory reference registration. Tests preserve IDs, deduplicate
+rarity rows, reject conflicting sets/duplicate cards, and prevent Korean-to-English
+fallback. Service recognition integration and persistent caches follow this slice.
