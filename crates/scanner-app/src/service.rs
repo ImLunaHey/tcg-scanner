@@ -37,12 +37,19 @@ pub(crate) async fn run(
         ),
         None => None,
     };
-    let root = Arc::new(StorageRoot::open_configured(configuration.storage.clone())?);
+    let root = Arc::new(StorageRoot::deferred(configuration.storage.clone())?);
     let database = Arc::new(Database::open(&configuration.database)?);
     let recovery_database = database.clone();
     let recovery_root = root.clone();
     let recovered = tokio::task::spawn_blocking(move || {
-        scanner_core::recover_before_start(&recovery_database, Some(&recovery_root))
+        let available = recovery_root.check_available();
+        if let Err(error) = &available {
+            eprintln!("Scan storage unavailable; camera and metadata remain available: {error}");
+        }
+        scanner_core::recover_before_start(
+            &recovery_database,
+            available.is_ok().then_some(recovery_root.as_ref()),
+        )
     })
     .await
     .map_err(config)??;

@@ -93,7 +93,7 @@ async fn initialization_read_only_and_schemas_gate_dispatch() {
         .await;
     let value = s.next().await;
     let tools = value["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 21);
+    assert_eq!(tools.len(), 22);
     assert!(
         tools
             .iter()

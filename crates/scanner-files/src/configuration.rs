@@ -26,7 +26,7 @@ impl StorageConfiguration {
             Err(error) => Err(crate::storage(error)),
         }
     }
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate_shape(&self) -> Result<()> {
         let root = Path::new(&self.storage_root);
         if !root.is_absolute()
             || self.storage_root.contains('\0')
@@ -37,6 +37,14 @@ impl StorageConfiguration {
                 "Storage root must be absolute without parent traversal.",
             ));
         }
+        if let Some(share) = &self.required_smb_share {
+            expected_share(share)?;
+        }
+        Ok(())
+    }
+    pub fn validate(&self) -> Result<()> {
+        self.validate_shape()?;
+        let root = Path::new(&self.storage_root);
         let Some(share) = &self.required_smb_share else {
             return Ok(());
         };

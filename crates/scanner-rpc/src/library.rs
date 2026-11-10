@@ -18,9 +18,6 @@ impl Router {
                 | "v1.batches.storeStatus"
                 | "v1.batches.sendToStore"
                 | "v1.jobs.cancel"
-                | "v1.service.status"
-                | "v1.service.pause"
-                | "v1.service.resume"
                 | "v1.events"
         ) {
             return None;
@@ -44,18 +41,6 @@ impl Router {
             "v1.batches.valuation" => {
                 params.only(&["id"])?;
                 value(self.engine.batch_valuation(params.uuid("id")?).await?)
-            }
-            "v1.service.pause" => {
-                params.only(&[])?;
-                value(self.engine.pause().await?)
-            }
-            "v1.service.resume" => {
-                params.only(&[])?;
-                value(self.engine.resume().await?)
-            }
-            "v1.service.status" => {
-                params.only(&[])?;
-                value(self.engine.status().await)
             }
             "v1.events" => {
                 params.only(&["after", "limit", "waitSeconds"])?;

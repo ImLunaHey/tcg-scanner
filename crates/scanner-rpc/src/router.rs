@@ -75,6 +75,9 @@ impl Router {
         if let Some(result) = self.scanner(method, &params).await {
             return result;
         }
+        if let Some(result) = self.service(method, &params).await {
+            return result;
+        }
         if let Some(result) = self.library(method, &params).await {
             return result;
         }

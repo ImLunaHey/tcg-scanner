@@ -154,6 +154,19 @@ impl Harness {
         processor: Arc<dyn CardProcessor>,
         recognizer: Option<Arc<dyn scanner_core::backend::CardRecognizer>>,
     ) -> Self {
+        Self::with_components_at(processor, recognizer, None)
+    }
+    pub fn with_storage(
+        recognizer: Option<Arc<dyn scanner_core::backend::CardRecognizer>>,
+        storage: StorageRoot,
+    ) -> Self {
+        Self::with_components_at(Arc::new(NoPreparation), recognizer, Some(storage))
+    }
+    fn with_components_at(
+        processor: Arc<dyn CardProcessor>,
+        recognizer: Option<Arc<dyn scanner_core::backend::CardRecognizer>>,
+        storage: Option<StorageRoot>,
+    ) -> Self {
         let directory = tempfile::tempdir().unwrap();
         let (tx, calls) = mpsc::unbounded_channel();
         let (inspections_tx, inspections) = mpsc::unbounded_channel();
@@ -167,7 +180,7 @@ impl Harness {
             processor,
             recognizer,
             Arc::new(Database::memory().unwrap()),
-            Arc::new(StorageRoot::open(directory.path()).unwrap()),
+            Arc::new(storage.unwrap_or_else(|| StorageRoot::open(directory.path()).unwrap())),
         );
         Self {
             driver,

@@ -142,6 +142,9 @@ impl State {
         let Some(command) = self.ops.pending.clone() else {
             return;
         };
+        if command.method == "storage.reconnect" {
+            self.refresh_storage();
+        }
         match result {
             Ok(value) => {
                 self.ops.pending = None;

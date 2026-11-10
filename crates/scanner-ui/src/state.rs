@@ -184,6 +184,7 @@ impl State {
         let mut changed = self.poll_operations();
         changed |= self.poll_collection();
         changed |= self.poll_settings();
+        changed |= self.poll_storage();
         changed |= self.poll_valuation();
         changed |= self.poll_transfer();
         changed |= self.poll_export();

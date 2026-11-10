@@ -83,17 +83,7 @@ pub fn view(s: &State, t: tok::Theme) -> El {
                 .color(t.text_secondary)
                 .wrap(),
         )
-        .child(
-            text(
-                s.status
-                    .as_ref()
-                    .map(|s| format!("Scans saved to {}", s.storage_root))
-                    .unwrap_or_default(),
-            )
-            .font(type_::BODY)
-            .color(t.text_secondary)
-            .wrap(),
-        )
+        .child(super::storage::panel(s, t))
 }
 fn profile_form(s: &State, t: tok::Theme) -> El {
     let settings = &s.ops.settings;

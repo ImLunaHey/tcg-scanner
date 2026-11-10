@@ -98,6 +98,7 @@ fn read_route<'a>(parts: &[&'a str], path: &Path) -> Result<(&'a str, Map<String
         ["devices"] => "devices",
         ["profiles"] => "profiles.list",
         ["status"] => "service.status",
+        ["storage"] => "storage.status",
         ["diagnostics"] => {
             path.only(&["deviceID"])?;
             if let Some(id) = path.query.get("deviceID") {
@@ -173,6 +174,10 @@ fn write_route(
                 },
                 200,
             )
+        }
+        ("POST", ["storage", "reconnect"]) => {
+            only(&p, &[])?;
+            ("storage.reconnect", 200)
         }
         ("POST", ["jobs"]) => {
             prepare_job(head, &mut p)?;

@@ -163,7 +163,7 @@ impl BatchStore {
 
 fn parent(root: &StorageRoot, request: &ScanRequest) -> Result<(Dir, PathBuf)> {
     let Some(output) = request.output_directory.as_ref() else {
-        return Ok((root.dir.try_clone().map_err(storage)?, root.path.clone()));
+        return Ok((root.directory()?, root.path.clone()));
     };
     let output = Path::new(output);
     let relative = if output.is_absolute() {
@@ -172,9 +172,9 @@ fn parent(root: &StorageRoot, request: &ScanRequest) -> Result<(Dir, PathBuf)> {
         output
     };
     if relative.as_os_str().is_empty() {
-        return Ok((root.dir.try_clone().map_err(storage)?, root.path.clone()));
+        return Ok((root.directory()?, root.path.clone()));
     }
-    let mut dir = root.dir.try_clone().map_err(storage)?;
+    let mut dir = root.directory()?;
     for part in paths::components(relative)? {
         match paths::create_directory(&dir, Path::new(part)) {
             Ok(()) => {}

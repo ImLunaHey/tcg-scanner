@@ -177,3 +177,15 @@ pub struct JobPage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_offset: Option<usize>,
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StorageStatus {
+    pub schema_version: u32,
+    pub storage_root: String,
+    #[serde(rename = "requiredSMBShare", skip_serializing_if = "Option::is_none")]
+    pub required_smb_share: Option<String>,
+    pub available: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<ScannerError>,
+}

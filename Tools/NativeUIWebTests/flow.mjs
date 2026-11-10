@@ -85,6 +85,13 @@ try {
     response(page, 'v1.profiles.list'),
     page.getByRole('button', { name: 'Settings', exact: true }).dispatchEvent('click'),
   ]);
+  await page.getByText(/^Storage available:/).waitFor({ state: 'attached' });
+  const storageReopened = await Promise.all([
+    response(page, 'v1.storage.reconnect'),
+    page.getByRole('button', { name: 'Reopen reconnected storage', exact: true }).dispatchEvent('click'),
+  ]).then(([response]) => response.json());
+  if (storageReopened.result?.available !== true) throw new Error('Storage revalidation failed');
+
   await page.getByRole('button', { name: 'New profile', exact: true }).dispatchEvent('click');
   await enter(page, 'Profile name', 'Browser fixture profile');
   await enter(page, 'DPI', '300');

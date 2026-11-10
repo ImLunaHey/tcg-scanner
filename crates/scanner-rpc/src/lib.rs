@@ -14,3 +14,5 @@ pub use router::{Router, is_camera_request};
 mod recognition;
 
 mod inventory;
+
+mod service;

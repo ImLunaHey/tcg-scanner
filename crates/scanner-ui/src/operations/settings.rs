@@ -68,6 +68,7 @@ impl State {
             return;
         }
         self.page = Page::Settings;
+        self.refresh_storage();
         self.discover();
     }
     pub fn new_profile(&mut self) {

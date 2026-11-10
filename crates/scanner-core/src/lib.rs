@@ -35,3 +35,5 @@ mod staging;
 mod camera;
 
 mod lifecycle;
+
+mod storage;

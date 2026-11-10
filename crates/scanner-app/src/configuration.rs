@@ -82,10 +82,34 @@ impl Configuration {
                 ));
             }
         }
-        value.storage.validate()?;
+        value.storage.validate_shape()?;
         Ok(value)
     }
 }
 pub(crate) fn config(error: impl std::fmt::Display) -> ScannerError {
     ScannerError::new("configuration", error.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn offline_storage_does_not_prevent_loading_valid_service_configuration() {
+        let temporary = tempfile::tempdir().unwrap();
+        let missing = temporary.path().join("unmounted");
+        let path = temporary.path().join("service.json");
+        let mut config = serde_json::json!({
+            "database": temporary.path().join("local/state.sqlite"),
+            "tokenFile": temporary.path().join("private/token"),
+            "backend":"libraryOnly",
+            "storage":{"storageRoot": missing, "requiredSMBShare":"smb://lake/scans"}
+        });
+        std::fs::write(&path, serde_json::to_vec(&config).unwrap()).unwrap();
+        let loaded = Configuration::load(&path).unwrap();
+        assert!(loaded.storage.validate().is_err());
+        assert!(!missing.exists());
+        config["storage"]["requiredSMBShare"] = serde_json::json!("smb://user:secret@lake/scans");
+        std::fs::write(&path, serde_json::to_vec(&config).unwrap()).unwrap();
+        assert!(Configuration::load(&path).is_err());
+    }
 }

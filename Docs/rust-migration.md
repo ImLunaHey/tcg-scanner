@@ -597,3 +597,16 @@ API refusal and empty CacheStorage/IndexedDB/local/session storage. Camera captu
 still passes. The library browser flow now also verifies pause/resume and all
 previous review, profile, inventory and checksum-verified export operations.
 Physical phone installation remains untested.
+
+Configured scan storage can now start disconnected. The local ledger recovers
+interrupted jobs without accessing unavailable originals; camera recognition and
+metadata remain usable. Directory capabilities open only after mount-policy
+validation, and missing destinations are never created as fallback storage.
+Existing handles stay pinned until explicit idle-service reconnection. Authenticated
+storage status/reconnect APIs, MCP and Rune expose that distinction without
+mounting shares or clearing hardware/persistence faults. Tests cover offline camera
+lookup, refused feeds, reconnect, active-session refusal, unchanged directories,
+required-SMB rejection of local directories, and configuration loading.
+The HTTPS Rune flow also verifies the storage status and explicit reopen action.
+The complete workspace passes 254 tests with native SANE/TWAIN fixtures and real
+Tesseract enabled, plus strict native and WebAssembly Clippy at this checkpoint.

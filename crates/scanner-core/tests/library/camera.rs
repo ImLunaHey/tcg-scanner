@@ -98,3 +98,35 @@ async fn queued_capture_waits_for_camera_then_runs_normally() {
     h.terminal(job.id).await;
     h.engine.shutdown().await;
 }
+
+#[tokio::test]
+async fn offline_storage_keeps_camera_and_metadata_available_without_local_fallback() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("offline");
+    let root =
+        scanner_files::StorageRoot::deferred(scanner_files::configuration::StorageConfiguration {
+            storage_root: path.to_string_lossy().into(),
+            required_smb_share: None,
+        })
+        .unwrap();
+    let recognizer = Arc::new(Blocking::default());
+    let mut h = Harness::with_storage(Some(recognizer.clone()), root);
+    assert!(!h.engine.storage_status().await.unwrap().available);
+    assert!(h.engine.start_scan(ScanRequest::default()).await.is_err());
+    assert!(h.calls.try_recv().is_err());
+    let engine = h.engine.clone();
+    let camera = tokio::spawn(async move { engine.identify_camera(request()).await });
+    recognizer.entered.notified().await;
+    recognizer.release.notify_one();
+    assert_eq!(camera.await.unwrap().unwrap().state, CameraState::NoCard);
+    assert!(h.engine.jobs(50, 0).await.unwrap().jobs.is_empty());
+    assert!(!path.exists());
+    std::fs::create_dir(&path).unwrap();
+    assert!(h.engine.reconnect_storage().await.unwrap().available);
+    let job = h.engine.start_scan(ScanRequest::default()).await.unwrap();
+    let call = h.next().await;
+    assert_eq!(h.engine.reconnect_storage().await.unwrap_err().kind, "busy");
+    call.finish.send(true).unwrap();
+    assert!(h.terminal(job.id).await.session_closed);
+    h.engine.shutdown().await;
+}
