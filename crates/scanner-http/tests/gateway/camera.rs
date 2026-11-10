@@ -195,3 +195,56 @@ async fn authenticated_rpc_allows_large_camera_only_and_preserves_small_method_l
     assert_eq!(response.status(), 413);
     h.engine.shutdown().await;
 }
+
+#[tokio::test]
+async fn camera_prices_use_cached_quotes_without_recognition_or_inventory_writes() {
+    let h = Harness::new();
+    let now = chrono::Utc::now();
+    h.engine
+        .database()
+        .cache_value(
+            "card-variants-v2:sv01-104",
+            &json!({
+                "cardID":"sv01-104", "fetchedAt":now, "requiresPrintingReview":false,
+                "variants":[{"finish":"normal","stamps":[],"euros":1.25,"updated":now},
+                {"finish":"reverseHolo","stamps":[],"euros":5,"updated":now}]
+            }),
+        )
+        .unwrap();
+    h.engine
+        .database()
+        .cache_value(
+            "eur-gbp",
+            &json!({"poundsPerEuro":0.9,"date":"2026-11-10","fetchedAt":now}),
+        )
+        .unwrap();
+    let mut selection = json!({"card":{"id":"sv01-104","name":"Greavard","setID":"sv01","setName":"SV","localID":"104","evidence":[],"availableFinishes":["normal","reverseHolo"]},"game":"pokemon","language":"en","finish":"unverified"});
+    let response = h
+        .send(h.request(
+            "POST",
+            "/api/v1/camera/price",
+            Body::from(selection.to_string()),
+            false,
+        ))
+        .await;
+    assert_eq!(response.status(), 200);
+    let value = json(response).await;
+    assert_eq!(value["state"], "range");
+    assert_eq!(value["lowPence"], 113);
+    assert_eq!(value["highPence"], 450);
+    selection["language"] = json!("ko");
+    let value = json(
+        h.send(h.request(
+            "POST",
+            "/api/v1/camera/price",
+            Body::from(selection.to_string()),
+            false,
+        ))
+        .await,
+    )
+    .await;
+    assert_eq!(value["state"], "unavailable");
+    assert!(h.engine.database().jobs(10, 0).unwrap().is_empty());
+    assert_eq!(h.driver.calls.load(Ordering::SeqCst), 0);
+    h.engine.shutdown().await;
+}

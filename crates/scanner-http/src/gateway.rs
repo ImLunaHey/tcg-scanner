@@ -79,10 +79,12 @@ impl Gateway {
             && self.web.get().is_some_and(|w| w.contains(&path));
         let camera = head.method == "POST" && crate::camera::is_route(&path);
         let principal = if camera {
-            self.access
-                .lock()
-                .map_err(|_| Error::internal())?
-                .camera()?
+            let mut access = self.access.lock().map_err(|_| Error::internal())?;
+            if path.parts.last().is_some_and(|p| p == "price") {
+                access.price()?
+            } else {
+                access.camera()?
+            }
         } else {
             self.principal(&head, public_image, public_web)?
         };
@@ -179,7 +181,7 @@ impl Gateway {
                     .map_err(|_| Error::busy())?,
             );
         }
-        if crate::camera::is_route(path) {
+        if path.parts == ["api", "v1", "camera", "identify"] {
             permits.push(
                 self.cameras
                     .clone()

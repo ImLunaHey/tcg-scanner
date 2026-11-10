@@ -2149,3 +2149,20 @@
 .camera-status > span { gap: 2px; overflow: hidden; }
 .camera-status strong { font-size: .85rem; line-height: 1.2; }
 .camera-status small { font-size: .7rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.camera-library-actions { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: 160px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100vw - 32px); }
+.camera-library-actions .button { background: #181818ee; color: #ddd; border-color: #ffffff30; padding: 8px 12px; }
+.camera-price .card-price { display: flex; gap: 6px; align-items: baseline; margin: 0; }
+.camera-price .card-price span { font-size: .65rem; color: #aaa; }
+.camera-price > small { display: block; color: #aaa; line-height: 1.5; margin: 6px 0; }
+.camera-review { position: fixed; inset: 0; overflow-y: auto; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)); background: #101010; color: #fff; }
+.camera-review > header { display: flex; align-items: center; justify-content: space-between; }
+.camera-review > p { color: #aaa; margin: 12px 0; }
+.camera-recent-list { display: grid; gap: 12px; max-width: 800px; margin: 20px auto; }
+.camera-recent-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border: 1px solid #333; border-radius: 12px; }
+.camera-recent-row > img { width: 64px; height: 90px; object-fit: contain; }
+.camera-recent-row > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.camera-recent-row small { color: #aaa; font-size: .75rem; }
+.camera-recent-row input { width: 65px; margin-left: 8px; padding: 5px; }
+.camera-review input, .camera-review select { background: #222; color: white; border: 1px solid #555; border-radius: 6px; }
+.camera-review .button { margin: 4px; }

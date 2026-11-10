@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { CameraPrice, selectedCameraCard } from "./CameraPrice";
 import { CameraFinish } from "./CameraFinish";
 import { Modal } from "./Modal";
 import type { CameraResult } from "./Camera";
@@ -93,10 +94,11 @@ export function CameraDetails({
           {result.energySymbol && !result.candidates.length && (
             <p>Energy type identified; exact printing unknown.</p>
           )}
+          <CameraPrice selection={selectedCameraCard(result, language)} detail />
           <CameraFinish estimate={result.finishEstimate} />
           <p className="camera-details-note">
             Check the printed set and number. Condition isn’t assessed here.
-            Nothing is saved to your collection.
+            Matches appear in Recent scans on this device. Review them before adding to your inventory.
           </p>
           <button className="button" onClick={close}>
             Back to camera

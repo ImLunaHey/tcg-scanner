@@ -13,6 +13,9 @@ import {
 import { Link } from "wouter";
 import { CameraTorch } from "./CameraTorch";
 import { CameraFinish } from "./CameraFinish";
+import { CameraRecent } from "./CameraRecent";
+import { CameraPrice, selectedCameraCard } from "./CameraPrice";
+import { recentCards, rememberCard } from "./cameraHistory";
 import { CameraDetails } from "./CameraDetails";
 import { Api, ApiError } from "./api";
 import { InstallCamera } from "./InstallCamera";
@@ -29,6 +32,9 @@ type Candidate = {
   id: string;
   name: string;
   setName: string;
+  setID: string;
+  evidence: string[];
+  availableFinishes: string[];
   localID: string;
   officialSetCount?: number;
   category?: string;
@@ -70,6 +76,11 @@ export function Camera() {
   const previewURL = useRef<string | undefined>(undefined);
   const [preview, setPreview] = useState<string>();
   const [details, setDetails] = useState(false);
+  const [recent, setRecent] = useState(false);
+  const [recentCount, setRecentCount] = useState(0);
+  const [historyError, setHistoryError] = useState("");
+  useEffect(() => { void recentCards().then(rows => setRecentCount(rows.length)).catch(() => {}); }, [recent]);
+  function showRecent(open: boolean) { detailsOpen.current = open; setRecent(open); }
   const detailsOpen = useRef(false);
   function showDetails(open: boolean) {
     detailsOpen.current = open;
@@ -186,6 +197,8 @@ export function Camera() {
             : undefined;
           setPreview(previewURL.current);
           setResult(value);
+          const selection = selectedCameraCard(value, language);
+          if (selection) void rememberCard(selection, base64).then(() => recentCards()).then(rows => setRecentCount(rows.length)).catch(e => setHistoryError(String(e)));
         }
         setPhase(gate.matched ? "detected" : "retry");
         setStatus(
@@ -386,8 +399,8 @@ export function Camera() {
     <main className="camera-page" aria-label="Card camera">
       <div
         className="camera-surface"
-        inert={details}
-        aria-hidden={details || undefined}
+        inert={details || recent}
+        aria-hidden={details || recent || undefined}
       >
         <div ref={view} className="camera-view" data-active={active}>
           <video
@@ -510,6 +523,10 @@ export function Camera() {
             )
           )}
         </div>
+        <div className="camera-library-actions">
+          <button className="button" onClick={() => showRecent(true)}>Recent scans ({recentCount})</button>
+          {historyError && <small role="alert">{historyError}</small>}
+        </div>
         {result && (
           <button
             className="camera-match-tile"
@@ -524,6 +541,7 @@ export function Camera() {
               <small>LAST CARD</small>
               <strong>{title}</strong>
               <span>{subtitle}</span>
+              <CameraPrice selection={selectedCameraCard(result, language)} />
               {result.game === "pokemon" && (
                 <CameraFinish estimate={result.finishEstimate} compact />
               )}
@@ -541,6 +559,7 @@ export function Camera() {
           </button>
         )}
       </div>
+      {recent && <CameraRecent close={() => showRecent(false)} />}
       {details && result && (
         <CameraDetails
           result={result}

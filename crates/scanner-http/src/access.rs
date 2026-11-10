@@ -23,6 +23,8 @@ pub(crate) struct Access {
     attempts: u32,
     camera_window: Instant,
     camera_requests: u32,
+    price_window: Instant,
+    price_requests: u32,
 }
 impl Access {
     pub fn new(token: &str) -> scanner_types::error::Result<Self> {
@@ -40,6 +42,8 @@ impl Access {
             attempts: 0,
             camera_window: Instant::now(),
             camera_requests: 0,
+            price_window: Instant::now(),
+            price_requests: 0,
         })
     }
     pub fn authenticate(&mut self, header: Option<&str>) -> Result<Principal> {
@@ -114,6 +118,21 @@ impl Access {
             ));
         }
         self.camera_requests += 1;
+        Ok(Principal::PublicCamera)
+    }
+    pub fn price(&mut self) -> Result<Principal> {
+        if self.price_window.elapsed() >= Duration::from_secs(60) {
+            self.price_window = Instant::now();
+            self.price_requests = 0;
+        }
+        if self.price_requests >= 120 {
+            return Err(Error::new(
+                429,
+                "rateLimit",
+                "Price lookup limit reached; retry shortly.",
+            ));
+        }
+        self.price_requests += 1;
         Ok(Principal::PublicCamera)
     }
     pub fn issue(&mut self, principal: &Principal) -> Result<(String, DateTime<Utc>)> {
