@@ -4,6 +4,7 @@ pub mod cards;
 pub mod catalogue;
 pub mod condition;
 pub mod device;
+pub mod edition;
 pub mod error;
 pub mod finish;
 pub mod images;

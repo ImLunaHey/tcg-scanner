@@ -3,6 +3,7 @@ mod background;
 mod border;
 mod decision;
 mod marker;
+pub mod stamp;
 use crate::ocr::Tesseract;
 use scanner_types::{
     cards::CardLanguage,

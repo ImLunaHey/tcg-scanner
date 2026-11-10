@@ -41,6 +41,8 @@ pub struct FinishEstimate {
     pub candidate_id: Option<String>,
     pub method: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edition: Option<crate::edition::EditionEvidence>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub border_evidence: Option<BorderFinishEvidence>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub uncertainty_reason: Option<FinishUncertainty>,
@@ -76,6 +78,7 @@ impl FinishEstimate {
             method: "modern-set-code-and-border-rust-v1".into(),
             suggested_finish: None,
             border_evidence: None,
+            edition: None,
             limitations: vec![],
             region: None,
             source_quarter_turns: None,
