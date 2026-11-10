@@ -32,6 +32,8 @@ pub struct CameraIdentification {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub game: Option<CardGame>,
     pub candidates: Vec<CardCandidate>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub visual_matches: Vec<crate::visual::VisualMatch>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uncatalogued_card: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -46,6 +48,7 @@ impl CameraIdentification {
             state,
             game: None,
             candidates: vec![],
+            visual_matches: vec![],
             uncatalogued_card: None,
             energy_symbol: None,
             finish_estimate: None,
@@ -59,6 +62,7 @@ impl CameraIdentification {
         };
         Self {
             game: Some(game),
+            visual_matches: evidence.visual_matches(),
             candidates: evidence.candidates,
             uncatalogued_card: evidence.extensions.get("uncataloguedCard").cloned(),
             energy_symbol: evidence.extensions.get("energySymbol").cloned(),

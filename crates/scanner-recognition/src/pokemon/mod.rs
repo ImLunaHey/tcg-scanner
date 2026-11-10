@@ -3,6 +3,7 @@ mod candidates;
 mod energy;
 mod printed;
 mod supplement;
+mod visual;
 use crate::matching::{PokemonMatcher, footer_orientation_score};
 use crate::readings;
 use scanner_catalogue::TcgDex;
@@ -19,6 +20,7 @@ pub struct PokemonRecognizer {
     english: TcgDex,
     korean: TcgDex,
     workers: Arc<Semaphore>,
+    visual: Option<Arc<crate::embedding::VisualRetriever>>,
 }
 impl PokemonRecognizer {
     pub fn new(library: PathBuf, data: PathBuf) -> Result<Self> {
@@ -28,7 +30,12 @@ impl PokemonRecognizer {
             english: TcgDex::new(CardLanguage::English)?,
             korean: TcgDex::new(CardLanguage::Korean)?,
             workers: Arc::new(Semaphore::new(1)),
+            visual: None,
         })
+    }
+    pub fn with_visual(mut self, visual: Arc<crate::embedding::VisualRetriever>) -> Self {
+        self.visual = Some(visual);
+        self
     }
     pub fn with_documents(
         mut self,
@@ -95,6 +102,20 @@ impl PokemonRecognizer {
             evidence
                 .extensions
                 .insert("energySymbol".into(), serde_json::json!(energy.symbol));
+        }
+        if let Some(visual) = &self.visual
+            && (options.allow_visual || !evidence.candidates.is_empty())
+            && options
+                .deadline
+                .is_none_or(|d| std::time::Instant::now() < d)
+            && visual::attach(&mut evidence, bytes.clone(), language, visual, catalogue)
+                .await
+                .is_err()
+        {
+            evidence.warnings.push(
+                "Optional visual references were unavailable; printed OCR evidence is retained."
+                    .into(),
+            );
         }
         let (library, data) = (self.library.clone(), self.data.clone());
         tokio::task::spawn_blocking(move || {

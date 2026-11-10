@@ -10,10 +10,20 @@ pub(crate) struct Reading {
     pub turns: u32,
     pub lines: Vec<RecognizedLine>,
 }
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 pub(crate) struct Options {
     pub preferred: Option<u32>,
     pub deadline: Option<std::time::Instant>,
+    pub allow_visual: bool,
+}
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            preferred: None,
+            deadline: None,
+            allow_visual: true,
+        }
+    }
 }
 pub(crate) fn read_options(
     bytes: &[u8],

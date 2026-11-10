@@ -659,3 +659,23 @@ need visual review. This is a remaining OCR coverage limitation, not parity in
 recall. Sanitized results are in `Tools/RecognitionBench/results-symbols-2026-11-10.json`.
 The workspace passes 274 tests with native SANE/TWAIN fixtures and Tesseract enabled,
 plus strict native and WebAssembly Clippy.
+
+Production DINOv3 retrieval now loads an explicitly configured, versioned local
+index. `scanner-index` checksum-verifies public reference files and writes an
+atomic new artifact; model graph/weights, descriptor dimensions, duplicate IDs,
+language and model/preprocessing compatibility are validated. Scanner and camera
+share one owned native encoder. Visual hints remain separate from printed-text
+candidates, so automatic pricing, finish and Store identity cannot consume them.
+Authenticated explicit review can promote a selected hint; Rune exposes that
+choice and its caveat, and the browser camera displays ephemeral visual hints.
+
+The 121-reference production artifact ranks the expected printing first on all
+48 covered saved fronts; 15 other fronts lack their printing in the index. Replayed
+OCR supplies 35 correct unique results; a correct unique text result or first
+visual option is available for 51/63, adding 16 review options without changing
+any printed candidate list. Fresh end-to-end native OCR plus visual recognition
+also passes three difficult fronts, including Inkay with no text candidate.
+These are review-assistance results, not automatic identity accuracy. See
+[visual recognition](visual-recognition.md) for configuration and limitations.
+HTTPS browser tests pass explicit visual selection/confirmation, existing reviews,
+inventory, profiles, edits, exports and camera lifecycle with no console errors.

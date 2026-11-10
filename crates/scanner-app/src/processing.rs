@@ -57,6 +57,18 @@ pub(crate) async fn configure(
                 data.clone(),
             ));
             let mut recognizer = NativeCardRecognizer::new(root, library.clone(), data.clone())?;
+            if let Some(visual) = configuration.visual_recognition.clone() {
+                let retriever = tokio::task::spawn_blocking(move || {
+                    scanner_recognition::embedding::VisualRetriever::load(
+                        &visual.runtime_library,
+                        &visual.model,
+                        &visual.index,
+                    )
+                })
+                .await
+                .map_err(config)??;
+                recognizer = recognizer.with_visual(Arc::new(retriever));
+            }
             if let Some(cache) = documents {
                 recognizer = recognizer.with_documents(cache);
             }

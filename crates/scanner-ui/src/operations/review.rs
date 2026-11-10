@@ -49,7 +49,7 @@ impl State {
             .review
             .as_ref()
             .and_then(|r| r.evidence.as_ref())
-            .map(|e| &e.candidates)
+            .map(|e| e.review_candidates())
         else {
             return;
         };
@@ -148,6 +148,39 @@ mod tests {
         ]})).unwrap());
         record.replace_identification(&review).unwrap();
         record
+    }
+    #[test]
+    fn visual_suggestions_require_selection_and_are_not_default_printings() {
+        let mut record = record();
+        let mut identity = record.identifications().unwrap().remove(0);
+        let evidence = identity.evidence.as_mut().unwrap();
+        let visual = evidence.candidates.remove(0);
+        evidence.candidates.clear();
+        evidence.extensions.insert(
+            "visualMatches".into(),
+            json!([{"candidate":visual,"similarity":0.9}]),
+        );
+        identity.state = IdentificationState::NoMatch;
+        record.replace_identification(&identity).unwrap();
+        let mut state = State::default();
+        state.receive_record(record);
+        assert!(state.ops.candidate.is_none());
+        state.cycle_candidate();
+        assert_eq!(state.ops.candidate.as_deref(), Some("a"));
+        assert!(
+            state
+                .ops
+                .review
+                .as_ref()
+                .unwrap()
+                .evidence
+                .as_ref()
+                .unwrap()
+                .candidates
+                .is_empty()
+        );
+        assert_eq!(state.ops.finish, CardFinish::Unverified);
+        assert_eq!(state.ops.condition, CardCondition::Unassessed);
     }
     #[test]
     fn background_refresh_keeps_manual_choices_until_a_new_review_is_saved() {

@@ -26,6 +26,10 @@ pub struct CameraRecognizer {
     finish: FinishAnalyzer,
 }
 impl CameraRecognizer {
+    pub fn with_visual(mut self, visual: Arc<crate::embedding::VisualRetriever>) -> Self {
+        self.pokemon = self.pokemon.with_visual(visual);
+        self
+    }
     pub fn new(library: PathBuf, data: PathBuf) -> Result<Self> {
         Ok(Self {
             pokemon: PokemonRecognizer::new(library.clone(), data.clone())?,
@@ -95,6 +99,7 @@ impl CameraRecognizer {
                 .verified
                 .then_some(u32::from(orientation.quarter_turns)),
             deadline: Some(deadline),
+            allow_visual: orientation.verified && orientation.basis.starts_with("pokemon-"),
         };
         if language == CardLanguage::English && orientation.basis.starts_with("starwars-") {
             return self
@@ -186,6 +191,7 @@ fn side(orientation: &Orientation) -> Option<CameraState> {
 }
 fn meaningful(evidence: &RecognitionEvidence) -> bool {
     !evidence.candidates.is_empty()
+        || !evidence.visual_matches().is_empty()
         || ["uncataloguedCard", "energySymbol"]
             .iter()
             .any(|k| evidence.extensions.get(*k).is_some_and(|v| !v.is_null()))

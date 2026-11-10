@@ -215,6 +215,18 @@ fn details(s: &State, t: tok::Theme, width: f32) -> El {
             }
         }
         panel = panel.child(lookup_notes(result, t));
+        if !result.visual_matches.is_empty() {
+            panel=panel.child(note("Similar artwork — check the printed set and number. These are not verified printing matches.",t));
+            for visual in &result.visual_matches {
+                panel = panel.child(note(
+                    &format!(
+                        "{} · {} {}",
+                        visual.candidate.name, visual.candidate.set_name, visual.candidate.local_id
+                    ),
+                    t,
+                ));
+            }
+        }
     }
     panel = panel.child(note(
         "Check the physical card. A catalogue suggestion does not confirm its finish or condition.",
@@ -256,6 +268,9 @@ fn result_title(result: &scanner_types::camera::CameraIdentification) -> String 
     }
     if result.state == scanner_types::camera::CameraState::CodeCard {
         return "Pokémon LIVE code card".into();
+    }
+    if !result.visual_matches.is_empty() {
+        return "similar artwork".into();
     }
     "Last card".into()
 }

@@ -252,9 +252,12 @@ impl Camera {
                     CameraState::Ambiguous => {
                         "Several possible matches. Try closer, with less glare.".into()
                     }
+                    CameraState::NoMatch if !value.visual_matches.is_empty()=>"Similar artwork found. Check the printed details before choosing a printing.".into(),
+                    CameraState::NoMatch if value.energy_symbol.is_some()=>"Energy type found. Exact printing is unknown.".into(),
                     CameraState::NoMatch => "No match yet. Try closer, with less glare.".into(),
                 };
                 if !value.candidates.is_empty()
+                    || !value.visual_matches.is_empty()
                     || value.uncatalogued_card.is_some()
                     || value.energy_symbol.is_some()
                     || value.state == CameraState::CodeCard

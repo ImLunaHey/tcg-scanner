@@ -22,6 +22,7 @@ pub mod image_access;
 pub mod identification;
 pub mod printed;
 pub mod recognition;
+pub mod visual;
 
 pub mod game_detection;
 

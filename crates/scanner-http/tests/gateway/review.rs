@@ -18,6 +18,58 @@ fn seed(h: &Harness, job: Uuid) -> Uuid {
     id
 }
 #[tokio::test]
+async fn visual_artwork_requires_explicit_review_before_becoming_an_identity() {
+    let h = Harness::new();
+    let (job, bytes) = h.saved();
+    let id = seed(&h, job);
+    let mut record = h.engine.scan_status(job).unwrap();
+    let mut identity = record.identifications().unwrap().remove(0);
+    let evidence = identity.evidence.as_mut().unwrap();
+    let candidate = evidence.candidates.remove(0);
+    evidence.extensions.insert(
+        "visualMatches".into(),
+        json!([{"similarity":0.91,"candidate":candidate}]),
+    );
+    identity.state = IdentificationState::NoMatch;
+    record.replace_identification(&identity).unwrap();
+    h.engine.database().save(&record).unwrap();
+    let path = format!("/api/v1/images/{job}:1/identification");
+    let before = response_json(h.send(h.request("GET", &path, Body::empty(), true)).await).await;
+    assert_eq!(
+        before["identification"]["evidence"]["candidates"],
+        json!([])
+    );
+    let request = json!({"identificationID":id,"cardID":"sv09-177"});
+    assert_eq!(
+        h.send(h.request("PATCH", &path, Body::from(request.to_string()), false))
+            .await
+            .status(),
+        401
+    );
+    let confirmed = response_json(h.call("PATCH", &path, request).await).await;
+    assert_eq!(confirmed["state"], "confirmed");
+    assert_eq!(confirmed["selectedCardID"], "sv09-177");
+    assert_eq!(
+        confirmed["evidence"]["candidates"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_eq!(confirmed["finish"], "unverified");
+    assert_eq!(confirmed["condition"], "unassessed");
+    let record = h.engine.scan_status(job).unwrap();
+    assert_eq!(
+        h.engine
+            .storage()
+            .read_image(&record, &record.images[0], 1024)
+            .unwrap(),
+        bytes
+    );
+    assert_eq!(h.driver.calls.load(std::sync::atomic::Ordering::SeqCst), 0);
+    h.engine.shutdown().await;
+}
+#[tokio::test]
 async fn condition_route_requires_authentication_and_never_checks_an_unknown_game() {
     let h = Harness::new();
     let (job, _) = h.saved();

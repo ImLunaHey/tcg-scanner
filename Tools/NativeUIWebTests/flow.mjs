@@ -58,6 +58,21 @@ try {
   if (guide.result?.currency !== 'GBP' || guide.result?.pricedCount !== 0 || guide.result?.lowPence != null)
     throw new Error('An unrecognized synthetic pair must not receive a market price');
   await page.getByText('Saved batch market guide', { exact: true }).waitFor({ state: 'attached' });
+  await page.getByRole('button', { name: 'Browser test card · Browser fixture 001', exact: true }).dispatchEvent('click');
+  await page.getByRole('button', { name: 'Browser visual card · Browser fixture 002', exact: true }).waitFor();
+  await page.getByText('Similar artwork; verify the printed set and number.', { exact: true }).waitFor();
+  const visualReview = await Promise.all([
+    response(page, 'v1.images.review'),
+    page.getByRole('button', { name: 'Confirm card', exact: true }).dispatchEvent('click'),
+  ]).then(([response]) => response.json());
+  if (visualReview.result?.selectedCardID !== 'fixture-visual' || visualReview.result?.state !== 'confirmed')
+    throw new Error('Explicit visual review did not preserve the chosen printing');
+  await page.getByRole('button', { name: 'Browser visual card · Browser fixture 002', exact: true }).dispatchEvent('click');
+  await page.getByRole('button', { name: 'Browser test card · Browser fixture 001', exact: true }).waitFor();
+  await Promise.all([
+    response(page, 'v1.images.review'),
+    page.getByRole('button', { name: 'Confirm card', exact: true }).dispatchEvent('click'),
+  ]);
   if (screenshots) {
     await mkdir(screenshots, { recursive: true });
     await page.mouse.move(1050, 740);

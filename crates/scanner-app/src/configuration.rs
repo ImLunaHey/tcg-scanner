@@ -27,6 +27,14 @@ pub(crate) struct Configuration {
     pub scan_button_device: Option<String>,
     pub tesseract_library: Option<PathBuf>,
     pub trained_data: Option<PathBuf>,
+    pub visual_recognition: Option<VisualConfiguration>,
+}
+#[derive(Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct VisualConfiguration {
+    pub runtime_library: PathBuf,
+    pub model: PathBuf,
+    pub index: PathBuf,
 }
 #[derive(Clone, Copy, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -68,6 +76,16 @@ impl Configuration {
         }
         if value.tesseract_library.is_some() != value.trained_data.is_some() {
             return Err(config("Configure both tesseractLibrary and trainedData."));
+        }
+        if let Some(visual) = &value.visual_recognition
+            && (value.tesseract_library.is_none()
+                || [&visual.runtime_library, &visual.model, &visual.index]
+                    .iter()
+                    .any(|p| !p.is_absolute() || !p.is_file()))
+        {
+            return Err(config(
+                "Visual recognition requires OCR and absolute existing runtime, model and index files.",
+            ));
         }
         for path in [
             &value.driver_library,

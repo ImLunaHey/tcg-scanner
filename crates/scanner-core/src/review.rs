@@ -90,6 +90,17 @@ impl Engine {
             ));
         }
         if let Some(id) = &request.card_id {
+            // Only this explicit review path can promote similar artwork into
+            // a selected printing. Automatic consumers never see visual hints.
+            if let Some(evidence) = result.evidence.as_mut()
+                && !evidence.candidates.iter().any(|c| c.id == *id)
+                && let Some(visual) = evidence
+                    .visual_matches()
+                    .into_iter()
+                    .find(|v| v.candidate.id == *id)
+            {
+                evidence.candidates.push(visual.candidate);
+            }
             if !result
                 .evidence
                 .as_ref()

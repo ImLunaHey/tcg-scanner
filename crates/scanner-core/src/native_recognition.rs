@@ -14,6 +14,14 @@ pub struct NativeCardRecognizer {
     finish: scanner_recognition::finish::FinishAnalyzer,
 }
 impl NativeCardRecognizer {
+    pub fn with_visual(
+        mut self,
+        visual: Arc<scanner_recognition::embedding::VisualRetriever>,
+    ) -> Self {
+        self.pokemon = self.pokemon.with_visual(visual.clone());
+        self.camera = self.camera.with_visual(visual);
+        self
+    }
     pub fn new(root: Arc<StorageRoot>, library: PathBuf, data: PathBuf) -> Result<Self> {
         Ok(Self {
             camera: scanner_recognition::camera::CameraRecognizer::new(

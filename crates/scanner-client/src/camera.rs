@@ -41,7 +41,14 @@ impl CameraClient {
         }
         let result: CameraIdentification =
             serde_json::from_slice(&bytes).map_err(|_| transport("Invalid camera result."))?;
-        if result.schema_version != 1 || result.candidates.len() > 10 {
+        if result.schema_version != 1
+            || result.candidates.len() > 10
+            || result.visual_matches.len() > 5
+            || result
+                .visual_matches
+                .iter()
+                .any(|v| !v.similarity.is_finite() || !(-1.0..=1.0).contains(&v.similarity))
+        {
             return Err(transport("Unsupported camera result."));
         }
         Ok(result)

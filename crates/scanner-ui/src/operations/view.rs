@@ -233,21 +233,38 @@ pub fn review_panel(s: &State, t: tok::Theme) -> El {
     let candidates = review
         .evidence
         .as_ref()
-        .map(|e| e.candidates.as_slice())
+        .map(|e| e.review_candidates())
         .unwrap_or_default();
     let selected = candidates
         .iter()
         .find(|c| Some(&c.id) == s.ops.candidate.as_ref());
     let label = selected
         .map(|c| format!("{} · {} {}", c.name, c.set_name, c.local_id))
-        .unwrap_or_else(|| "No candidate".into());
+        .unwrap_or_else(|| {
+            if candidates.is_empty() {
+                "No candidate"
+            } else {
+                "Choose similar artwork"
+            }
+            .into()
+        });
     panel = panel.child(button(
         &label,
         "candidate",
-        ready && candidates.len() > 1,
+        ready && (candidates.len() > 1 || (selected.is_none() && !candidates.is_empty())),
         t,
         State::cycle_candidate,
     ));
+    if let Some(selected) = selected {
+        for evidence in &selected.evidence {
+            panel = panel.child(
+                text(evidence)
+                    .font(type_::BODY)
+                    .wrap()
+                    .color(t.text_secondary),
+            );
+        }
+    }
     panel
         .child(assessment(s, t, ready))
         .child(review_buttons(t, ready, selected.is_some()))

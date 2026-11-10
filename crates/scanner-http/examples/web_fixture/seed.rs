@@ -42,6 +42,9 @@ pub fn seed(root: &StorageRoot, database: &Database) -> Result<(), Box<dyn Error
     identification.evidence = Some(serde_json::from_value(
         json!({"lines":[],"warnings":["Synthetic browser fixture; not recognition evidence."],"orientation":0,"candidates":[{"id":"fixture-1","name":"Browser test card","localID":"001","setID":"fixture","setName":"Browser fixture","evidence":[]}]}),
     )?);
+    identification.evidence.as_mut().unwrap().extensions.insert("visualMatches".into(),json!([{
+        "similarity":0.9,"candidate":{"id":"fixture-visual","name":"Browser visual card","localID":"002","setID":"fixture","setName":"Browser fixture","evidence":["Similar artwork; verify the printed set and number."]}
+    }]));
     let mut record = batch.record().clone();
     record.replace_identification(&identification)?;
     batch.update(|r| *r = record)?;
