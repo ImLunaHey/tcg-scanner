@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/scanner-types", "crates/scanner-store", "crates/scanner-ui", "crates/scanner-images", "crates/scanner-recognition", "crates/scanner-files", "crates/scanner-core", "crates/scanner-catalogue", "crates/scanner-device", "crates/scanner-rpc", "crates/scanner-http", "crates/scanner-platform", "crates/scanner-client", "crates/scanner-app"]
+members = ["crates/scanner-types", "crates/scanner-store", "crates/scanner-ui", "crates/scanner-images", "crates/scanner-recognition", "crates/scanner-files", "crates/scanner-core", "crates/scanner-catalogue", "crates/scanner-device", "crates/scanner-rpc", "crates/scanner-http", "crates/scanner-platform", "crates/scanner-client", "crates/scanner-app", "crates/scanner-mcp"]
 
 [workspace.package]
 version = "0.1.0"
@@ -9,6 +9,7 @@ rust-version = "1.98"
 repository = "https://github.com/ImLunaHey/tcg-scanner"
 
 [workspace.dependencies]
+scanner-mcp = { path = "crates/scanner-mcp", version = "0.1.0" }
 scanner-client = { path = "crates/scanner-client", version = "0.1.0" }
 scanner-platform = { path = "crates/scanner-platform", version = "0.1.0" }
 scanner-http = { path = "crates/scanner-http", version = "0.1.0" }
@@ -35,7 +36,7 @@ moxcms = "0.8"
 regex = "1"
 unicode-normalization = "0.1"
 url = "2"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "signal", "io-util"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "signal", "io-util", "io-std"] }
 tokio-util = { version = "0.7", features = ["rt"] }
 async-trait = "0.1"
 scanner-core = { path = "crates/scanner-core", version = "0.1.0" }

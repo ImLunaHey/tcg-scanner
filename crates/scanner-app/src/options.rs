@@ -75,3 +75,14 @@ pub enum ClientCommand {
         card_language: String,
     },
 }
+
+#[derive(Parser)]
+#[command(name = "scanner-mcp", version, about = "Scanner MCP stdio interface")]
+pub struct McpOptions {
+    #[arg(long, default_value = "http://127.0.0.1:8171")]
+    pub endpoint: String,
+    #[arg(long)]
+    pub token_file: PathBuf,
+    #[arg(long)]
+    pub read_only: bool,
+}

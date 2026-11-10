@@ -3841,6 +3841,7 @@ dependencies = [
  "scanner-device",
  "scanner-files",
  "scanner-http",
+ "scanner-mcp",
  "scanner-platform",
  "scanner-store",
  "scanner-types",
@@ -3978,6 +3979,19 @@ dependencies = [
  "scanner-types",
  "serde_json",
  "sha2",
+ "uuid",
+]
+
+[[package]]
+name = "scanner-mcp"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "scanner-client",
+ "scanner-types",
+ "serde_json",
+ "tokio",
+ "tokio-util",
  "uuid",
 ]
 

@@ -12,7 +12,11 @@ path = "src/bin/service.rs"
 [[bin]]
 name = "scanner"
 path = "src/bin/scanner.rs"
+[[bin]]
+name = "scanner-mcp"
+path = "src/bin/mcp.rs"
 [dependencies]
+scanner-mcp.workspace = true
 scanner-core.workspace = true
 scanner-device.workspace = true
 scanner-store.workspace = true

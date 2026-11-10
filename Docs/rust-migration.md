@@ -183,7 +183,7 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   an isolated database and controlled driver to verify malformed-request rejection,
   profile conflicts/partial updates, submission idempotency and cancellation cleanup.
   This crate opens no listener. Authentication, transport concurrency/body limits,
-  MCP wiring and the remaining library/control methods are still pending.
+  The remaining library/control methods are still pending.
 
 ## Validation
 
@@ -213,7 +213,16 @@ The CLI provides scan/status/job/profile commands and generic v1 calls using the
 bounded native `scanner-client`. Both binaries build; an isolated startup attempt
 correctly refused the installed Swift service's hardware lock before creating a
 database. Startup currently refuses unfinished jobs pending disk reconciliation.
-Service installation, sleep/wake handling and full CLI/MCP parity remain open.
+Service installation, sleep/wake handling and full friendly CLI parity remain open.
+
+`scanner-mcp` implements MCP 2025-06-18 over bounded stdio JSON frames, with
+initialization, tool discovery, structured tool results, read-only filtering, eight
+concurrent calls and request cancellation. It advertises 23 completed Rust-backed
+tools; recognition and inventory tools remain pending their domain slices. Tests
+cover initialization gates, argument validation, defaults, domain errors,
+concurrency, duplicate IDs, cancellation and oversized/truncated frames. MCP
+cancellation never sends a physical scan cancellation. The `scanner-mcp` binary
+uses the same private credential loader and native HTTP client as the CLI.
 
 The Rune library slice opens saved batches, searches cards and shows their latest
 edits and identification evidence. Reads and verified thumbnails run off the UI
