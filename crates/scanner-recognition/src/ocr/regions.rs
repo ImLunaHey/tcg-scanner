@@ -69,7 +69,8 @@ impl Tesseract {
     ) -> Result<Vec<RecognizedLine>> {
         self.read_scaled_region(image, region, single_block, 820, false)
     }
-    pub(crate) fn read_set_code(
+    /// Read the lower-left printed set-code region with individual word bounds.
+    pub fn read_set_code(
         &mut self,
         image: &RgbImage,
         magnify: bool,

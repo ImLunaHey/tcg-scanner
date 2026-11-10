@@ -41,8 +41,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut padded =
         image::RgbImage::from_pixel(crop.width() + 32, crop.height() + 32, image::Rgb([255; 3]));
     image::imageops::replace(&mut padded, &crop, 16, 16);
-    for threshold in [45u8, 55, 65, 75, 85, 95] {
-        let mut pixels = image::imageops::blur(&padded, 0.8);
+    for threshold in [0u8, 80, 100, 120, 140, 160, 180, 200] {
+        let mut pixels = image::imageops::resize(
+            &padded,
+            padded.width() * 4,
+            padded.height() * 4,
+            image::imageops::FilterType::CatmullRom,
+        );
         if threshold > 0 {
             for pixel in pixels.pixels_mut() {
                 let [r, g, b] = pixel.0.map(f32::from);
