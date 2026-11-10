@@ -14,3 +14,4 @@ mod staging;
 mod power;
 
 mod maintenance;
+pub mod visual_index;

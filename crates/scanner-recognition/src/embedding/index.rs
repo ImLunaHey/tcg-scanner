@@ -30,8 +30,13 @@ impl EmbeddingIndex {
         if model.is_empty() || dimension == 0 || dimension > 4096 {
             return Err(model_error("Invalid index model or dimensions."));
         }
+        if references.len() > 50_000 {
+            return Err(model_error("Visual index exceeds 50,000 references."));
+        }
+        let mut ids = std::collections::BTreeSet::new();
         for reference in &mut references {
-            if reference.id.is_empty()
+            if !super::valid_id(&reference.id)
+                || !ids.insert(reference.id.clone())
                 || reference.vector.len() != dimension
                 || reference.sha256.len() != 64
                 || !reference.sha256.bytes().all(|c| c.is_ascii_hexdigit())
@@ -93,5 +98,18 @@ mod tests {
         assert!(index.search("v2", &[0., 1.], 2).is_err());
         assert!(index.search("v1", &[f32::NAN, 1.], 2).is_err());
         assert!(EmbeddingIndex::new("v1".into(), vec![reference("a", vec![0., 0.])]).is_err());
+        assert!(
+            EmbeddingIndex::new(
+                "v1".into(),
+                vec![reference("a", vec![1., 0.]), reference("a", vec![0., 1.])]
+            )
+            .is_err()
+        );
+        for id in ["..", ".", "../card", "card/query?", "card\0"] {
+            assert!(EmbeddingIndex::new("v1".into(), vec![reference(id, vec![1., 0.])]).is_err());
+        }
+        assert!(
+            EmbeddingIndex::new("v1".into(), vec![reference("sv06.5-099", vec![1., 0.])]).is_ok()
+        );
     }
 }

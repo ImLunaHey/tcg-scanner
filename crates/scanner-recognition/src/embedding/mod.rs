@@ -1,6 +1,10 @@
 //! Visual retrieval returns candidates, never automatic identity confirmation.
+mod build;
 mod index;
+pub use build::{ReferenceSource, build_index};
 mod onnx;
+mod retriever;
+pub use retriever::{VisualIndexDocument, VisualRetriever};
 
 pub use index::{EmbeddingIndex, ReferenceEmbedding, VisualCandidate};
 pub use onnx::{DinoEncoder, MODEL_REVISION};
@@ -9,6 +13,14 @@ use scanner_types::error::{Result, ScannerError};
 
 fn model_error(error: impl std::fmt::Display) -> ScannerError {
     ScannerError::new("recognitionModel", error.to_string())
+}
+fn valid_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 100
+        && !matches!(value, "." | "..")
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"+.-".contains(&b))
 }
 
 fn normalize(values: &mut [f32]) -> Result<()> {

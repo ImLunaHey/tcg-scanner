@@ -4052,6 +4052,7 @@ dependencies = [
  "scanner-mcp",
  "scanner-platform",
  "scanner-pricing",
+ "scanner-recognition",
  "scanner-staging",
  "scanner-store",
  "scanner-types",
