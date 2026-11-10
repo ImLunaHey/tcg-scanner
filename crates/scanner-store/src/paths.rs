@@ -1,77 +1,20 @@
-use crate::storage;
+use scanner_platform::PrivateDirectory;
 use scanner_types::error::{Result, ScannerError};
-use std::{fs, path::Path};
+use std::path::Path;
 
 pub fn prepare(path: &Path) -> Result<()> {
     let parent = path
         .parent()
-        .filter(|p| !p.as_os_str().is_empty())
-        .unwrap_or(Path::new("."));
-    for ancestor in parent.ancestors() {
-        if let Ok(metadata) = fs::symlink_metadata(ancestor)
-            && metadata.file_type().is_symlink()
-        {
-            return Err(ScannerError::new(
-                "accessDenied",
-                "Database ancestors must not be symlinks.",
-            ));
-        }
-    }
-    if !parent.exists() {
-        fs::create_dir_all(parent).map_err(storage)?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(parent, fs::Permissions::from_mode(0o700)).map_err(storage)?;
-        }
-    }
-    private_owned(parent)?;
+        .ok_or_else(|| ScannerError::new("accessDenied", "Missing database directory."))?;
+    let name = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| ScannerError::new("accessDenied", "Invalid database filename."))?;
+    let directory = PrivateDirectory::open(parent, true)?;
     for suffix in ["", "-wal", "-shm", "-journal"] {
-        let mut name = path.as_os_str().to_owned();
-        name.push(suffix);
-        let file = Path::new(&name);
-        match fs::symlink_metadata(file) {
-            Ok(meta) => {
-                if !meta.is_file() || meta.file_type().is_symlink() {
-                    return Err(ScannerError::new(
-                        "accessDenied",
-                        "Database files must be regular files.",
-                    ));
-                }
-                private_owned(file)?;
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
-            Err(error) => return Err(storage(error)),
-        }
+        directory.validate_existing_file(&format!("{name}{suffix}"))?;
     }
-    if !path.exists() {
-        let mut options = fs::OpenOptions::new();
-        options.write(true).create_new(true);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            options.mode(0o600);
-        }
-        options.open(path).map_err(storage)?;
-    }
-    Ok(())
-}
-
-fn private_owned(path: &Path) -> Result<()> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::MetadataExt;
-        let meta = fs::symlink_metadata(path).map_err(storage)?;
-        // SAFETY: geteuid has no pointer arguments or side effects.
-        if meta.uid() != unsafe { libc::geteuid() } || meta.mode() & 0o077 != 0 {
-            return Err(ScannerError::new(
-                "accessDenied",
-                "Database storage must be private and owned by the current user.",
-            ));
-        }
-    }
-    #[cfg(not(unix))]
-    let _ = path;
+    directory.open_file(name, true, false, true)?;
     Ok(())
 }
 

@@ -44,8 +44,9 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   stable reservations, profiles/settings, caches, continuation transactions and
   interrupted-work transitions. Existing live ledger read in read-only mode.
   Tests cover restart, rollback, event resets and Unix sidecar symlink rejection.
-  Disk-manifest reconciliation and Windows ACL policy remain with their owning
-  platform/storage work.
+  Local database/sidecar creation now uses the shared native private-state
+  boundary, including Windows owner/DACL validation. Windows execution and
+  disk-manifest reconciliation remain outstanding.
 
 - `scanner-core`: driver-independent queue ownership, idempotent submissions,
   profile/default resolution, ordered acquisition, cooperative cancellation,
@@ -186,14 +187,22 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
 
 ## Validation
 
+`scanner-platform` provides capability-pinned private local directories,
+exclusive credential creation/loading and a process-lifetime hardware lock.
+Unix permissions/link checks and Windows handle owner/DACL checks apply before
+using local state. Tests verify private credential round trips, replacement/link
+rejection, and lock exclusion against the same native `flock` used by the Swift
+service. Windows x64 type/lint checks pass; native Windows ACL behavior still
+needs execution on that platform.
+
 `scanner-http` now adapts the Rust coordinator directly to authenticated REST and
 JSON-RPC, expiring/revocable bearer sessions, bounded original/thumbnail downloads
 and resumable SSE events. It preserves the existing public binary-image policy
 while authenticating metadata and controls. Integration tests exercise Host/Origin
 and header rejection before hardware access, body limits, session authority,
 REST/RPC profile sharing, image integrity, and concurrency leases through response
-completion/disconnection. Deployment wiring, connection limits, native credential
-files, remaining domain routes and Rune web assets are still pending.
+completion/disconnection. Deployment wiring, connection limits, remaining domain
+routes and Rune web assets are still pending.
 
 The Rune library slice opens saved batches, searches cards and shows their latest
 edits and identification evidence. Reads and verified thumbnails run off the UI

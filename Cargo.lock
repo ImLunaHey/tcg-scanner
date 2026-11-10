@@ -3833,6 +3833,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "scanner-platform"
+version = "0.1.0"
+dependencies = [
+ "cap-fs-ext",
+ "cap-std",
+ "dirs",
+ "libc",
+ "scanner-types",
+ "tempfile",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "scanner-recognition"
 version = "0.1.0"
 dependencies = [
@@ -3870,8 +3883,8 @@ name = "scanner-store"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "libc",
  "rusqlite",
+ "scanner-platform",
  "scanner-types",
  "serde",
  "serde_json",
