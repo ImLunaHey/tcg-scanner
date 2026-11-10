@@ -13,6 +13,9 @@ static MODERN: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"^(sv|me)[0-9]{2}(\.[0-9][a-z]?)?$").unwrap());
 static CODE: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"^[A-Z0-9]{3}EN$").unwrap());
+pub(super) fn modern_set(id: &str) -> bool {
+    MODERN.is_match(id)
+}
 const LIMITATIONS: [&str; 2] = [
     "Experimental estimate: inspect the physical card before confirming finish.",
     "Uses printed set-code contrast, catalogue variants and eligible prepared-card border texture, not measured reflectivity. Special/promotional printings may differ.",
@@ -202,7 +205,7 @@ fn tighter(refined: &RecognizedLine, original: &RecognizedLine) -> bool {
         && refined.x + refined.width <= original.x + original.width + 0.004
         && refined.y + refined.height <= original.y + original.height + 0.004
 }
-fn upright(bytes: &[u8], turns: u32) -> Result<RgbImage> {
+pub(super) fn upright(bytes: &[u8], turns: u32) -> Result<RgbImage> {
     if turns > 3 {
         return Err(ScannerError::new(
             "invalidParams",

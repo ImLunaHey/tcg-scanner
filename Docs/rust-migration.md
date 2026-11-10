@@ -421,3 +421,26 @@ Saved Swift observations also flagged a tiny region on sequence 3; native analys
 did not reproduce it with area, nearest, triangle, Catmull-Rom, Gaussian or Lanczos3
 resampling. The finding on sequence 51 agrees in location. Classification parity
 is established on this fixture; identical small-mark sensitivity is not.
+
+Rust now implements the ordinary printed set-code/border observations and the
+pumpkin/anniversary stamp detectors. Stamp and edition contracts preserve visual
+measurements, catalogue provenance and a deterministic pricing key. Standard-size
+TCGdex printing variants and the existing 90-entry Trick or Trade registry feed
+conservative stamped-printing decisions: conflicting variants remain uncertain
+unless eligible positive border evidence resolves them, and anniversary metadata
+labelled normal is not treated as reliable non-holo evidence.
+
+Read-only stamp comparison detected all six B-027 pumpkin marks, flagged none of
+71 prepared ordinary control fronts, and agreed with the saved anniversary state
+on 43/47 B-001 fronts. Four anniversary results differ (including two misses);
+thresholds were not retuned. Details and manifest digests are in
+`Tools/RecognitionBench/results-stamps-2026-11-10.json`. Reproduce with
+`cargo run -p scanner-core --example stamp_saved -- MANIFEST`.
+
+A separate 82-identity ordinary-finish comparison held catalogue identity fixed.
+Fresh Tesseract initially found no usable set-code markers. Word-level boxes and
+adjacent code/language joining recovered one normal suggestion; the independent
+modern-ex catalogue rule produced one holo suggestion and one Energy card was
+unsupported. The remaining 79 were unresolved. Stored Vision text produced far
+more usable observations. Portable finish OCR therefore remains a parity blocker;
+these component results are not a claim of end-to-end recognition accuracy.

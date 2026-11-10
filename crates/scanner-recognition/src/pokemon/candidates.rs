@@ -26,6 +26,10 @@ pub(super) async fn resolve(ranks: &[Ranked], catalogue: &TcgDex) -> Result<Vec<
         .map(|(_, finish)| finish)
         .collect();
         let mut extensions = scanner_types::Extensions::new();
+        extensions.insert(
+            "printingVariants".into(),
+            serde_json::json!(detail.printing_variants()),
+        );
         if let Some(rarity) = &detail.rarity {
             extensions.insert("rarities".into(), serde_json::json!([rarity]));
         }

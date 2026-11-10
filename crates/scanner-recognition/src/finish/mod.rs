@@ -1,7 +1,12 @@
 //! Printed finish evidence. Suggestions never replace manual review fields.
+mod analyzer;
+mod assessment;
 mod background;
+pub use analyzer::FinishAnalyzer;
+pub use assessment::estimate;
 mod border;
 mod decision;
+mod edition;
 mod marker;
 pub mod stamp;
 use crate::ocr::Tesseract;
