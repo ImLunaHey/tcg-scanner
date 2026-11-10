@@ -200,15 +200,7 @@ pub(super) fn write_manifest(dir: &Dir, record: &ScanRecord) -> Result<()> {
     drop(file);
     dir.rename(&name, dir, "manifest.json").map_err(storage)?;
     #[cfg(unix)]
-    {
-        // Some network filesystems do not implement directory fsync. File contents
-        // were synced above; all other directory-sync errors must be reported.
-        if let Err(error) = dir.try_clone().map_err(storage)?.into_std_file().sync_all()
-            && error.kind() != std::io::ErrorKind::Unsupported
-        {
-            return Err(storage(error));
-        }
-    }
+    paths::sync_directory(dir)?;
     Ok(())
 }
 

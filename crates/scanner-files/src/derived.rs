@@ -51,7 +51,7 @@ impl StorageRoot {
         sidecar.write_all(&metadata).map_err(storage)?;
         sidecar.sync_all().map_err(storage)?;
         #[cfg(unix)]
-        directory.into_std_file().sync_all().map_err(storage)?;
+        paths::sync_directory(&directory)?;
         Ok(())
     }
 

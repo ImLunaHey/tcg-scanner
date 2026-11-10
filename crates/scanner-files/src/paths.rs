@@ -4,6 +4,19 @@ use cap_std::fs::{Dir, File, OpenOptions};
 use scanner_types::error::Result;
 use std::path::{Component, Path};
 
+#[cfg(unix)]
+pub(super) fn sync_directory(directory: &Dir) -> Result<()> {
+    // Linux capability directories use O_PATH, which cannot be fsynced. Open
+    // the pinned directory itself for reading without resolving an ambient path.
+    let file = directory.open(".").map_err(storage)?;
+    match file.sync_all() {
+        Ok(()) => Ok(()),
+        // Some network filesystems provide file sync but not directory sync.
+        Err(error) if error.kind() == std::io::ErrorKind::Unsupported => Ok(()),
+        Err(error) => Err(storage(error)),
+    }
+}
+
 pub(super) fn create_directory(root: &Dir, name: &Path) -> std::io::Result<()> {
     let mut options = cap_std::fs::DirBuilder::new();
     #[cfg(unix)]
@@ -79,4 +92,24 @@ pub(super) fn create_file(root: &Dir, name: &str) -> Result<File> {
         options.mode(0o600);
     }
     root.open_with(name, &options).map_err(storage)
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    #[test]
+    fn capability_directories_can_be_synced_after_their_ambient_name_changes() {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(temp.path().join("before")).unwrap();
+        let directory =
+            Dir::open_ambient_dir(temp.path().join("before"), cap_std::ambient_authority())
+                .unwrap();
+        std::fs::rename(temp.path().join("before"), temp.path().join("after")).unwrap();
+        sync_directory(&directory).unwrap();
+        let child = Dir::open_ambient_dir(temp.path(), cap_std::ambient_authority())
+            .unwrap()
+            .open_dir_nofollow("after")
+            .unwrap();
+        sync_directory(&child).unwrap();
+    }
 }
