@@ -1,5 +1,9 @@
 # Scanner background comparison
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 The installed fi-8170 ICA driver exposes these `cropping` enumeration values:
 `0` = None (with black background), `1` = None (with white background).
 Ricoh documents both on page 16 of its macOS driver guide:

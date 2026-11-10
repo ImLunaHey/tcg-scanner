@@ -40,7 +40,8 @@ memory caching; scan originals and inventory never enter this cache.
 
 SIGINT/SIGTERM stop acceptance and wait for owned writes and scanner session
 closure. Interrupted jobs reconcile verified manifests before accepting clients; incomplete
-work fails explicitly and physical feeding never resumes automatically. Installers, platform
-sleep/wake handling and the rest of the friendly CLI command tree remain pending.
+work fails explicitly and physical feeding never resumes automatically. Native
+sleep/wake notifications use the same owned drain. `scanner-setup` handles
+installation and per-user startup; see [portable installation](../../Docs/portable-install.md).
 The generic `call` command exposes every currently implemented v1 RPC method.
 Physical scan commands require an explicit request UUID for safe retries.

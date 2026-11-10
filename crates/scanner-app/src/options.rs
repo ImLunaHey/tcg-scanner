@@ -29,7 +29,7 @@ pub enum ServiceCommand {
 pub struct ClientOptions {
     #[arg(long, default_value = "http://127.0.0.1:8171")]
     pub endpoint: String,
-    #[arg(long)]
+    #[arg(long, env = "SCANNER_TOKEN_FILE")]
     pub token_file: PathBuf,
     #[command(subcommand)]
     pub command: ClientCommand,
@@ -81,7 +81,7 @@ pub enum ClientCommand {
 pub struct McpOptions {
     #[arg(long, default_value = "http://127.0.0.1:8171")]
     pub endpoint: String,
-    #[arg(long)]
+    #[arg(long, env = "SCANNER_TOKEN_FILE")]
     pub token_file: PathBuf,
     #[arg(long)]
     pub read_only: bool,

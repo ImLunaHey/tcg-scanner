@@ -1,5 +1,9 @@
 # Energy and Pokémon ex finish scope
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 Research checked 2026-11-01. All image analysis remains local. Catalogue requests
 download public metadata; no user images are uploaded. Physical review values are
 not detector inputs and are never replaced by these estimates.

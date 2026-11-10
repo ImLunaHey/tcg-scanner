@@ -1,5 +1,9 @@
 # Mobile camera identification
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 The instructions below describe the installed Swift service. The Rust replacement
 now provides the same ephemeral camera API and a Rune `/camera` screen, using
 portable perspective extraction and native Tesseract. Its simulated HTTPS browser

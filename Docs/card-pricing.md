@@ -1,5 +1,9 @@
 # Card and batch price guides
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 Authenticated `GET /api/v1/batches/{job UUID}/valuation` forwards to the Swift
 service's `v1.batches.valuation` JSON-RPC method (`{"id":"job UUID"}`). The web UI
 shows GBP values at the top right of each card panel and a batch value above the

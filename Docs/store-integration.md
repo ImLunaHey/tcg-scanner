@@ -1,5 +1,9 @@
 # Send to Store
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 Completed duplex card batches can be sent from the web batch toolbar to Store's
 private **Scan Inbox**. The button changes to progress, then **Resync to Store**
 and provides **Review in Store**. This does not create sellable inventory or

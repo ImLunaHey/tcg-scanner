@@ -4,7 +4,8 @@ Requested 2026-11-09: move the complete application to Rust with
 [Anomaly Rune](https://github.com/anomalyco/rune) for the UI, preserving existing
 scan data and workflows on macOS and adding Windows and Linux support.
 
-This is a migration ledger, not a claim of completed feature parity. The installed
+This is the implementation and validation ledger. Earlier entries record the
+state at each checkpoint; later entries supersede their pending-work notes. The installed
 Swift service continues to own hardware until the Rust replacement passes its
 acceptance checks. Development uses isolated databases and saved-image fixtures;
 no automatic migration is run against the live ledger.
@@ -699,3 +700,23 @@ was installed under the development cache and its private credential, verified
 web bundle, actual Tesseract initialization and mounted lake/scans policy passed
 `doctor`; no scanner was opened. CI now assembles per-platform archives.
 See [portable installation](portable-install.md) for cutover and dependency steps.
+
+
+The legacy Swift/SwiftUI targets, Swift tests and experiments, Xcode project,
+React application and Swift deployment scripts have now been retired from the
+repository. Git history retains the former implementation and validation evidence.
+Rust is the sole application build and runtime path; C driver fixtures and Node
+browser/benchmark tools remain development-only. Current README, desktop/web and
+MCP setup describe the Rust distribution, while older validation documents are
+marked historical. The MCP configuration invokes the native executable directly
+and reads its credential filename from explicit args or `SCANNER_TOKEN_FILE`.
+No installed service, live database, scan original or external share was removed
+or migrated as part of source retirement. Physical-device validation and the
+measured OCR/reference-coverage limits remain explicit acceptance boundaries.
+
+At the source-retirement checkpoint, 287 workspace tests pass with native
+SANE/TWAIN fixtures and installed Tesseract enabled. Strict whole-workspace and
+WASM Clippy, formatting and the modular-structure audit pass. The private package
+smoke check confirms actual English OCR initialization and mounted-share access;
+Korean data is explicitly reported absent on this development machine rather
+than silently falling back to English. No physical scanner was opened.

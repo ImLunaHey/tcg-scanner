@@ -1,5 +1,9 @@
 # Automatic game detection
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 Card preparation now detects the game separately for each complete duplex pair.
 There is no game selector or batch-wide Pokémon assumption. Both captures are
 prepared first, so a back-first card receives the same routing as a front-first

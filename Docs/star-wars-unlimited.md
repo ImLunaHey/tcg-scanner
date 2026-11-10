@@ -1,5 +1,9 @@
 # Star Wars: Unlimited
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 English scans use automatic game detection; no game selector is required.
 The standard black back requires its dark/white logo layout and a confidently
 read, correctly positioned UNLIMITED word. Printed SWU copyright and English

@@ -1,3 +1,8 @@
+> Development-only benchmark harness. The production recognizer is Rust. Historical
+> Swift benchmark commands below refer to the implementation retained in Git history;
+> current Rust measurements and commands are documented in `Docs/visual-recognition.md`
+> and `Docs/rust-migration.md`. Node/Tesseract.js experiments are not shipped runtime code.
+
 # Saved-card recognition experiment
 
 These development tools compare native recognition, Tesseract.js OCR ablations,

@@ -11,7 +11,7 @@ Supported operations cover device discovery/inspection, settings reports,
 diagnostics, scans, batch continuation, job history, service status, events and
 profiles, image access/edits/preparation, saved identification/review and inventory
 with catalogue checklists and reference previews. The migration ledger lists
-remaining operations and transport work.
+implementation checkpoints and validation boundaries.
 
 This library opens no listener and performs no authentication. A transport must
 authenticate before dispatch, limit body reads to 64 KiB before allocation, bound

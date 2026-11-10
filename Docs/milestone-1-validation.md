@@ -1,5 +1,9 @@
 # Milestone 1 validation — 2026-10-31
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 Debug build and release build (`swift build -c release -Xswiftc -warnings-as-errors`)
 both passed. The release build produced both executables without compiler warnings.
 

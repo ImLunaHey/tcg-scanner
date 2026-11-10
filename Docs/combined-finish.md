@@ -1,5 +1,9 @@
 # Combined automatic finish estimates
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 `modern-set-code-and-border-v5` runs inside ScannerService using native Swift,
 ImageIO and CoreGraphics. Both new-scan identification and explicit finish refresh
 use the same implementation. It does not invoke the offline experiment scripts,

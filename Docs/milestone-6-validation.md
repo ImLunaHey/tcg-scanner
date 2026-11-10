@@ -1,5 +1,9 @@
 # Milestone 6 validation — native macOS app
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 Date: 2026-10-31. Machine: Apple Silicon, macOS 26.5.2, Xcode 26.6,
 Swift 6.3.3. The native application is installed at
 `~/Applications/Scanner.app`; the existing per-user ScannerService remains the

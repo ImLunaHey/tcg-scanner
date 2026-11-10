@@ -1,5 +1,9 @@
 # Yu-Gi-Oh! identification
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 English Yu-Gi-Oh! fronts now use local Apple Vision OCR and the public
 [YGOPRODeck v7 catalogue](https://ygoprodeck.com/api-guide/). The game is selected
 from the paired back. There is no game selector and no image upload. Both sides

@@ -1,5 +1,9 @@
 # Local visible condition checks
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 `blue-back-visible-marks-v2` flags candidate light marks in the blue border of an
 automatically prepared standard Pokémon back at any quarter turn. It runs in-process in Swift
 using ImageIO/Core Graphics. No images or prompts leave the Mac, and no model,

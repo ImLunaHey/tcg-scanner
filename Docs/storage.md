@@ -1,5 +1,9 @@
 # Scan storage
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 The configured destination for this installation is `smb://lake/scans`, mounted
 at `/Volumes/scans`. All clients use ScannerService's configured storage root.
 The SQLite database remains in local Application Support; it is not moved to SMB.

@@ -1,5 +1,9 @@
 # SMB storage migration and native scan validation — 2026-10-31
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 Historical paths below describe this validation run. They were subsequently
 renamed to `B-001` through `B-006`; see [batch naming validation](batch-naming-validation.md).
 

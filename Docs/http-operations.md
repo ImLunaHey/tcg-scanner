@@ -1,5 +1,9 @@
 # HTTP gateway operations
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 The per-user HTTP LaunchAgent is `local.scanner.http`. Its default listener is
 127.0.0.1:8170. ScannerService must be running separately. Installation creates a
 private credential once and retains it across updates. Startup never triggers scans.

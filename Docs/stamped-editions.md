@@ -1,5 +1,9 @@
 # Local pumpkin-stamp and printing analysis
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 The automatic scan pipeline and saved finish refresh use the same native Swift
 `CardFinishAnalyzer`. Originals, OCR evidence, selected IDs and reviewed
 finish/condition values are retained. No scanner action is needed to refresh a

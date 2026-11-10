@@ -17,9 +17,9 @@ cargo test -p scanner-http --test gateway
 Implemented routes include `/rpc` (POST JSON-RPC), device inspection/defaults,
 profiles, jobs, continuations, status, image metadata/edits/downloads/thumbnails,
 one-hour bearer sessions, resumable SSE events, saved-card preparation/OCR/review,
-and inventory/checklists/reference thumbnails. Pricing, visual assessment, Store
-transfer, public camera lookup and Rune web assets remain pending.
-The migration ledger tracks the complete interface scope.
+inventory/checklists/reference thumbnails, pricing, visual assessment, Store
+transfers, bounded public camera lookup, Rune web assets, pause/resume and storage
+reconnection. The migration ledger records validation and known limitations.
 
 Control routes require exactly one Bearer authorization header. Credentials in
 URLs and cookies are not accepted. Only the root token can issue sessions;

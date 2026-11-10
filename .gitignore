@@ -1,3 +1,4 @@
+# Retired build artifacts may remain locally; no legacy source is shipped.
 .build/
 .DS_Store
 Diagnostics/

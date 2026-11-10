@@ -1,5 +1,9 @@
 # Whole-card cropping and orientation
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 Enable **Auto-crop and orient cards** in the scan controls to create prepared PNGs
 during the job's processing stage. The web and native scan controls now enable
 this by default for the card workflow; turn it off for general documents. CLI/API

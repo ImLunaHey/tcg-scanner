@@ -1,5 +1,9 @@
 # Local JSON-RPC API v1
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 UTF-8 newline-delimited JSON-RPC 2.0 over a private Unix socket. One request/response
 per connection; string or numeric request IDs are echoed. Notifications and JSON-RPC
 batch envelopes are not implemented. All clients share the service's scheduler.

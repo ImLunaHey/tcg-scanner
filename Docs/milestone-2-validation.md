@@ -1,5 +1,9 @@
 # Milestone 2 — basic scanning validation, 2026-10-31
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 ## Implemented
 
 Swift ImageCaptureCore ADF scanning through the single ScannerService owner;

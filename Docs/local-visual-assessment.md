@@ -1,5 +1,9 @@
 # Local finish estimates and condition assessment
 
+> Historical implementation/validation notes. Swift/React source and deployment
+> commands below are retired. Use [the Rust application](../README.md) and
+> [portable installation](portable-install.md) for the current project.
+
 The user requires all card-image analysis to stay on this Mac. Catalogue GETs and
 model-weight downloads are permitted; card images and OCR text are not uploaded.
 The live application's existing OCR identifies card names/printings. It does not
