@@ -67,6 +67,14 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   partial updates are enforced transactionally, preserving additive metadata;
   tests cover concurrent writers, idempotent creates, Unicode case folding,
   invalid-update rollback and event subscriber limits/disconnection.
+  Original/edit metadata, bounded chunk reads, verified PNG/JPEG thumbnails and
+  manual crop/rotate/deskew edits now run through core and RPC. Immutable edit
+  sidecars recover encoded output after an interrupted ledger publication; retry
+  inputs must match, originals are reverified, and concurrent edits serialize
+  with continuations/shutdown. Tests cover recovery, duplicate/conflicting edits,
+  tampering, active-job refusal and the eight-edits-per-original limit. Thumbnails
+  currently reverify sources on each request rather than using a fingerprint cache;
+  decoding retains the Rust 48-megapixel bound.
 
 - `scanner-device`: portable driver contracts extracted from the coordinator and
   a Rust ImageCaptureCore adapter. It includes main-thread discovery/inspection,
@@ -160,7 +168,8 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
 
 - `scanner-rpc`: transport-independent v1 JSON-RPC dispatch for device discovery,
   inspection/settings reports, diagnostics, scan submission/status/cancellation,
-  batch continuation, job pagination, service status, events and profile CRUD.
+  batch continuation, job pagination, service status, events, profile CRUD and
+  image metadata/chunks/thumbnails/edits.
   Existing method aliases share the same coordinator and durable operations.
   Requests are limited to 64 KiB, require a string/numeric ID and reject unknown
   parameters; errors preserve structured scanner error data. Protocol tests use

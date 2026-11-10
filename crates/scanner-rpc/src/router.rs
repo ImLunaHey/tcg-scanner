@@ -64,6 +64,9 @@ impl Router {
         if let Some(result) = self.profiles(method, &params).await {
             return result;
         }
+        if let Some(result) = self.images(method, &params).await {
+            return result;
+        }
         Err(Failure::new(-32601, format!("Unknown method: {method}")))
     }
 }

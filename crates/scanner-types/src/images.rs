@@ -41,7 +41,7 @@ impl Default for ImageCrop {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImageEditRequest {
     pub id: Uuid,

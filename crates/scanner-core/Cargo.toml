@@ -8,6 +8,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
+base64.workspace = true
 scanner-types.workspace = true
 scanner-device.workspace = true
 scanner-store.workspace = true

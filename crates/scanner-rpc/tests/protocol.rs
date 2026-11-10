@@ -267,5 +267,31 @@ async fn scan_aliases_reuse_idempotency_and_cancellation_owns_cleanup() {
     .await
     .unwrap();
     assert_eq!(h.driver.captures.load(Ordering::SeqCst), 1);
+    let metadata = h
+        .call("v1.images.get", json!({"jobID":id,"sequence":1}))
+        .await;
+    assert_eq!(metadata.error.unwrap().data.unwrap().kind, "imageNotFound");
+    assert_eq!(
+        h.call(
+            "v1.images.read",
+            json!({"jobID":id,"sequence":1,"length":262145})
+        )
+        .await
+        .error
+        .unwrap()
+        .code,
+        -32602
+    );
+    assert_eq!(
+        h.call(
+            "v1.images.thumbnail",
+            json!({"jobID":id,"sequence":1,"format":"gif"})
+        )
+        .await
+        .error
+        .unwrap()
+        .code,
+        -32602
+    );
     h.engine.shutdown().await;
 }

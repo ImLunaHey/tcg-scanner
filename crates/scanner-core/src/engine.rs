@@ -24,6 +24,8 @@ pub struct Engine {
     pub(crate) submissions: Mutex<()>,
     pub(crate) wake: Notify,
     pub(crate) event_waiters: Semaphore,
+    pub(crate) thumbnail_workers: Arc<Semaphore>,
+    pub(crate) edit_workers: Arc<Semaphore>,
     pub(crate) done: watch::Sender<bool>,
 }
 
@@ -73,6 +75,8 @@ impl Engine {
             submissions: Mutex::new(()),
             wake: Notify::new(),
             event_waiters: Semaphore::new(8),
+            thumbnail_workers: Arc::new(Semaphore::new(2)),
+            edit_workers: Arc::new(Semaphore::new(2)),
             done,
         });
         tokio::spawn(engine.clone().run());

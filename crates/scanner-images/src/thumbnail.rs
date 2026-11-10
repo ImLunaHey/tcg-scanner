@@ -10,7 +10,12 @@ pub fn thumbnail(bytes: &[u8], max_edge: u32, jpeg: bool) -> Result<EncodedImage
             "Thumbnail size must be 32–2048 pixels.",
         ));
     }
-    let image = decode(bytes)?.thumbnail(max_edge, max_edge);
+    let source = decode(bytes)?;
+    let image = if source.width() <= max_edge && source.height() <= max_edge {
+        source
+    } else {
+        source.thumbnail(max_edge, max_edge)
+    };
     let result = if jpeg {
         let mut bytes = Vec::new();
         JpegEncoder::new_with_quality(&mut bytes, 82)

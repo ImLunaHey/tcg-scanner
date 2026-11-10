@@ -1,5 +1,6 @@
 //! Transport-independent scanner RPC. Authenticate and bound concurrency in the
 //! transport before dispatching; this crate opens no listener or child process.
+mod images;
 mod library;
 mod model;
 mod params;
