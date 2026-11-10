@@ -71,11 +71,17 @@ pub struct Harness {
 }
 impl Harness {
     pub fn new() -> Self {
+        Self::with_recognizer(None)
+    }
+    pub fn with_recognizer(
+        recognizer: Option<Arc<dyn scanner_core::backend::CardRecognizer>>,
+    ) -> Self {
         let directory = tempfile::tempdir().unwrap();
         let driver = Arc::new(Driver::default());
-        let engine = Engine::new(
+        let engine = Engine::with_recognizer(
             driver.clone(),
             Arc::new(Processor),
+            recognizer,
             Arc::new(Database::memory().unwrap()),
             Arc::new(StorageRoot::open(directory.path()).unwrap()),
         );

@@ -1,5 +1,5 @@
 use crate::{
-    backend::{CardProcessor, ScannerBackend},
+    backend::{CardProcessor, CardRecognizer, ScannerBackend},
     runner::Work,
 };
 use scanner_files::StorageRoot;
@@ -18,6 +18,8 @@ use uuid::Uuid;
 pub struct Engine {
     pub(crate) backend: Arc<dyn ScannerBackend>,
     pub(crate) processor: Arc<dyn CardProcessor>,
+    pub(crate) recognizer: Option<Arc<dyn CardRecognizer>>,
+    pub(crate) recognition_workers: Arc<Semaphore>,
     pub(crate) database: Arc<Database>,
     pub(crate) root: Arc<StorageRoot>,
     pub(crate) state: Mutex<State>,
@@ -65,10 +67,21 @@ impl Engine {
         database: Arc<Database>,
         root: Arc<StorageRoot>,
     ) -> Arc<Self> {
+        Self::with_recognizer(backend, processor, None, database, root)
+    }
+    pub fn with_recognizer(
+        backend: Arc<dyn ScannerBackend>,
+        processor: Arc<dyn CardProcessor>,
+        recognizer: Option<Arc<dyn CardRecognizer>>,
+        database: Arc<Database>,
+        root: Arc<StorageRoot>,
+    ) -> Arc<Self> {
         let (done, _) = watch::channel(false);
         let engine = Arc::new(Self {
             backend,
             processor,
+            recognizer,
+            recognition_workers: Arc::new(Semaphore::new(1)),
             database,
             root,
             state: Mutex::new(State::default()),
@@ -132,8 +145,8 @@ impl Engine {
     pub async fn shutdown(&self) {
         let mut done = self.done.subscribe();
         {
-            // Finish any accepted submission before allowing the worker to exit.
-            let _reservation = self.submissions.lock().await;
+            // Stop physical feeding promptly, even while a saved-image operation
+            // owns the publication reservation. Accepted writes still drain below.
             let mut state = self.state.lock().await;
             state.stopping = true;
             if let Some((_, cancel)) = &state.active {
@@ -141,6 +154,10 @@ impl Engine {
             }
         }
         self.wake.notify_one();
+        {
+            let _reservation = self.submissions.lock().await;
+        }
+
         let _ = done.wait_for(|done| *done).await;
     }
     pub(crate) async fn select_device(&self, id: Option<&str>) -> Result<Device> {

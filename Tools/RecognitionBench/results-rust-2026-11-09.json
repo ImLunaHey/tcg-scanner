@@ -52,5 +52,20 @@
     "wrongVerified": 0,
     "seconds": 153.318774417,
     "method": "All 69 upright fixtures at each of four quarter turns; no acceptance by similarity"
+  },
+  "serviceSelectionReplay": {
+    "date": "2026-11-10",
+    "source": "Saved upright whole-card and regional OCR readings, independently catalogue-validated",
+    "counts": {
+      "correct": 35,
+      "ambiguous": 5,
+      "unresolved": 23,
+      "backClear": 6
+    },
+    "wrong": [],
+    "limitations": [
+      "Replayed OCR; not a new four-rotation recognition benchmark",
+      "Equal-support conflicting printings remain suggestions for manual review"
+    ]
   }
 }

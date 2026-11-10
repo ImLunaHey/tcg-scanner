@@ -160,7 +160,7 @@ impl Engine {
             let _ = self.database.save(&record);
         }
     }
-    fn transition(
+    pub(crate) fn transition(
         &self,
         work: &mut Work,
         change: impl FnOnce(&mut scanner_types::scan::ScanRecord),
@@ -177,7 +177,7 @@ impl Engine {
             .skip(work.initial_images)
             .map(|image| image.sequence)
             .collect();
-        for sequence in sequences {
+        for &sequence in &sequences {
             if cancel.is_cancelled() {
                 break;
             }
@@ -192,7 +192,7 @@ impl Engine {
                     .push(format!("Image {sequence}: {}", error.message)),
             })?;
         }
-        Ok(())
+        self.identify_captured(work, &sequences, cancel).await
     }
     async fn capture(&self, work: &mut Work, cancel: CancellationToken) -> CaptureOutcome {
         let (tx, mut rx) = mpsc::channel(8);

@@ -26,6 +26,10 @@ impl Gateway {
                 only(&body, &[])?;
                 "images.identification"
             }
+            "POST" => {
+                only(&body, &["id", "language"])?;
+                "images.identify"
+            }
             "PATCH" => {
                 only(
                     &body,
@@ -37,12 +41,20 @@ impl Gateway {
                 return Err(Error::new(
                     405,
                     "methodNotAllowed",
-                    "Use GET or PATCH for saved identification.",
+                    "Use GET, POST or PATCH for identification.",
                 ));
             }
         };
         body.insert("jobID".into(), json!(job));
         body.insert("sequence".into(), json!(sequence));
-        Ok(Json(self.call(method, json!(body)).await?).into_response())
+        Ok((
+            if head.method == "POST" {
+                axum::http::StatusCode::ACCEPTED
+            } else {
+                axum::http::StatusCode::OK
+            },
+            Json(self.call(method, json!(body)).await?),
+        )
+            .into_response())
     }
 }

@@ -21,7 +21,7 @@ unique active IDs. Oversized or incomplete frames close the session. Dropping an
 MCP call cancels the proxy request, never an already accepted scanner job: use the
 explicit cancel-job tool. Stdio EOF drops outstanding proxy requests.
 
-Automatic recognition and inventory tools await their Rust domain implementations. The
+Preparation, finish, condition and inventory tools await their Rust domain implementations. The
 workspace path dependencies are intentional during migration; this internal crate
 is not published independently.
 

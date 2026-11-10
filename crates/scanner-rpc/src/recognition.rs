@@ -7,12 +7,38 @@ impl Router {
         method: &str,
         params: &Params,
     ) -> Option<Result<Value, Failure>> {
-        if !matches!(method, "v1.images.identification" | "v1.images.review") {
+        if !matches!(
+            method,
+            "v1.images.identification" | "v1.images.review" | "v1.images.identify"
+        ) {
             return None;
         }
         Some(self.recognition_action(method, params).await)
     }
     async fn recognition_action(&self, method: &str, params: &Params) -> Result<Value, Failure> {
+        if method == "v1.images.identify" {
+            params.only(&["id", "jobID", "sequence", "language"])?;
+            let job = params.uuid("jobID")?;
+            let language = match params.optional_identifier("language")?.as_deref() {
+                Some("en") => scanner_types::cards::CardLanguage::English,
+                Some("ko") => scanner_types::cards::CardLanguage::Korean,
+                Some(_) => return Err(Failure::params("Language must be en or ko.")),
+                None => self
+                    .engine
+                    .scan_status(job)?
+                    .request
+                    .card_language
+                    .unwrap_or_default(),
+            };
+            let request = scanner_types::identification::IdentificationRequest {
+                id: params.uuid("id")?,
+                job_id: job,
+                sequence: params.integer("sequence", 0, 1, 1000)? as u32,
+                language,
+                extensions: Default::default(),
+            };
+            return value(self.engine.identify_card(request).await?);
+        }
         if method == "v1.images.review" {
             params.only(&[
                 "jobID",

@@ -5,3 +5,5 @@ pub mod ocr;
 pub mod orientation;
 
 mod preprocess;
+
+pub mod pokemon;

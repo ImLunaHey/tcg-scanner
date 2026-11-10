@@ -17,3 +17,5 @@ pub mod image_access;
 
 pub mod identification;
 pub mod recognition;
+
+pub mod game_detection;

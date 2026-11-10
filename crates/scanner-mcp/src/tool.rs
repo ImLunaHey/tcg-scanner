@@ -10,6 +10,7 @@ pub(crate) struct Tool {
     pub fields: BTreeMap<&'static str, Field>,
     pub changes_state: bool,
     pub destructive: bool,
+    pub open_world: bool,
     pub defaults: Map<String, Value>,
 }
 impl Tool {
@@ -26,12 +27,17 @@ impl Tool {
             fields: fields.into_iter().collect(),
             changes_state: false,
             destructive: false,
+            open_world: false,
             defaults: Map::new(),
         }
     }
     pub fn writes(mut self, destructive: bool) -> Self {
         self.changes_state = true;
         self.destructive = destructive;
+        self
+    }
+    pub fn external(mut self) -> Self {
+        self.open_world = true;
         self
     }
     pub fn schema(&self) -> Value {
@@ -48,7 +54,7 @@ impl Tool {
             .collect();
         json!({"name":self.name,"description":self.description,
             "inputSchema":{"type":"object","properties":properties,"required":required,"additionalProperties":false},
-            "annotations":{"readOnlyHint":!self.changes_state,"destructiveHint":self.destructive,"idempotentHint":true,"openWorldHint":false},
+            "annotations":{"readOnlyHint":!self.changes_state,"destructiveHint":self.destructive,"idempotentHint":true,"openWorldHint":self.open_world},
             "outputSchema":{"type":"object","required":["schemaVersion","ok"],"properties":{"schemaVersion":{"type":"integer","const":1},"ok":{"type":"boolean"},"data":{"type":"object"},"error":{"type":"object"}},"additionalProperties":false}})
     }
     pub fn parameters(&self, value: Value) -> Result<Value> {

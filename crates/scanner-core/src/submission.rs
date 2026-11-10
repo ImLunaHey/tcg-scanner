@@ -85,7 +85,7 @@ impl Engine {
         let previous = self.scan_status(id)?;
         self.select_device(Some(&previous.device.id)).await?;
         let (root, database) = (self.root.clone(), self.database.clone());
-        let store = tokio::task::spawn_blocking(move || -> Result<BatchStore> {
+        let mut store = tokio::task::spawn_blocking(move || -> Result<BatchStore> {
             let store = BatchStore::continuing(&root, &previous, request_id)?;
             database.begin_continuation(store.record(), request_id)?;
             if let Err(error) = store.publish() {
@@ -102,7 +102,15 @@ impl Engine {
         .await
         .map_err(|e| ScannerError::new("storage", e.to_string()))??;
         let record = store.record().clone();
-        self.state.lock().await.queue.push_back(Work::new(store));
+        let mut state = self.state.lock().await;
+        if state.stopping {
+            drop(state);
+            store.finish(vec![], true, true)?;
+            self.database.save(store.record())?;
+            return Ok(store.record().clone());
+        }
+        state.queue.push_back(Work::new(store));
+        drop(state);
         self.wake.notify_one();
         Ok(record)
     }

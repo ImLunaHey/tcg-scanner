@@ -2,7 +2,10 @@ use crate::{
     configuration::{Configuration, config},
     options::{ServiceCommand, ServiceOptions},
 };
-use scanner_core::{Engine, NativeCardProcessor, backend::CardProcessor};
+use scanner_core::{
+    Engine, NativeCardProcessor, NativeCardRecognizer,
+    backend::{CardProcessor, CardRecognizer},
+};
 use scanner_files::StorageRoot;
 use scanner_http::Gateway;
 use scanner_store::Database;
@@ -43,17 +46,26 @@ pub(crate) async fn run(
     .await
     .map_err(config)??;
     eprintln!("Recovered {recovered} interrupted job(s); physical scans were not resumed.");
-    let processor: Arc<dyn CardProcessor> =
+    let (processor, recognizer): (Arc<dyn CardProcessor>, Option<Arc<dyn CardRecognizer>>) =
         match (configuration.tesseract_library, configuration.trained_data) {
-            (Some(library), Some(data)) => {
-                Arc::new(NativeCardProcessor::new(root.clone(), library, data))
-            }
-            _ => Arc::new(UnconfiguredProcessor),
+            (Some(library), Some(data)) => (
+                Arc::new(NativeCardProcessor::new(
+                    root.clone(),
+                    library.clone(),
+                    data.clone(),
+                )),
+                Some(Arc::new(NativeCardRecognizer::new(
+                    root.clone(),
+                    library,
+                    data,
+                )?)),
+            ),
+            _ => (Arc::new(UnconfiguredProcessor), None),
         };
     let listener = tokio::net::TcpListener::bind(http.address())
         .await
         .map_err(config)?;
-    let engine = Engine::new(backend, processor, database, root);
+    let engine = Engine::with_recognizer(backend, processor, recognizer, database, root);
     let gateway = match Gateway::new(engine.clone(), name, &token, http) {
         Ok(gateway) => gateway,
         Err(error) => {

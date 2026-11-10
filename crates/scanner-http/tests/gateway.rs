@@ -10,3 +10,6 @@ mod support;
 
 #[path = "gateway/review.rs"]
 mod review;
+
+#[path = "gateway/identification.rs"]
+mod identification;

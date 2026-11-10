@@ -59,7 +59,12 @@ must not depend on the UI or service. Rune will be pinned to a Git revision.
   immutable PNG copy. A real B-001 original was copied into an isolated local
   batch, prepared successfully, and its source checksum reverified unchanged.
   Its public code-insert cue and quarter-turn agree with the saved Swift result.
-  Automatic identity/finish/condition processing still needs integration.
+  Native Pokémon identity now runs through the coordinator for explicit saved-image
+  requests and post-scan processing. Accepted work persists beyond API disconnects;
+  duplicate IDs reuse the work, language must match the batch, and shutdown drains
+  publication while cancelling hardware promptly. Game/side routing preserves the
+  complete duplex-pair rules and existing B-001 decisions. Unknown pairs remain
+  unassessed. Other-game recognition, finish and condition integration remain open.
   Saved identification reads and manual candidate/finish/condition reviews now
   use typed lossless records through core, RPC, HTTP and MCP. Reviews require the
   current identification ID, reject unsupported candidates and in-flight work,
@@ -227,8 +232,8 @@ Service installation, sleep/wake handling and full friendly CLI parity remain op
 
 `scanner-mcp` implements MCP 2025-06-18 over bounded stdio JSON frames, with
 initialization, tool discovery, structured tool results, read-only filtering, eight
-concurrent calls and request cancellation. It advertises 25 completed Rust-backed
-tools; automatic recognition and inventory tools remain pending their domain slices. Tests
+concurrent calls and request cancellation. It advertises 26 completed Rust-backed
+tools; preparation, finish, condition and inventory tools remain pending their domain slices. Tests
 cover initialization gates, argument validation, defaults, domain errors,
 concurrency, duplicate IDs, cancellation and oversized/truncated frames. MCP
 cancellation never sends a physical scan cancellation. The `scanner-mcp` binary
@@ -256,3 +261,13 @@ SCANNER_COMPAT_MANIFEST=/Volumes/scans/B-001/manifest.json cargo test -p scanner
 Build artifacts use the standard workspace `target/` directory on the main drive.
 The read-only Rune reference checkout is in the local development cache; the
 application dependency is pinned in Cargo and does not require that checkout.
+
+The native service OCR selector was replayed against 69 saved upright readings:
+35 correct unique suggestions, five ambiguous, 23 unresolved fronts and six clear
+backs, with no wrong unique suggestion. This selector keeps independent OCR passes
+separate and retains equally supported conflicting suggestions; it is more
+conservative than the earlier combined-text experiment (38 correct unique). A
+real saved B-001 front produced the expected `30th-063` suggestion via native
+Tesseract and live TCGdex metadata; its recognized paired back bypassed identity
+OCR. The Rune acceptance UI, visual assessment and additional game adapters remain
+necessary before cutover.
