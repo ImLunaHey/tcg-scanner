@@ -24,8 +24,11 @@ uses `scanner-setup package --binaries /absolute/binaries --web /absolute/Web/di
 assets on startup, so changing the bundle requires a service restart.
 
 The library uses an expiring per-tab session; the public camera requires no token.
-Camera frames remain in page memory and are not added to the library. HTTPS is
-required for real remote camera access. Node is needed only to build/test assets.
+Successful camera matches are retained in on-device IndexedDB as Recent scans.
+Prices and binder-page detection are public lookups; adding reviewed captures to
+inventory requires a session. See [camera library](camera-library.md) for storage,
+pricing and binder details. HTTPS is required for remote camera access. Node is
+needed only to build/test assets.
 
 For browser integration tests, run the Rust `web_fixture` example with a private
 token containing 64 `e` characters and set `SCANNER_BROWSER_URL` to its Tailscale

@@ -10,17 +10,19 @@ implementation where explicitly stated.
 Open `/camera` on the scanner's HTTPS address. No login is required. Tap
 **Start camera**, and allow camera access. Hold one card front
 inside the guide, with all four corners visible against a contrasting background.
-The camera fills the viewport. After roughly 0.2 seconds of steady video, the page
-automatically sends a JPEG to ScannerService on the Mac. The last identified card
+The camera fills the viewport and starts lookup without waiting for stillness.
+The page sends a bounded JPEG to the Rust scanner service. The last identified card
 appears in a compact bottom-left tile. Tap it for a full-screen image and catalogue
 details; lookups pause until the details close. Sampling continues every 100 ms while a lookup runs. The status shows frames
 checked, lookup count and elapsed recognition time; it does not invent server
-processing stages. Only one lookup is active, and a response for a changed view
-is discarded before the newest steady frame is submitted.
+processing stages. Only one lookup is active. A completed match stays associated
+with its captured frame even after the live view changes; the newest view is
+submitted next. Stopped/reset sessions still discard late results.
 
-The preview uses the captured
-camera image, held in browser memory, rather than saving it to scan storage. Move
-to the next card or tap **Check again** to repeat a lookup.
+The preview uses the captured camera image. Successful matches also appear in
+[Recent scans](camera-library.md), stored on this browser until removed. Review
+them before explicitly adding them to inventory. Move to the next card or tap
+**Check again** to repeat a lookup. The grid button opens binder-page scanning.
 
 A persistent badge above the guide shows **Looking for a card**, **Hold steady**,
 **Identifying card**, **Card detected**, or guidance for another view. Identification
@@ -42,12 +44,14 @@ remain blocked until storage validation passes; there is no local fallback.
 
 ## Behavior and privacy
 
-- No camera frame is written to scan storage, SQLite, a batch, inventory, browser
-  storage or an application-managed cache. Only the current result and one preview
-  stay in page memory. Blob URLs are revoked when replaced or when the page closes.
-- Apple Vision finds the outer card rectangle; Core Image corrects perspective
-  before local OCR and the existing catalogue matchers run. Images stay between
-  the browser and your Mac. Catalogue requests send text/identifiers, not images.
+- Live recognition requests do not write images to scan storage or the ledger.
+  Successful matches and their captures are kept in browser IndexedDB (up to 100).
+  Explicitly adding reviewed entries to inventory saves single-sided batches.
+  Blob preview URLs are revoked when replaced or when the page closes.
+- Native Rust image processing finds outlines and corrects perspective; detailed
+  guide frames can still reach OCR if outline extraction fails. Binder pages use
+  optional ONNX detection. Images stay between the browser and your service.
+  Catalogue requests send text/identifiers, not images.
 - The page uses the rear camera where available. It stops camera tracks on Stop,
   navigation, loss of connectivity or backgrounding. Returning to the page
   requires tapping Start again. Late responses from a stopped camera are ignored.
@@ -65,7 +69,8 @@ remain blocked until storage validation passes; there is no local fallback.
   foil-border texture thresholds are deliberately disabled for camera input;
   missing foil texture never establishes non-holo. Ambiguous finishes stay unclear.
   Older layouts, some Energy printings, other games and Korean finishes remain
-  unsupported. There is no condition or price assessment.
+  unsupported. Condition remains unassessed. English Pokémon price guides load
+  separately, with source/date and ranges where finish is unresolved.
 - The camera uses a verified text orientation first. Only a single candidate with
   agreeing name, collector number and set total can finish this faster OCR pass;
   weaker evidence falls back to all four orientations. Saved ADF recognition keeps
