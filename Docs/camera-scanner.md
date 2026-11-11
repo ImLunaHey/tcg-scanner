@@ -152,3 +152,21 @@ B-001/C-002 Energy remained unsupported. These checks validate routing and
 inference output, not physical finish accuracy under phone lighting. One initial
 post-deployment request timed out; subsequent live requests completed normally.
 Cold catalogue loads still depend on the external catalogue service.
+
+
+## Printed English set codes
+
+Modern English footer codes (for example `CRI EN`) constrain Pokémon suggestions
+using TCGdex set `abbreviation.official` metadata. Confident codes from independent
+passes at the selected orientation apply to both passes, so a name-only pass
+cannot reintroduce another set. Unknown, conflicting, or missing catalogue code
+metadata cannot establish a unique printing. Without a readable code, the existing
+name/number/total rules remain in effect; older pictorial set symbols are not
+recognized by this change. Identity-band OCR now includes the focused set-code
+region. Set metadata is cached through the existing catalogue cache.
+
+Regression: Wimpod `025/086`, `CRI EN` resolves to Chaos Rising (`me04-025`), even
+against a synthetic competing printing with the same name, number and total.
+The public catalogue image also resolves to that identity using name/number/total;
+its code was not confidently transcribed in the local test. A real phone capture
+is still needed to verify the user's specific ambiguous frame.

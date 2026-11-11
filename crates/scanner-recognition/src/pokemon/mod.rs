@@ -3,6 +3,7 @@ mod camera;
 mod candidates;
 mod energy;
 mod printed;
+mod set_code;
 mod supplement;
 mod visual;
 use crate::matching::{PokemonMatcher, footer_orientation_score};
@@ -147,7 +148,14 @@ async fn resolve(
         ))
     });
     let mut best = ranked.remove(0);
-    let mut matches = candidates::resolve(&best.1, catalogue).await?;
+    let codes = set_code::read(
+        ranked
+            .iter()
+            .filter(|(r, _)| r.turns == best.0.turns)
+            .flat_map(|(r, _)| r.lines.iter())
+            .chain(best.0.lines.iter()),
+    );
+    let mut matches = candidates::resolve(&best.1, catalogue, &codes).await?;
     // Evaluate whole-card and regional evidence independently at the selected
     // orientation. Never merge OCR strings into an invented collector number.
     // If valid passes disagree, retain both suggestions for manual review.
@@ -155,7 +163,7 @@ async fn resolve(
     let mut strength = retain_supported(&mut matches);
     let mut disagreement = false;
     for (reading, ranks) in ranked.iter().filter(|(r, _)| r.turns == turns) {
-        let mut additional = candidates::resolve(ranks, catalogue).await?;
+        let mut additional = candidates::resolve(ranks, catalogue, &codes).await?;
         let support = retain_supported(&mut additional);
         if additional.is_empty() || support < strength {
             continue;
@@ -199,7 +207,12 @@ fn retain_supported(candidates: &mut Vec<scanner_types::recognition::CardCandida
             candidate
                 .evidence
                 .iter()
-                .any(|e| e.starts_with("Printed set total ") || e.starts_with("Printed set code ")),
+                .any(|e| e.starts_with("Printed set total ")),
+        ) + 4 * u32::from(
+            candidate
+                .evidence
+                .iter()
+                .any(|e| e.starts_with("Printed set code ")),
         )
     };
     let maximum = candidates.iter().map(support).max().unwrap_or(0);
