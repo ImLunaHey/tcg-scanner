@@ -86,6 +86,12 @@ async fn verified_browser_assets_are_public_but_do_not_bypass_api_or_origin_chec
     );
     for (method, target, expected) in [
         ("GET", "/camera", 200),
+        ("GET", "/library", 200),
+        ("GET", "/inventory/sets/sv01", 200),
+        ("GET", "/profiles", 200),
+        ("GET", "/scanner", 200),
+        ("GET", "/batches/00000000-0000-4000-8000-000000000001", 200),
+        ("GET", "/batches/not-a-uuid", 401),
         ("GET", "/api/v1/jobs", 401),
         ("POST", "/app.js", 401),
         ("GET", "/app.js?token=hidden", 400),
@@ -109,6 +115,32 @@ async fn verified_browser_assets_are_public_but_do_not_bypass_api_or_origin_chec
         assert_eq!(h.app.clone().oneshot(request).await.unwrap().status(), 403);
     }
     h.engine.shutdown().await;
+}
+
+#[test]
+fn original_web_bundle_is_verified_without_requiring_a_wasm_frontend() {
+    let directory = tempfile::tempdir().unwrap();
+    bundle(directory.path());
+    let path = directory.path().join("manifest.json");
+    let mut manifest: WebManifest = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    manifest.files.remove("scanner_ui.js");
+    manifest.files.remove("scanner_ui_bg.wasm");
+    for (name, bytes) in [
+        ("manifest.webmanifest", b"{}".as_slice()),
+        ("favicon.svg", b"<svg/>"),
+        ("assets/camera-180.png", b"png"),
+    ] {
+        let asset = directory.path().join(name);
+        std::fs::create_dir_all(asset.parent().unwrap()).unwrap();
+        std::fs::write(asset, bytes).unwrap();
+        manifest
+            .files
+            .insert(name.into(), format!("{:x}", Sha256::digest(bytes)));
+    }
+    std::fs::write(&path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+    assert!(WebAssets::load(directory.path()).is_ok());
+    std::fs::write(directory.path().join("favicon.svg"), b"tampered").unwrap();
+    assert!(WebAssets::load(directory.path()).is_err());
 }
 #[test]
 fn corrupted_incomplete_linked_or_oversized_bundles_are_rejected_before_serving() {

@@ -22,6 +22,12 @@ pub trait CardProcessor: Send + Sync {
 
 #[async_trait]
 pub trait CardRecognizer: Send + Sync {
+    async fn detect_binder(&self, _: Vec<u8>) -> Result<scanner_types::binder::BinderDetection> {
+        Err(scanner_types::error::ScannerError::new(
+            "configuration",
+            "Automatic page detection is not configured. Use the pocket grid.",
+        ))
+    }
     /// Ephemeral lookup: implementations must not save pixels, create jobs or feed hardware.
     async fn recognize_camera(
         &self,

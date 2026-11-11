@@ -1,4 +1,5 @@
 mod cache;
+mod camera;
 use crate::Engine;
 pub(crate) use cache::Cache;
 use scanner_pricing::{

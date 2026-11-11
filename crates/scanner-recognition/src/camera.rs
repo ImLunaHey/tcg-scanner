@@ -62,22 +62,16 @@ impl CameraRecognizer {
             .try_acquire_owned()
             .map_err(|_| ScannerError::new("busy", "Another camera lookup is running."))?;
         let deadline = Instant::now() + Duration::from_secs(60);
-        let (library, data) = (self.library.clone(), self.data.clone());
-        let (prepared, permit) = tokio::task::spawn_blocking(move || {
-            (prepare(bytes, library, data, language, deadline), permit)
-        })
-        .await
-        .map_err(worker)?;
+        let (prepared, permit) = tokio::task::spawn_blocking(move || (prepare(bytes), permit))
+            .await
+            .map_err(worker)?;
         let _permit = permit;
-        let Some((bytes, orientation)) = prepared? else {
+        let Some((bytes, outlined)) = prepared? else {
             return Ok(CameraIdentification::empty(CameraState::NoCard));
         };
-        if let Some(state) = side(&orientation) {
-            return Ok(CameraIdentification::empty(state));
-        }
         tokio::time::timeout_at(
             deadline.into(),
-            self.resolve(bytes, language, orientation, deadline),
+            self.identify_prepared(bytes, language, outlined, deadline),
         )
         .await
         .map_err(|_| {
@@ -87,11 +81,45 @@ impl CameraRecognizer {
             )
         })?
     }
+    async fn identify_prepared(
+        &self,
+        bytes: Vec<u8>,
+        language: CardLanguage,
+        outlined: bool,
+        deadline: Instant,
+    ) -> Result<CameraIdentification> {
+        if let Some(evidence) = self
+            .pokemon
+            .camera_identity(bytes.clone(), language, deadline)
+            .await?
+        {
+            // Return identity immediately; finish is optional and must not delay this path.
+            return Ok(CameraIdentification::from_evidence(
+                evidence,
+                CardGame::Pokemon,
+            ));
+        }
+        let (library, data, source) = (self.library.clone(), self.data.clone(), bytes.clone());
+        let orientation = tokio::task::spawn_blocking(move || {
+            let pixels = scanner_images::decode::decode(&source)?.to_rgb8();
+            let mut ocr = Tesseract::new(&library, &data, language.as_str())?;
+            ocr.set_deadline(deadline);
+            ocr.orientation(&pixels)
+        })
+        .await
+        .map_err(worker)??;
+        if let Some(state) = side(&orientation) {
+            return Ok(CameraIdentification::empty(state));
+        }
+        self.resolve(bytes, language, orientation, outlined, deadline)
+            .await
+    }
     async fn resolve(
         &self,
         bytes: Vec<u8>,
         language: CardLanguage,
         orientation: Orientation,
+        outlined: bool,
         deadline: Instant,
     ) -> Result<CameraIdentification> {
         let options = Options {
@@ -99,7 +127,9 @@ impl CameraRecognizer {
                 .verified
                 .then_some(u32::from(orientation.quarter_turns)),
             deadline: Some(deadline),
-            allow_visual: orientation.verified && orientation.basis.starts_with("pokemon-"),
+            allow_visual: outlined
+                && orientation.verified
+                && orientation.basis.starts_with("pokemon-"),
         };
         if language == CardLanguage::English && orientation.basis.starts_with("starwars-") {
             return self
@@ -113,6 +143,11 @@ impl CameraRecognizer {
         if meaningful(&evidence) {
             let mut result =
                 CameraIdentification::from_evidence(evidence.clone(), CardGame::Pokemon);
+            // An unrectified guide can confirm printed identity, but cannot
+            // support crop-dependent finish analysis.
+            if !outlined {
+                return Ok(result);
+            }
             let preparation = CardPreparation {
                 orientation_verified: orientation.verified,
                 orientation_basis: Some(orientation.basis.into()),
@@ -161,22 +196,19 @@ impl CameraRecognizer {
             .map(|e| CameraIdentification::from_evidence(e, game))
     }
 }
-fn prepare(
-    bytes: Vec<u8>,
-    library: PathBuf,
-    data: PathBuf,
-    language: CardLanguage,
-    deadline: Instant,
-) -> Result<Option<(Vec<u8>, Orientation)>> {
-    let Some(card) = scanner_images::camera::extract(&bytes)? else {
-        return Ok(None);
+fn prepare(bytes: Vec<u8>) -> Result<Option<(Vec<u8>, bool)>> {
+    let extracted = scanner_images::camera::extract(&bytes)?;
+    let outlined = extracted.is_some();
+    let card = match extracted {
+        Some(card) => card,
+        None => match scanner_images::camera::guide_for_ocr(&bytes)? {
+            Some(guide) => guide,
+            None => return Ok(None),
+        },
     };
-    let pixels = scanner_images::decode::decode(&card.bytes)?.to_rgb8();
-    let mut ocr = Tesseract::new(&library, &data, language.as_str())?;
-    ocr.set_deadline(deadline);
-    let orientation = ocr.orientation(&pixels)?;
-    Ok(Some((card.bytes, orientation)))
+    Ok(Some((card.bytes, outlined)))
 }
+
 fn side(orientation: &Orientation) -> Option<CameraState> {
     if !orientation.verified {
         return None;

@@ -119,9 +119,52 @@ jobs:
           path: target/rune-web
           if-no-files-found: error
 
+  web:
+    name: Original web interface
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: 1.98.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Web/package-lock.json
+      - name: Build and test the original web interface
+        working-directory: Web
+        run: |
+          npm ci --ignore-scripts
+          npm test
+          npm run build
+          npx playwright install --with-deps chromium webkit
+      - run: cargo run -p scanner-http --example web_bundle --locked -- Web/dist --existing
+      - name: Verify the web interface against an isolated Rust service
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build -p scanner-http --example web_fixture --locked
+          python3 -c 'from pathlib import Path; d=Path("/tmp/scanner-web-fixture"); d.mkdir(mode=0o700); p=d/"token"; p.write_text("e"*64); p.chmod(0o600)'
+          target/debug/examples/web_fixture Web/dist /tmp/scanner-web-fixture/token 127.0.0.2:8172 > /tmp/scanner-web-fixture.log 2>&1 &
+          fixture_pid=$!
+          trap 'kill "$fixture_pid"' EXIT
+          for attempt in {1..30}; do
+            if curl --noproxy '*' --fail --silent http://127.0.0.2:8172/ > /dev/null; then break; fi
+            sleep 1
+          done
+          cd Web
+          SCANNER_BROWSER_URL=http://127.0.0.2:8172 npx playwright test
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: scanner-web
+          path: Web/dist
+          if-no-files-found: error
+
   distribution:
     name: Distribution (${{ matrix.os }})
-    needs: [native, browser]
+    needs: [native, web]
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -134,7 +177,7 @@ jobs:
           path: native
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
-          name: rune-web
+          name: scanner-web
           path: web
       - name: Assemble verified distribution
         shell: bash

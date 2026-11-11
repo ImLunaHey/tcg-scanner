@@ -25,3 +25,6 @@ mod camera;
 
 #[path = "gateway/lifecycle.rs"]
 mod lifecycle;
+
+#[path = "gateway/camera_import.rs"]
+mod camera_import;

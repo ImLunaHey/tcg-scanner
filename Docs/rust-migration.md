@@ -4,6 +4,11 @@ Requested 2026-11-09: move the complete application to Rust with
 [Anomaly Rune](https://github.com/anomalyco/rune) for the UI, preserving existing
 scan data and workflows on macOS and adding Windows and Linux support.
 
+Correction 2026-11-10: Rune was requested for the desktop app. Replacing the web
+layout was unintended. The original React web interface and continuous video
+preview are restored over the Rust HTTP service; optional Rune WASM is no longer
+the production web deployment.
+
 This is the implementation and validation ledger. Earlier entries record the
 state at each checkpoint; later entries supersede their pending-work notes. The installed
 Swift service continues to own hardware until the Rust replacement passes its

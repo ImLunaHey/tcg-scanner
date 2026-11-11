@@ -1,0 +1,623 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  Camera as CameraIcon,
+  ScanLine,
+  CircleCheck,
+  LoaderCircle,
+  CircleHelp,
+  Square,
+  RotateCcw,
+  X,
+  ChevronRight,
+  History,
+  LayoutGrid,
+} from "lucide-react";
+import { Link } from "wouter";
+import { hasCameraCard } from "./cameraPresence";
+import { CameraTorch } from "./CameraTorch";
+import { CameraFinish } from "./CameraFinish";
+import { CameraBinder } from "./CameraBinder";
+import { CameraRecent } from "./CameraRecent";
+import { CameraPrice, selectedCameraCard } from "./CameraPrice";
+import { recentCards, rememberCard } from "./cameraHistory";
+import { CameraDetails } from "./CameraDetails";
+import { Api, ApiError } from "./api";
+import { InstallCamera } from "./InstallCamera";
+import {
+  difference,
+  cameraJPEG,
+  cameraSnapshot,
+  cameraViewport,
+  sampleCard,
+  SteadyCard,
+} from "./cameraCapture";
+
+type Candidate = {
+  id: string;
+  name: string;
+  setName: string;
+  setID: string;
+  evidence: string[];
+  availableFinishes: string[];
+  localID: string;
+  officialSetCount?: number;
+  category?: string;
+  types?: string[];
+  rarities?: string[];
+};
+export type CameraResult = {
+  state:
+    "noCard" | "cardBack" | "codeCard" | "matched" | "ambiguous" | "noMatch";
+  game?: "pokemon" | "yugioh" | "starwarsUnlimited" | "unknown";
+  candidates: Candidate[];
+  uncataloguedCard?: { name: string; setCode: string; collectorNumber: string };
+  energySymbol?: { type: string };
+  finishEstimate?: import("./Identification").FinishEstimate;
+};
+const cameraAPI = new Api("");
+const gameNames = {
+  pokemon: "Pokémon",
+  yugioh: "Yu-Gi-Oh!",
+  starwarsUnlimited: "Star Wars: Unlimited",
+  unknown: "Card",
+};
+export function cameraMessage(error: unknown) {
+  if (error instanceof DOMException) {
+    if (error.name === "NotAllowedError")
+      return "Camera access was denied. Allow camera access in this site's browser settings, then try again.";
+    if (error.name === "NotFoundError")
+      return "No camera was found on this device.";
+    if (error.name === "NotReadableError")
+      return "The camera is in use by another app. Close it and try again.";
+  }
+  return error instanceof Error
+    ? error.message
+    : "The camera could not be started.";
+}
+export function Camera() {
+  const frame = useRef<HTMLDivElement>(null);
+  const view = useRef<HTMLDivElement>(null);
+  const previewURL = useRef<string | undefined>(undefined);
+  const [preview, setPreview] = useState<string>();
+  const [details, setDetails] = useState(false);
+  const [recent, setRecent] = useState(false);
+  const [binder, setBinder] = useState(false);
+  function showBinder(open: boolean) { detailsOpen.current = open; setBinder(open); }
+  const [recentCount, setRecentCount] = useState(0);
+  const [historyError, setHistoryError] = useState("");
+  useEffect(() => { void recentCards().then(rows => setRecentCount(rows.length)).catch(() => {}); }, [recent]);
+  function showRecent(open: boolean) { detailsOpen.current = open; setRecent(open); }
+  const detailsOpen = useRef(false);
+  function showDetails(open: boolean) {
+    detailsOpen.current = open;
+    setDetails(open);
+  }
+  function clearMatch() {
+    setResult(undefined);
+    setPreview(undefined);
+    showDetails(false);
+    if (previewURL.current) URL.revokeObjectURL(previewURL.current);
+    previewURL.current = undefined;
+  }
+  useEffect(
+    () => () => {
+      if (previewURL.current) URL.revokeObjectURL(previewURL.current);
+    },
+    [],
+  );
+  const video = useRef<HTMLVideoElement>(null);
+  const [active, setActive] = useState(false);
+  const [language, setLanguage] = useState("en");
+  const [status, setStatus] = useState("Point the camera at a card front");
+  const [phase, setPhase] = useState<
+    "opening" | "searching" | "steady" | "identifying" | "detected" | "retry"
+  >("searching");
+  const [track, setTrack] = useState<MediaStreamTrack>();
+  const [error, setError] = useState<string>();
+  const [result, setResult] = useState<CameraResult>();
+  const [busy, setBusy] = useState(false);
+  const [activity, setActivity] = useState("");
+  const [lastLookup, setLastLookup] = useState("");
+  const reset = useRef(() => {});
+  useEffect(() => {
+    if (!active) return;
+    setActivity("");
+    setLastLookup("");
+    let alive = true,
+      stream: MediaStream | undefined,
+      timer: ReturnType<typeof setTimeout> | undefined;
+    const controller = new AbortController();
+    const gate = new SteadyCard();
+    let checkingPresence = false, noCard = true, forceFrame = false;
+    let checks = 0;
+    let inFlight = false,
+      started = 0,
+      frames = 0,
+      attempts = 0;
+    let latest: Uint8Array | undefined;
+    let generation = 0;
+    let lastProgress = 0;
+    let lastDuration = "";
+    reset.current = () => {
+      generation++;
+      forceFrame = true;
+      setLastLookup("");
+      gate.submitted = undefined;
+      gate.matched = false;
+      gate.lastAttempt = -Infinity;
+      clearMatch();
+      setPhase("searching");
+      setStatus("Place one card inside the guide");
+    };
+    const canvas = document.createElement("canvas");
+    canvas.width = 1000;
+    canvas.height = 1333;
+    const context = canvas.getContext("2d")!;
+    function stopWhenHidden() {
+      if (document.hidden || !navigator.onLine) setActive(false);
+    }
+    document.addEventListener("visibilitychange", stopWhenHidden);
+    window.addEventListener("offline", stopWhenHidden);
+    async function identify(
+      captured: HTMLCanvasElement,
+      submitted: Uint8Array,
+      version: number,
+    ) {
+      let recognized = false;
+      try {
+        const base64 = await cameraJPEG(captured);
+        if (!alive || detailsOpen.current || version !== generation) return;
+        if (!forceFrame) {
+          checks++;
+          const presence = await cameraAPI.response("camera/detect-page", {
+            method: "POST", signal: controller.signal,
+            body: JSON.stringify({ base64, language }),
+          }, false, 10_000);
+          const detection = await presence.json();
+          if (!alive || detailsOpen.current || version !== generation) return;
+          noCard = !hasCameraCard(detection.cards);
+          if (noCard) {
+            gate.lastAttempt = Date.now() - 600;
+            setPhase("searching");
+            setStatus("No card in view · watching for one");
+            return;
+          }
+        }
+        forceFrame = false;
+        noCard = false;
+        checkingPresence = false;
+        recognized = true;
+        attempts++;
+        started = Date.now();
+        setPhase("identifying");
+        setStatus("Card found · reading this frame");
+        const snapshot = await cameraSnapshot(captured);
+        if (!alive || detailsOpen.current || version !== generation) return;
+        const response = await cameraAPI.response(
+          "camera/identify",
+          {
+            method: "POST",
+            signal: controller.signal,
+            body: JSON.stringify({ base64, language }),
+          },
+          false,
+          75_000,
+        );
+        const value: CameraResult = await response.json();
+        if (!alive || detailsOpen.current || version !== generation) return;
+        const viewChanged = !!latest && difference(submitted, latest) >= 12;
+        setLastLookup(
+          value.state === "matched"
+            ? `Last lookup: ${value.candidates[0]?.name || "card matched"}`
+            : {
+                noCard: "Last lookup: no readable card found",
+                cardBack: "Last lookup: card back found",
+                codeCard: "Last lookup: Pokémon LIVE code card found",
+                ambiguous: "Last lookup: several possible matches",
+                noMatch: "Last lookup: no catalogue match from this frame",
+              }[value.state],
+        );
+        gate.matched = !viewChanged && (value.state === "matched" || value.state === "codeCard");
+        if (!gate.matched)
+          gate.lastAttempt = Math.max(gate.lastAttempt, Date.now() - 500);
+        if (
+          value.candidates.length ||
+          value.uncataloguedCard ||
+          value.energySymbol ||
+          value.state === "codeCard"
+        ) {
+          if (previewURL.current) URL.revokeObjectURL(previewURL.current);
+          previewURL.current = snapshot
+            ? URL.createObjectURL(snapshot)
+            : undefined;
+          setPreview(previewURL.current);
+          setResult(value);
+          const selection = selectedCameraCard(value, language);
+          if (selection) void rememberCard(selection, base64).then(() => recentCards()).then(rows => setRecentCount(rows.length)).catch(e => setHistoryError(String(e)));
+        }
+        setPhase(gate.matched ? "detected" : "retry");
+        setStatus(
+          value.state === "matched"
+            ? viewChanged
+              ? `${value.candidates[0]?.name || "Card found"} captured · checking the new view`
+              : `${value.candidates[0]?.name || "Card found"} · ready for the next card`
+            : value.state === "noCard"
+              ? "Try closer, with the card in view"
+              : value.state === "cardBack"
+                ? "Turn the card over to show its front"
+                : value.state === "codeCard"
+                  ? "Pokémon LIVE code card"
+                  : value.state === "ambiguous"
+                    ? "Several possible matches · try closer, with less glare"
+                    : "No match yet · try closer, with less glare",
+        );
+      } catch (e) {
+        if (!alive || version !== generation || detailsOpen.current) return;
+        const detectorUnavailable = checkingPresence && e instanceof ApiError && e.kind === "configuration";
+        setError(
+          detectorUnavailable
+            ? "Automatic card detection is unavailable. Tap the circular arrow to scan this frame."
+            : e instanceof ApiError && e.kind === "busy"
+              ? "Recognition is busy. Still watching; will retry automatically."
+              : cameraMessage(e),
+        );
+        gate.lastAttempt =
+          Date.now() + (detectorUnavailable || (e instanceof ApiError && e.status === 429) ? 60_000 : 0);
+        setPhase("retry");
+        setStatus("Try closer, with more light and less glare");
+      } finally {
+        inFlight = false;
+        checkingPresence = false;
+        if (recognized) lastDuration = `${((Date.now() - started) / 1000).toFixed(1)}s last lookup`;
+        if (alive) setBusy(false);
+      }
+    }
+    function tick() {
+      if (!alive) return;
+      try {
+        const v = video.current;
+        if (
+          v &&
+          v.readyState >= 2 &&
+          v.videoWidth &&
+          !document.hidden &&
+          !detailsOpen.current &&
+          view.current &&
+          frame.current
+        ) {
+          const viewport = view.current.getBoundingClientRect();
+          const region = frame.current.getBoundingClientRect();
+          const area = cameraViewport(v.videoWidth, v.videoHeight, viewport, {
+            x: region.x - viewport.x,
+            y: region.y - viewport.y,
+            width: region.width,
+            height: region.height,
+          });
+          context.drawImage(
+            v,
+            area.x,
+            area.y,
+            area.width,
+            area.height,
+            0,
+            0,
+            canvas.width,
+            canvas.height,
+          );
+          const sample = sampleCard(canvas);
+          latest = sample;
+          frames++;
+          const now = Date.now();
+          const ready = gate.ready(sample, now);
+          if (now - lastProgress >= 500) {
+            lastProgress = now;
+            setActivity(
+              `${frames} frames sampled · ${checks} card checks · ${attempts} lookups${inFlight && !checkingPresence ? ` · ${((now - started) / 1000).toFixed(1)}s waiting for recognition` : lastDuration ? ` · ${lastDuration}` : ""}`,
+            );
+          }
+          if (inFlight && checkingPresence) {
+            setPhase("searching");
+            setStatus("Watching for a card · quick presence check");
+          } else if (inFlight) {
+            setPhase("identifying");
+            setStatus(
+              gate.observation === "moving"
+                ? "View moving · still watching while recognition finishes"
+                : gate.observation === "searching"
+                  ? "Low detail in view · improve lighting or move closer"
+                  : now - started > 8000
+                    ? "Recognition is taking longer · keep the card clear and avoid glare"
+                    : "Reading the captured frame · still watching the live view",
+            );
+          } else if (ready) {
+            gate.accept(sample, Date.now());
+            setBusy(true);
+            setError(undefined);
+            checkingPresence = !forceFrame;
+            setPhase(checkingPresence ? "searching" : "identifying");
+            setStatus(checkingPresence ? "Watching for a card · quick presence check" : "Reading this frame");
+            inFlight = true;
+            const captured = document.createElement("canvas");
+            captured.width = canvas.width;
+            captured.height = canvas.height;
+            captured.getContext("2d")!.drawImage(canvas, 0, 0);
+            void identify(captured, sample, generation);
+          } else if (noCard) {
+            setPhase("searching");
+            setStatus("No card in view · watching for one");
+          } else if (gate.observation === "searching") {
+            setPhase("searching");
+            setStatus("Place one card inside the guide");
+          } else if (gate.observation === "moving") {
+            setPhase("steady");
+            setStatus("Keep the card in view · trying frames automatically");
+          } else if (gate.observation === "unchanged") {
+            setPhase("detected");
+            setStatus("Card already checked · move to the next card");
+          }
+        }
+      } catch (e) {
+        if (!alive) return;
+        setError(
+          e instanceof ApiError && e.kind === "busy"
+            ? "The Mac is busy. Identification will retry automatically."
+            : cameraMessage(e),
+        );
+        gate.lastAttempt = Date.now();
+        setPhase("retry");
+        setStatus("Hold steady to retry");
+      } finally {
+        if (alive) {
+          timer = setTimeout(tick, 100);
+        }
+      }
+    }
+    async function start() {
+      try {
+        if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia)
+          throw new Error(
+            "Camera access needs HTTPS. Open your scanner's secure Tailscale address.",
+          );
+        if (!navigator.onLine)
+          throw new Error("Connect to the Mac before starting the camera.");
+        setError(undefined);
+        setPhase("opening");
+        setStatus("Allow camera access if prompted");
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1440 },
+          },
+        });
+        if (!alive) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        setTrack(stream.getVideoTracks()[0]);
+        const v = video.current!;
+        v.srcObject = stream;
+        await v.play();
+        if (!alive) return;
+        setPhase("searching");
+        setStatus("Place one card inside the guide");
+        void tick();
+      } catch (e) {
+        if (alive) {
+          setError(cameraMessage(e));
+          setActive(false);
+        }
+      }
+    }
+    void start();
+    return () => {
+      alive = false;
+      controller.abort();
+      clearTimeout(timer);
+      stream?.getTracks().forEach((track) => track.stop());
+      setTrack(undefined);
+      if (video.current) video.current.srcObject = null;
+      document.removeEventListener("visibilitychange", stopWhenHidden);
+      window.removeEventListener("offline", stopWhenHidden);
+      reset.current = () => {};
+      setBusy(false);
+    };
+  }, [active, language]);
+
+  const title = result?.candidates.length
+    ? result.candidates.length === 1
+      ? result.candidates[0].name
+      : `${result.candidates.length} possible matches`
+    : result?.uncataloguedCard?.name ||
+      (result?.energySymbol
+        ? `${result.energySymbol.type} Energy`
+        : "Pokémon LIVE insert");
+  const subtitle =
+    result?.candidates.length === 1
+      ? result.candidates[0].setName
+      : result?.game
+        ? gameNames[result.game]
+        : "View details";
+  return (
+    <main className="camera-page" aria-label="Card camera">
+      <div
+        className="camera-surface"
+        inert={details || recent || binder}
+        aria-hidden={details || recent || binder || undefined}
+      >
+        <div ref={view} className="camera-view" data-active={active}>
+          <video
+            ref={video}
+            autoPlay
+            playsInline
+            muted
+            aria-label="Live camera preview"
+          />
+          <div ref={frame} className="camera-capture-area">
+            <div className="camera-guide" data-phase={phase} aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+            {active && <div className="camera-diagnostics" aria-live="off">
+                  {lastLookup && (
+                    <small data-testid="camera-last-lookup">{lastLookup}</small>
+                  )}
+                  <small aria-live="off" data-testid="camera-activity">
+                    {activity}
+                  </small>
+            </div>}
+          </div>
+          {!active && (
+            <div className="camera-placeholder">
+              <CameraIcon size={40} />
+              <h1>Card camera</h1>
+              <p>Hold a card inside the guide to identify it.</p>
+              <button
+                className="button primary"
+                onClick={() => {
+                  clearMatch();
+                  setActive(true);
+                }}
+              >
+                Start camera
+              </button>
+              <span>Nothing added to your collection</span>
+            </div>
+          )}
+        </div>
+        <div className="camera-toolbar">
+          <Link
+            href="/"
+            className="camera-icon-button"
+            aria-label="Close camera"
+          >
+            <X size={22} />
+          </Link>
+          <label className="camera-language">
+            <span className="sr-only">Card language</span>
+            <select
+              aria-label="Card language"
+              value={language}
+              disabled={busy}
+              onChange={(e) => {
+                clearMatch();
+                setLanguage(e.target.value);
+              }}
+            >
+              <option value="en">English</option>
+              <option value="ko">Korean</option>
+            </select>
+          </label>
+          {active && track && <CameraTorch key={track.id} track={track} />}
+          {active ? (
+            <button
+              className="camera-icon-button"
+              aria-label="Stop camera"
+              onClick={() => setActive(false)}
+            >
+              <Square size={19} />
+            </button>
+          ) : (
+            <InstallCamera />
+          )}
+        </div>
+        <div className="camera-feedback">
+          {error ? (
+            <p role="alert" className="camera-error">
+              {error}
+            </p>
+          ) : (
+            active && (
+              <div
+                className="camera-status"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                data-phase={phase}
+              >
+                {phase === "identifying" || phase === "opening" ? (
+                  <LoaderCircle className="camera-spinner" size={23} />
+                ) : phase === "detected" ? (
+                  <CircleCheck size={23} />
+                ) : phase === "retry" ? (
+                  <CircleHelp size={23} />
+                ) : (
+                  <ScanLine size={23} />
+                )}
+                <span>
+                  <strong>
+                    {
+                      {
+                        opening: "Opening camera",
+                        searching: "Looking for a card",
+                        steady: "Watching camera",
+                        identifying: "Identifying card…",
+                        detected: "Card detected",
+                        retry: "Try another view",
+                      }[phase]
+                    }
+                  </strong>
+                  <small>{status}</small>
+
+                </span>
+              </div>
+            )
+          )}
+        </div>
+        <div className="camera-library-actions">
+          <button className="button" aria-label={`Recent scans (${recentCount})`} title="Recent scans" onClick={() => showRecent(true)}><History size={18} /><span>{recentCount}</span></button>
+          <button className="button" aria-label="Binder page" title="Binder page" onClick={() => showBinder(true)}><LayoutGrid size={18} /><span>Page</span></button>
+          {historyError && <small role="alert">{historyError}</small>}
+        </div>
+        {result && (
+          <button
+            className="camera-match-tile"
+            onClick={(event) => {
+              event.currentTarget.focus();
+              showDetails(true);
+            }}
+            aria-label={`View ${title} details`}
+          >
+            {preview && <img src={preview} alt="Last identified card" />}
+            <span>
+              <small>LAST CARD</small>
+              <strong>{title}</strong>
+              <span>{subtitle}</span>
+              <CameraPrice selection={selectedCameraCard(result, language)} />
+              {result.game === "pokemon" && (
+                <CameraFinish estimate={result.finishEstimate} compact />
+              )}
+            </span>
+            <ChevronRight size={16} />
+          </button>
+        )}
+        {active && (
+          <button
+            className="camera-icon-button camera-retry"
+            aria-label={result ? "Check again" : "Scan this frame"}
+            title="Scan this frame even if automatic card detection misses it"
+            disabled={busy}
+            onClick={() => reset.current()}
+          >
+            <RotateCcw size={20} />
+          </button>
+        )}
+      </div>
+      {binder && <CameraBinder language={language} close={() => showBinder(false)} recent={() => { setBinder(false); showRecent(true); }} />}
+      {recent && <CameraRecent close={() => showRecent(false)} />}
+      {details && result && (
+        <CameraDetails
+          result={result}
+          preview={preview}
+          title={title}
+          game={result.game ? gameNames[result.game] : "IDENTIFIED CARD"}
+          language={language}
+          close={() => showDetails(false)}
+        />
+      )}
+    </main>
+  );
+}

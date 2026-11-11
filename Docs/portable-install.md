@@ -50,9 +50,9 @@ Start the installed service explicitly after stopping any previous owner:
 Launch the adjacent `scanner-ui` executable; it loads the adjacent private
 configuration and credential automatically. The native UI never saves a token
 in browser storage. Development builds can use `SCANNER_TOKEN_FILE` and
-`SCANNER_UI_ENDPOINT`. The web library at `http://127.0.0.1:8171` needs the private
-token entered once per connection. Camera access from another device requires
-HTTPS and an explicitly configured remote origin; see [Rune web](rune-web.md).
+`SCANNER_UI_ENDPOINT`. The web library at `http://127.0.0.1:8171` uses the original web interface
+and an expiring per-tab session created with the private token. Camera access from another device requires
+HTTPS and an explicitly configured remote origin; see [web workspace](web-app.md).
 
 For startup at the next login:
 

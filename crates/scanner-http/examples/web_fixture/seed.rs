@@ -8,6 +8,15 @@ use scanner_types::{
 use serde_json::json;
 use std::error::Error;
 pub fn seed(root: &StorageRoot, database: &Database) -> Result<(), Box<dyn Error>> {
+    seed_batch(root, database, 1, true)?;
+    seed_batch(root, database, 2, false)
+}
+fn seed_batch(
+    root: &StorageRoot,
+    database: &Database,
+    number: u64,
+    cards: bool,
+) -> Result<(), Box<dyn Error>> {
     let mut batch = BatchStore::create(
         root,
         Device {
@@ -17,10 +26,10 @@ pub fn seed(root: &StorageRoot, database: &Database) -> Result<(), Box<dyn Error
         },
         ScanRequest {
             duplex: true,
-            prepare_cards: Some(true),
+            prepare_cards: Some(cards),
             ..ScanRequest::default()
         },
-        1,
+        number,
     )?;
     let pixels = image::RgbaImage::from_fn(200, 300, |x, y| {
         image::Rgba([30 + (x / 2) as u8, 40 + (y / 3) as u8, 180, 255])
@@ -55,6 +64,13 @@ pub fn seed(root: &StorageRoot, database: &Database) -> Result<(), Box<dyn Error
     }]));
     identification.extensions.insert("conditionCheck".into(),json!({"method":"synthetic-browser-fixture","state":"checked","limitations":["Synthetic mark; not measured wear."],"findings":[{"kind":"edgeWhitening","explanation":"Synthetic border mark for UI testing.","region":{"x":0.04,"y":0.4,"width":0.05,"height":0.06}}]}));
     let mut record = batch.record().clone();
+    record.extensions.insert(
+        "cardGames".into(),
+        json!([{
+            "number":1,"game":"pokemon","frontSequence":1,"backSequence":2,
+            "reason":"Synthetic browser fixture pair; not scanner detection evidence."
+        }]),
+    );
     record.replace_identification(&identification)?;
     batch.update(|r| *r = record)?;
     batch.finish(vec![], false, true)?;

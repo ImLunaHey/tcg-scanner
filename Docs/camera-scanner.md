@@ -1,27 +1,37 @@
 # Mobile camera identification
 
-> Historical implementation/validation notes. Swift/React source and deployment
-> commands below are retired. Use [the Rust application](../README.md) and
-> [portable installation](portable-install.md) for the current project.
-
-The instructions below describe the installed Swift service. The Rust replacement
-now provides the same ephemeral camera API and a Rune `/camera` screen, using
-portable perspective extraction and native Tesseract. Its simulated HTTPS browser
-flow, install manifest and offline worker pass desktop Chromium checks; physical
-phone capture and installation validation are still pending.
-See [the migration ledger](rust-migration.md) for current validation boundaries.
+The original fullscreen web camera is restored over the Rust service. It uses a
+persistent browser video element for continuous preview, with a separate canvas
+for recognition samples. Rune remains the desktop app. Recognition now uses
+portable perspective extraction, Tesseract and optional DINOv3 rather than Apple
+Vision. The historical recognition/validation notes below describe the earlier
+implementation where explicitly stated.
 
 Open `/camera` on the scanner's HTTPS address. No login is required. Tap
 **Start camera**, and allow camera access. Hold one card front
-inside the guide, with all four corners visible against a contrasting background.
-The camera fills the viewport. After roughly 0.4 seconds of steady video, the page
-automatically sends a JPEG to ScannerService on the Mac. The last identified card
+inside the guide. The camera fills the viewport and samples without waiting for
+stillness or perfect alignment. A bounded JPEG first goes to the Rust ONNX card
+detector; only a plausible card proceeds to OCR/catalogue recognition. Empty
+scenes keep the **Looking for a card** status without the recognition spinner.
+Presence checks repeat about every 600 ms after an empty result. The detector
+uses confidence >= 0.5 and a minimum 5% frame area, not a complete-outline test.
+Its Pokémon-trained model may miss other games, backs, small or unusual cards.
+Tap the circular arrow (**Scan this frame** / **Check again**) for one manual
+lookup that bypasses presence. This also works if no detector is configured.
+The page sends the same captured frame to recognition after a positive check. The last identified card
 appears in a compact bottom-left tile. Tap it for a full-screen image and catalogue
-details; lookups pause until the details close. The preview uses the captured
-camera image, held in browser memory, rather than saving it to scan storage. Move
-to the next card or tap **Check again** to repeat a lookup.
+details; lookups pause until the details close. Sampling continues every 100 ms while a lookup runs. The status shows frames
+sampled, card-presence checks, lookup count and elapsed recognition time; it does not invent server
+processing stages. Only one lookup is active. A completed match stays associated
+with its captured frame even after the live view changes; the newest view is
+submitted next. Stopped/reset sessions still discard late results.
 
-A persistent badge above the guide shows **Looking for a card**, **Hold steady**,
+The preview uses the captured camera image. Successful matches also appear in
+[Recent scans](camera-library.md), stored on this browser until removed. Review
+them before explicitly adding them to inventory. Move to the next card or tap
+**Check again** to repeat a lookup. The grid button opens binder-page scanning.
+
+A persistent badge above the guide shows **Looking for a card**, **Watching camera**,
 **Identifying card**, **Card detected**, or guidance for another view. Identification
 has a spinning indicator; detection turns the badge and guide corners green.
 The toolbar's **Flash** button toggles the active camera's continuous light and
@@ -39,19 +49,34 @@ storage is offline at service startup, interrupted work is marked failed in the
 local database without reading or writing the unavailable volume. Physical scans
 remain blocked until storage validation passes; there is no local fallback.
 
+## Presence-gate validation (2026-11-10)
+
+The reported room screenshot produced only a weak 0.399 detector box, rejected
+before OCR. All seven saved front-card fixtures passed the presence gate, as did
+14 additional versions rotated by ±15 degrees on a neutral background. This
+checks whether recognition is allowed to start, not whether identity is correct.
+Native detection took approximately 23–30 ms on the development Mac; that excludes
+JPEG transfer and the later recognition request. The model is not infallible:
+background false positives and missed cards remain possible. Private screenshots,
+fixtures and detailed measurements are retained outside Git.
+
 ## Behavior and privacy
 
-- No camera frame is written to scan storage, SQLite, a batch, inventory, browser
-  storage or an application-managed cache. Only the current result and one preview
-  stay in page memory. Blob URLs are revoked when replaced or when the page closes.
-- Apple Vision finds the outer card rectangle; Core Image corrects perspective
-  before local OCR and the existing catalogue matchers run. Images stay between
-  the browser and your Mac. Catalogue requests send text/identifiers, not images.
+- Live recognition requests do not write images to scan storage or the ledger.
+  Successful matches and their captures are kept in browser IndexedDB (up to 100).
+  Explicitly adding reviewed entries to inventory saves single-sided batches.
+  Blob preview URLs are revoked when replaced or when the page closes.
+- Native Rust image processing finds outlines and corrects perspective; detailed
+  guide frames can still reach OCR if outline extraction fails, after the presence
+  gate (or an explicit manual scan). Camera presence and binder pages share the
+  optional ONNX detector. Detection has its own 120/minute budget, separate from
+  the 60/minute recognition budget. Images stay between the browser and your service.
+  Catalogue requests send text/identifiers, not images.
 - The page uses the rear camera where available. It stops camera tracks on Stop,
   navigation, loss of connectivity or backgrounding. Returning to the page
   requires tapping Start again. Late responses from a stopped camera are ignored.
 - A steady matched card is not repeatedly submitted. Changed matched cards can
-  advance after a 1.2-second minimum interval; unclear frames retry after 2.5 seconds, with only one request in flight per page and one camera
+  advance after a 1.2-second minimum interval; unclear frames can retry after 1.2 seconds, with only one request in flight per page and one camera
   identification at a time across the service. Hardware capture and automatic
   batch identification take priority when already active.
 - English uses the existing Pokémon, Yu-Gi-Oh! and Star Wars: Unlimited matchers.
@@ -64,7 +89,8 @@ remain blocked until storage validation passes; there is no local fallback.
   foil-border texture thresholds are deliberately disabled for camera input;
   missing foil texture never establishes non-holo. Ambiguous finishes stay unclear.
   Older layouts, some Energy printings, other games and Korean finishes remain
-  unsupported. There is no condition or price assessment.
+  unsupported. Condition remains unassessed. English Pokémon price guides load
+  separately, with source/date and ranges where finish is unresolved.
 - The camera uses a verified text orientation first. Only a single candidate with
   agreeing name, collector number and set total can finish this faster OCR pass;
   weaker evidence falls back to all four orientations. Saved ADF recognition keeps
@@ -126,3 +152,21 @@ B-001/C-002 Energy remained unsupported. These checks validate routing and
 inference output, not physical finish accuracy under phone lighting. One initial
 post-deployment request timed out; subsequent live requests completed normally.
 Cold catalogue loads still depend on the external catalogue service.
+
+
+## Printed English set codes
+
+Modern English footer codes (for example `CRI EN`) constrain Pokémon suggestions
+using TCGdex set `abbreviation.official` metadata. Confident codes from independent
+passes at the selected orientation apply to both passes, so a name-only pass
+cannot reintroduce another set. Unknown, conflicting, or missing catalogue code
+metadata cannot establish a unique printing. Without a readable code, the existing
+name/number/total rules remain in effect; older pictorial set symbols are not
+recognized by this change. Identity-band OCR now includes the focused set-code
+region. Set metadata is cached through the existing catalogue cache.
+
+Regression: Wimpod `025/086`, `CRI EN` resolves to Chaos Rising (`me04-025`), even
+against a synthetic competing printing with the same name, number and total.
+The public catalogue image also resolves to that identity using name/number/total;
+its code was not confidently transcribed in the local test. A real phone capture
+is still needed to verify the user's specific ambiguous frame.

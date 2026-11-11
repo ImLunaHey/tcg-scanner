@@ -9,23 +9,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         .nth(1)
         .ok_or("Usage: web_bundle WASM_BINDGEN_OUTPUT_DIRECTORY")?;
     let output = Path::new(&output).canonicalize()?;
-    let templates = Path::new(env!("CARGO_MANIFEST_DIR")).join("../scanner-ui/web");
-    for name in [
-        "index.html",
-        "app.js",
-        "app.css",
-        "Inter-Regular.ttf",
-        "Inter-Medium.ttf",
-        "Inter-SemiBold.ttf",
-        "Inter-LICENSE.txt",
-    ] {
-        std::fs::copy(templates.join(name), output.join(name))?;
+    let existing = std::env::args_os()
+        .nth(2)
+        .is_some_and(|arg| arg == "--existing");
+    if !existing {
+        write_rune_bootstrap(&output)?;
     }
-    std::fs::copy(
-        templates.join("../assets/NotoSansKR-LICENSE.txt"),
-        output.join("NotoSansKR-LICENSE.txt"),
-    )?;
-    camera::write(&output)?;
     let mut files = BTreeMap::new();
     collect(&output, &output, &mut files)?;
     let manifest = WebManifest {
@@ -42,6 +31,26 @@ fn main() -> Result<(), Box<dyn Error>> {
         manifest.files.len(),
         output.display()
     );
+    Ok(())
+}
+fn write_rune_bootstrap(output: &Path) -> Result<(), Box<dyn Error>> {
+    let templates = Path::new(env!("CARGO_MANIFEST_DIR")).join("../scanner-ui/web");
+    for name in [
+        "index.html",
+        "app.js",
+        "app.css",
+        "Inter-Regular.ttf",
+        "Inter-Medium.ttf",
+        "Inter-SemiBold.ttf",
+        "Inter-LICENSE.txt",
+    ] {
+        std::fs::copy(templates.join(name), output.join(name))?;
+    }
+    std::fs::copy(
+        templates.join("../assets/NotoSansKR-LICENSE.txt"),
+        output.join("NotoSansKR-LICENSE.txt"),
+    )?;
+    camera::write(output)?;
     Ok(())
 }
 fn collect(

@@ -23,6 +23,10 @@ pub(crate) struct Access {
     attempts: u32,
     camera_window: Instant,
     camera_requests: u32,
+    detection_window: Instant,
+    detection_requests: u32,
+    price_window: Instant,
+    price_requests: u32,
 }
 impl Access {
     pub fn new(token: &str) -> scanner_types::error::Result<Self> {
@@ -40,6 +44,10 @@ impl Access {
             attempts: 0,
             camera_window: Instant::now(),
             camera_requests: 0,
+            detection_window: Instant::now(),
+            detection_requests: 0,
+            price_window: Instant::now(),
+            price_requests: 0,
         })
     }
     pub fn authenticate(&mut self, header: Option<&str>) -> Result<Principal> {
@@ -116,6 +124,37 @@ impl Access {
         self.camera_requests += 1;
         Ok(Principal::PublicCamera)
     }
+    // Cheap localization must not spend the OCR lookup budget.
+    pub fn detection(&mut self) -> Result<Principal> {
+        if self.detection_window.elapsed() >= Duration::from_secs(60) {
+            self.detection_window = Instant::now();
+            self.detection_requests = 0;
+        }
+        if self.detection_requests >= 120 {
+            return Err(Error::new(
+                429,
+                "rateLimit",
+                "Card detection limit reached; retry shortly.",
+            ));
+        }
+        self.detection_requests += 1;
+        Ok(Principal::PublicCamera)
+    }
+    pub fn price(&mut self) -> Result<Principal> {
+        if self.price_window.elapsed() >= Duration::from_secs(60) {
+            self.price_window = Instant::now();
+            self.price_requests = 0;
+        }
+        if self.price_requests >= 120 {
+            return Err(Error::new(
+                429,
+                "rateLimit",
+                "Price lookup limit reached; retry shortly.",
+            ));
+        }
+        self.price_requests += 1;
+        Ok(Principal::PublicCamera)
+    }
     pub fn issue(&mut self, principal: &Principal) -> Result<(String, DateTime<Utc>)> {
         if !matches!(principal, Principal::Root) {
             return Err(Error::new(
@@ -175,6 +214,20 @@ mod tests {
         assert!(access.camera().is_ok());
         assert_eq!(access.camera_requests, 1);
         assert!(access.sessions.is_empty());
+    }
+    #[test]
+    fn detection_has_a_bounded_budget_independent_of_ocr_and_prices() {
+        let mut access = Access::new(&generate_token().unwrap()).unwrap();
+        for _ in 0..120 {
+            let detection = access.detection().unwrap();
+            assert_eq!(access.issue(&detection).unwrap_err().status, 403);
+        }
+        assert_eq!(access.detection().err().unwrap().status, 429);
+        assert!(access.camera().is_ok());
+        assert!(access.price().is_ok());
+        access.detection_window = Instant::now() - Duration::from_secs(61);
+        assert!(access.detection().is_ok());
+        assert_eq!(access.detection_requests, 1);
     }
     #[test]
     fn session_authority_revocation_expiry_and_authentication_budget() {

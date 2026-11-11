@@ -195,3 +195,109 @@ async fn authenticated_rpc_allows_large_camera_only_and_preserves_small_method_l
     assert_eq!(response.status(), 413);
     h.engine.shutdown().await;
 }
+
+#[tokio::test]
+async fn camera_prices_use_cached_quotes_without_recognition_or_inventory_writes() {
+    let h = Harness::new();
+    let now = chrono::Utc::now();
+    h.engine
+        .database()
+        .cache_value(
+            "card-variants-v2:sv01-104",
+            &json!({
+                "cardID":"sv01-104", "fetchedAt":now, "requiresPrintingReview":false,
+                "variants":[{"finish":"normal","stamps":[],"euros":1.25,"updated":now},
+                {"finish":"reverseHolo","stamps":[],"euros":5,"updated":now}]
+            }),
+        )
+        .unwrap();
+    h.engine
+        .database()
+        .cache_value(
+            "eur-gbp",
+            &json!({"poundsPerEuro":0.9,"date":"2026-11-10","fetchedAt":now}),
+        )
+        .unwrap();
+    let mut selection = json!({"card":{"id":"sv01-104","name":"Greavard","setID":"sv01","setName":"SV","localID":"104","evidence":[],"availableFinishes":["normal","reverseHolo"]},"game":"pokemon","language":"en","finish":"unverified"});
+    let response = h
+        .send(h.request(
+            "POST",
+            "/api/v1/camera/price",
+            Body::from(selection.to_string()),
+            false,
+        ))
+        .await;
+    assert_eq!(response.status(), 200);
+    let value = json(response).await;
+    assert_eq!(value["state"], "range");
+    assert_eq!(value["lowPence"], 113);
+    assert_eq!(value["highPence"], 450);
+    selection["language"] = json!("ko");
+    let value = json(
+        h.send(h.request(
+            "POST",
+            "/api/v1/camera/price",
+            Body::from(selection.to_string()),
+            false,
+        ))
+        .await,
+    )
+    .await;
+    assert_eq!(value["state"], "unavailable");
+    assert!(h.engine.database().jobs(10, 0).unwrap().is_empty());
+    assert_eq!(h.driver.calls.load(Ordering::SeqCst), 0);
+    h.engine.shutdown().await;
+}
+
+#[tokio::test]
+async fn binder_detection_is_public_bounded_and_never_creates_inventory() {
+    struct Detector;
+    #[async_trait::async_trait]
+    impl CardRecognizer for Detector {
+        async fn recognize(
+            &self,
+            _: &ScanRecord,
+            _: &OriginalImage,
+        ) -> Result<RecognitionEvidence> {
+            panic!("No saved scan")
+        }
+        async fn detect_binder(
+            &self,
+            bytes: Vec<u8>,
+        ) -> Result<scanner_types::binder::BinderDetection> {
+            assert_eq!(bytes.len(), 80 * 1024);
+            Ok(scanner_types::binder::BinderDetection {
+                schema_version: 1,
+                method: "fixture".into(),
+                cards: vec![scanner_types::binder::CardBox {
+                    x: 0.1,
+                    y: 0.2,
+                    width: 0.3,
+                    height: 0.4,
+                    confidence: 0.9,
+                }],
+            })
+        }
+    }
+    let h = Harness::with_recognizer(Some(Arc::new(Detector)));
+    let route = "/api/v1/camera/detect-page";
+    let response = h
+        .send(h.request("POST", route, Body::from(body().to_string()), false))
+        .await;
+    assert_eq!(response.status(), 200);
+    assert_eq!(json(response).await["cards"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        h.send(h.request(
+            "POST",
+            route,
+            Body::from(vec![b' '; MAX_REQUEST_BYTES + 1]),
+            false
+        ))
+        .await
+        .status(),
+        413
+    );
+    assert!(h.engine.database().jobs(10, 0).unwrap().is_empty());
+    assert_eq!(h.driver.calls.load(Ordering::SeqCst), 0);
+    h.engine.shutdown().await;
+}

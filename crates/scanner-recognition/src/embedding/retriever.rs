@@ -45,8 +45,16 @@ pub struct VisualRetriever {
 }
 impl VisualRetriever {
     pub fn load(runtime: &Path, model: &Path, index: &Path) -> Result<Self> {
+        let runtime = crate::model_runtime::ModelRuntime::load(runtime)?;
+        Self::with_runtime(&runtime, model, index)
+    }
+    pub fn with_runtime(
+        runtime: &crate::model_runtime::ModelRuntime,
+        model: &Path,
+        index: &Path,
+    ) -> Result<Self> {
         let document = VisualIndexDocument::load(index)?;
-        let encoder = DinoEncoder::load(runtime, model)?;
+        let encoder = DinoEncoder::with_runtime(runtime, model)?;
         if document.schema_version != 1
             || document.model != encoder.model_key()
             || document.references.iter().any(|r| r.vector.len() != 384)

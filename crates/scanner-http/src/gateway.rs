@@ -79,16 +79,13 @@ impl Gateway {
             && self.web.get().is_some_and(|w| w.contains(&path));
         let camera = head.method == "POST" && crate::camera::is_route(&path);
         let principal = if camera {
-            self.access
-                .lock()
-                .map_err(|_| Error::internal())?
-                .camera()?
+            self.camera_principal(&path)?
         } else {
             self.principal(&head, public_image, public_web)?
         };
         let permits = self.request_permits(&path, public_image, public_web)?;
         let rpc = path.parts == ["rpc"];
-        let limit = if camera || rpc {
+        let limit = if camera || rpc || path.parts == ["api", "v1", "camera", "import"] {
             scanner_types::camera::MAX_REQUEST_BYTES
         } else {
             60 * 1024
@@ -179,7 +176,7 @@ impl Gateway {
                     .map_err(|_| Error::busy())?,
             );
         }
-        if crate::camera::is_route(path) {
+        if crate::camera::is_route(path) && path.parts.last().is_some_and(|p| p != "price") {
             permits.push(
                 self.cameras
                     .clone()

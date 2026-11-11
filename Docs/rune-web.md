@@ -1,4 +1,8 @@
-# Rune desktop and browser UI
+# Optional Rune browser build
+
+Production web deployments use [the original web interface](web-app.md). Rune
+remains the desktop UI; this WASM build is optional and must not replace the
+production web design.
 
 The same Rust UI uses the authenticated service API on desktop and in the browser.
 Browser entry code is limited to loading wasm-bindgen output; application state,

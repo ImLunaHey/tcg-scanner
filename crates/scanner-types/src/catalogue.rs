@@ -54,7 +54,13 @@ pub struct CardDetail {
 pub struct SetDetail {
     pub id: String,
     pub release_date: Option<String>,
+    pub abbreviation: Option<SetAbbreviation>,
     pub cards: Vec<CatalogueCard>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SetAbbreviation {
+    pub official: Option<String>,
 }
 
 impl CardDetail {

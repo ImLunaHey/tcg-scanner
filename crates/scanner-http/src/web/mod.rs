@@ -31,16 +31,10 @@ impl WebAssets {
         let manifest: WebManifest =
             serde_json::from_slice(&files::read(&root, "manifest.json", 65536)?)
                 .map_err(invalid)?;
-        if manifest.schema_version != 1 || !(5..=64).contains(&manifest.files.len()) {
+        if manifest.schema_version != 1 || !(3..=64).contains(&manifest.files.len()) {
             return Err(invalid("Invalid web manifest version or file count."));
         }
-        for required in [
-            "index.html",
-            "app.js",
-            "app.css",
-            "scanner_ui.js",
-            "scanner_ui_bg.wasm",
-        ] {
+        for required in ["index.html", "app.js", "app.css"] {
             if !manifest.files.contains_key(required) {
                 return Err(invalid("Incomplete browser bundle."));
             }
@@ -107,10 +101,21 @@ impl WebAssets {
 }
 const CSP: &str = "default-src 'none'; manifest-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; media-src 'self' blob:; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 fn name(path: &crate::path::Path) -> String {
-    if path.parts.is_empty() || path.parts == ["camera"] {
+    if page_route(&path.parts) {
         "index.html".into()
     } else {
         path.parts.join("/")
+    }
+}
+fn page_route(parts: &[String]) -> bool {
+    let parts: Vec<_> = parts.iter().map(String::as_str).collect();
+    match parts.as_slice() {
+        []
+        | ["camera" | "library" | "inventory" | "profiles" | "scanner"]
+        | ["inventory", "sets"] => true,
+        ["inventory", "sets", id] => !id.is_empty(),
+        ["batches", id] => uuid::Uuid::parse_str(id).is_ok(),
+        _ => false,
     }
 }
 pub fn file_type(name: &str) -> Result<(&'static str, usize)> {
@@ -134,10 +139,20 @@ pub fn file_type(name: &str) -> Result<(&'static str, usize)> {
             Ok(("text/plain; charset=utf-8", 65536))
         }
         Some("css") => Ok(("text/css; charset=utf-8", 65536)),
-        Some("webmanifest") if name == "camera.webmanifest" => {
+        Some("webmanifest") if matches!(name, "camera.webmanifest" | "manifest.webmanifest") => {
             Ok(("application/manifest+json", 8192))
         }
-        Some("png") if matches!(name, "camera-192.png" | "camera-512.png") => {
+        Some("svg") if name == "favicon.svg" => Ok(("image/svg+xml", 65536)),
+        Some("png")
+            if matches!(
+                name,
+                "camera-192.png"
+                    | "camera-512.png"
+                    | "assets/camera-180.png"
+                    | "assets/camera-192.png"
+                    | "assets/camera-512.png"
+            ) =>
+        {
             Ok(("image/png", 1024 * 1024))
         }
         Some("wasm") if matches!(name, "scanner_ui_bg.wasm" | "scanner_worker_bg.wasm") => {
